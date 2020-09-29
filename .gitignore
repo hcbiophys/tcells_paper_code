@@ -1,5 +1,7 @@
 batch1/
 batch2/
+bad_seg_data/
+good_seg_data/
 
 *.png
 *mp4

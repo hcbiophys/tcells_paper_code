@@ -1,126 +1,15 @@
-import os
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import sys
-import h5py # Hierarchical Data Format 5
 import nibabel as nib
-from scipy.ndimage import zoom
 from scipy.special import sph_harm
-from matplotlib import cm, colors
-import matplotlib.tri as mtri
-from mayavi import mlab
-import pyvista as pv
-from utils import *
+
+from lymphocytes.utils.voxels import Utils_Voxels
+from lymphocytes.utils.plotting import Utils_Plotting
 
 
+class SH_Methods:
 
-class LymphocyteSnap():
-
-    def __init__(self, mat_filename, coeffPathStart, idx, niigz, speed = None, angle = None, exited = False):
-
-        f = h5py.File(mat_filename, 'r')
-        dataset = f['DataOut/Surf']
-        #print(dataset.shape)
-
-        self.mat_filename = mat_filename
-        self.idx = idx
-
-        self.voxels = f[dataset[2, idx]]
-        self.vertices = f[dataset[3, idx]]
-        self.faces = f[dataset[4, idx]]
-
-
-        self.coeff_array = None
-
-        if not coeffPathStart is None:
-            self.SH_set_spharm_coeffs(coeffPathStart + '{}_pp_surf_SPHARM_ellalign.txt'.format(idx))
-
-        self.niigz = niigz
-        self.speed = speed
-        self.angle = angle
-        self.exited = exited
-
-
-
-    def ORIG_write_voxels_to_niigz(self, save_folder, zoom_factor = 1):
-
-        voxels = zoom(self.voxels, (zoom_factor, zoom_factor, zoom_factor))
-
-        new_image = nib.Nifti1Image(voxels, affine=np.eye(4))
-        nib.save(new_image, save_folder + '/' + os.path.basename(self.mat_filename[:-4]) + '_' + str(self.idx) + '.nii.gz')
-
-
-    def ORIG_surface_plot(self):
-        fig_surfacePlot = plt.figure()
-        ax = fig_surfacePlot.add_subplot(111, projection='3d')
-
-        ax.plot_trisurf(self.vertices[0, :], self.vertices[1, :], self.vertices[2, :], triangles = np.asarray(self.faces[:, ::4]).T)
-
-        ax.grid(False)
-        ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-        ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-        ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-
-        equal_axes(ax)
-
-
-
-    def ORIG_scatter_vertices(self, keep_every):
-
-
-
-        xs = self.vertices[0, :][0::keep_every]
-        ys = self.vertices[1, :][0::keep_every]
-        zs = self.vertices[2, :][0::keep_every]
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection = '3d')
-        ax.scatter(xs, ys, zs)
-
-        voxels = self.voxels
-        voxels = keep_only_largest_object(voxels)
-        voxels = binary_fill_holes(voxels).astype(int)
-        print('vox sum', np.sum(voxels))
-
-
-
-    def ORIG_show_voxels(self, zoom_factor = 0.2):
-
-        fig_showVoxels = plt.figure()
-        print(self.voxels.shape)
-        voxels = zoom(self.voxels, (zoom_factor, zoom_factor, zoom_factor))
-        print(voxels.shape)
-
-        voxels = voxels.astype(bool)
-
-        x, y, z = np.indices(voxels.shape)
-        cols = np.empty(voxels.shape + (3,))
-        cols[..., 0] = np.true_divide(z, 150)
-
-        c = colors.hsv_to_rgb(cols)
-
-        ax = fig_showVoxels.add_subplot(111, projection = '3d')
-
-        ax.voxels(voxels, facecolors = c, edgecolors = 'white')
-
-
-    def ORIG_get_face_vertices(self, cell_idx, face_idx):
-
-        face = self.faces[:, 5]
-        face_vertices = [vertices[:, face[0]], vertices[:, face[1]], vertices[:, face[2]]]
-        xs = [i[0] for i in face_vertices]
-        ys = [i[1] for i in face_vertices]
-        zs = [i[2] for i in face_vertices]
-        return xs, ys, zs
-
-
-    # NOW FOLLOW POST-SPHARM FUNCTIONS
-    # --------------------------------
-
-
-
-    def SH_set_spharm_coeffs(self, coeffs_txt_file):
+    def set_spharm_coeffs(self, coeffs_txt_file):
 
         with open(coeffs_txt_file, "r") as file:
             num_lines = 0
@@ -162,7 +51,7 @@ class LymphocyteSnap():
         self.coeff_array = coeff_array
 
 
-    def SH_get_clm(self, coeff_array, dimension, l, m):
+    def get_clm(self, coeff_array, dimension, l, m):
 
         if m == 0:
             a = coeff_array[l*l, dimension]
@@ -174,7 +63,7 @@ class LymphocyteSnap():
         return complex(a, b)
 
 
-    def SH_set_vector(self, max_l):
+    def set_vector(self, max_l):
 
 
         idx_trunc = (max_l*max_l + 2*(max_l+1)) + 1
@@ -185,11 +74,11 @@ class LymphocyteSnap():
         return vector
 
 
-    def SH_set_rotInv_vector(self, max_l):
+    def set_rotInv_vector(self, max_l):
 
-        volume = voxel_volume(self.niigz)
+        volume = Utils_Voxels.voxel_volume(self.niigz)
 
-        x_range, y_range, z_range = find_voxel_ranges(self.niigz)
+        x_range, y_range, z_range = Utils_Voxels.find_voxel_ranges(self.niigz)
 
         vector = []
 
@@ -213,12 +102,12 @@ class LymphocyteSnap():
 
 
 
-    def SH_reconstruct_xyz_from_spharm_coeffs(self, coeff_array, max_l):
+    def reconstruct_xyz_from_spharm_coeffs(self, coeff_array, max_l):
         """
         max max_l: 85
         """
 
-        volume = voxel_volume(self.niigz)
+        volume = Utils_Voxels.voxel_volume(self.niigz)
 
         thetas = np.linspace(0, np.pi, 50)
         phis = np.linspace(0, 2*np.pi, 50)
@@ -246,7 +135,7 @@ class LymphocyteSnap():
 
 
 
-    def SH_plotRecon_manyDegs(self, max_l_list, color_var):
+    def plotRecon_manyDegs(self, max_l_list, color_var):
 
 
         """
@@ -279,7 +168,7 @@ class LymphocyteSnap():
                 raise ValueError('Phi or Theta incorrect arg')
 
 
-    def SH_plotRecon_singleDeg(self, ax, max_l, color_param = 'thetas', elev = None, azim = None, normaliseScale = False):
+    def plotRecon_singleDeg(self, ax, max_l, color_param = 'thetas', elev = None, azim = None, normaliseScale = False):
 
         xs, ys, zs, phis, thetas = self.SH_reconstruct_xyz_from_spharm_coeffs(self.coeff_array, max_l)
 
@@ -324,7 +213,7 @@ class LymphocyteSnap():
         ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
         ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 
-        equal_axes(ax)
+        Utils_Plotting.equal_axes(ax)
         #remove_ticks(ax)
         #ax.set_axis_off()
 
