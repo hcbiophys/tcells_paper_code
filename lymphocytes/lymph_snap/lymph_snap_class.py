@@ -18,31 +18,54 @@ from lymphocytes.lymph_snap.SH_methods import SH_Methods
 
 
 class Lymph_Snap(Raw_Methods, SH_Methods):
+    """
+    Class for a single snap/frame of a lymphocyte series.
+    Mixins are:
+    - Raw_Methods: methods without spherical harmonics.
+    - SH_Methods:methods with spherical harmonics.
+    """
 
-    def __init__(self, mat_filename, coeffPathStart, idx, niigz, speed = None, angle = None, exited = False):
+    def __init__(self, frame, mat_filename, coeffPathStart, zoomedVoxelsPathStart, speed = None, angle = None):
+        """
+        Args:
+        - frame: frame number (beware of gaps in these as cells can exit the arenas).
+        - mat_filename: .mat file holding the series (read using h5py).
+        - coeffPathStart: start of paths for SPHARM coefficients.
+        - zoomedVoxelsPathStart: start of paths for the zoomed voxels (saves on processing time).
+        - speed: calculated speed at this snap.
+        - angle: calculated angle at this snap.
+        """
+
+        self.mat_filename = mat_filename
+        self.frame = frame
+        print(frame)
 
         f = h5py.File(mat_filename, 'r')
-        """
-        dataset = f['DataOut/Surf']
-        self.mat_filename = mat_filename
-        self.idx = idx
-        self.voxels = f[dataset[2, idx]]
-        self.vertices = f[dataset[3, idx]]
-        self.faces = f[dataset[4, idx]]
-        """
-        dataset = f['OUT/BINARY_MASK']
-        a = f[dataset]
-        print(a)
+        OUT_group = f.get('OUT')
 
-        sys.exit()
+        frames = OUT_group.get('FRAME')
+        frames = np.array(frames).flatten()
+        idx = np.where(frames == frame)
 
+        voxels = OUT_group.get('BINARY_MASK')
+        voxels_ref = voxels[idx]
+        self.voxels = f[voxels_ref[0][0]] # takes a long time
 
-        self.coeff_array = None
+        vertices = OUT_group.get('VERTICES')
+        vertices_ref = vertices[idx]
+        self.vertices = f[vertices_ref[0][0]]
 
-        if not coeffPathStart is None:
-            self.SH_set_spharm_coeffs(coeffPathStart + '{}_pp_surf_SPHARM_ellalign.txt'.format(idx))
+        faces = OUT_group.get('FACES')
+        faces_ref = faces[idx]
+        self.faces = f[faces_ref[0][0]]
 
-        self.niigz = niigz
         self.speed = speed
         self.angle = angle
-        self.exited = exited
+
+        self.zoomed_voxels = None
+        self.coeff_array = None
+
+        if zoomedVoxelsPathStart is not None:
+            self.zoomed_voxels = nib.load(zoomedVoxelsPathStart + '{}'.format(frame))
+        if not coeffPathStart is None:
+            self.SH_set_spharm_coeffs(coeffPathStart + '{}_pp_surf_SPHARM_ellalign.txt'.format(frame))

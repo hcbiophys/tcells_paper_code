@@ -25,7 +25,7 @@ from lymphocytes.lymph_snap.lymph_snap_class import Lymph_Snap
 
 class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
-    def __init__(self, stack_quads):
+    def __init__(self, stack_triplets):
 
         x_ranges = []
         y_ranges = []
@@ -33,38 +33,22 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
         self.lymph_serieses = []
 
-        for (mat_filename, coeffPathStart, niigzDir, exit_idxs) in stack_quads:
+        for (mat_filename, coeffPathStart, zoomedVoxelsPathStart) in stack_triplets:
 
             lymph_series = []
 
             f = h5py.File(mat_filename, 'r')
-            print(f.keys())
+            frames = f['OUT/FRAME']
 
-            idxs = f['OUT/FRAME']
-            print(idxs.shape)
-            num_snaps = idxs.shape[1]
-
-            niigzList = glob.glob(niigzDir + '*')
-            niigz_sorted, idxs = self.sort_niigzList(niigzList)
-
-            for snap in range(num_snaps):
-                exited = False
-                if os.path.isfile(coeffPathStart + '{}_pp_surf_SPHARM_ellalign.txt'.format(idx)): # if SPHARM worked and found coefficients
-                    lymph_series.append(Lymph_Snap(mat_filename, coeffPathStart, idxs[snap], niigz_sorted[idx], None, None, exited))
-                else:
-                    lymph_series.append(Lymph_Snap(mat_filename, None, idxs[snap], niigz_sorted[idx], None, None, exited))
-
+            for frame in np.array(frames).flatten():
+                    lymph_series.append(Lymph_Snap(mat_filename = mat_filename, frame = frame, coeffPathStart = coeffPathStart, zoomed_voxels_path = zoomedVoxelsPathStart, speed = None, angle = None))
 
             self.lymph_serieses.append(lymph_series)
             print('One cell series initialised')
 
         self.num_serieses = len(self.lymph_serieses)
 
-        self.SH_extremes = None
-
-
-
-
+    """
     def sort_niigzList(self, niigzList):
         if len(os.path.basename(niigzList[0]).split("_")) == 2:
             idxs = [int(os.path.basename(i).split("_")[1][:-7]) for i in niigzList]
@@ -73,9 +57,10 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         niigz_sorted = [niigz for idx, niigz in sorted(zip(idxs, niigzList))]
         idxs = [idx for idx, niigz in sorted(zip(idxs, niigzList))]
         return niigz_sorted, idxs
+    """
 
 
-
+    """
     def set_speedsAndTurnings(self):
 
         for series in self.lymph_serieses:
@@ -116,8 +101,9 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                          speed = np.sqrt((x_center_A-x_center_B)**2 + (y_center_A-y_center_B)**2 + (z_center_A-z_center_B)**2)
                          to_avg.append(speed)
                      lymph.speed = np.mean(to_avg)
+    """
 
-
+    """
     def find_exiting_idxs(self):
 
         for idx in range(self.num_serieses):
@@ -131,6 +117,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                     print(lymph.idx, 'EXITED')
                 else:
                     print(lymph.idx)
+    """
 
 
 

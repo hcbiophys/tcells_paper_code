@@ -89,7 +89,7 @@ class Utils_Voxels:
 
         return np.sum(voxels)
 
-    def read_niigz(self, voxels):
+    def read_niigz(self, niigz):
 
         voxels = keep_only_largest_object(voxels)
         voxels = binary_fill_holes(voxels).astype(int)
