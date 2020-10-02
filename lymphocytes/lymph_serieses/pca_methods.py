@@ -1,7 +1,26 @@
 
 class PCA_Methods:
+    """
+    Inherited by Lymph_Seriese class.
+    Contains methods that involve PCA.
+    """
 
-    def get_pca_objs(self, n_components, max_l, rotInv = True, removeSpeedNone = False, removeAngleNone = False, permAlterSeries = False):
+    def _get_pca_objs(self, n_components, max_l, removeSpeedNone = False, removeAngleNone = False, permAlterSeries = False):
+        """
+
+        Args:
+        - n_components: dimensionailty of low dimensional representation.
+        - max_l: truncation of original representation.
+        - removeSpeedNone: whether to remove frames with speed None.
+        - removeAngleNone: whether to remove frames with angle None.
+        - permAlterSeries: whether to permantly delete these frames.
+        Returns:
+        - pca_obj: object returned by PCA(n_components = n_components).
+        - max_l: max_l of original representation.
+        - lowDimRepTogeth: all representations together in one array, shape (num_frames, rep_size).
+        - lowDimRepSplit: list of series lists with separate low-dimensional representations.
+        """
+
 
         if permAlterSeries:
             self.lymph_serieses = del_whereNone(self.lymph_serieses, 'coeff_array')
@@ -22,10 +41,7 @@ class PCA_Methods:
         idx = 0
         for lymph_series in lymph_serieses:
             for lymph in lymph_series:
-                if rotInv == True:
-                    vector = lymph.SH_set_rotInv_vector(max_l)
-                elif rotInv == False:
-                    vector = lymph.SH_set_vector(max_l)
+                vector = lymph.SH_set_rotInv_vector(max_l)
                 vectors.append(vector)
                 idx += 1
             idxs_newCell.append(idx)
@@ -57,11 +73,9 @@ class PCA_Methods:
         return pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit
 
 
-    def pca_plot_sampling(self, max_l, num_samples, color_param = None, rotInv = True, std = False):
+    def pca_plot_sampling(self, max_l, num_samples, color_param = None,  std = False):
 
-
-
-        pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, rotInv = rotInv)
+        pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l)
         mean = np.mean(lowDimRepTogeth, axis = 0)
         dim_lims = []
         for dim in range(lowDimRepTogeth.shape[1]):
@@ -77,117 +91,73 @@ class PCA_Methods:
             sigmas.append( ( mean-2*std, mean-std, mean, mean+std, mean+2*std ) )
         """
 
-        if rotInv == True:
-            figSamples = plt.figure()
+        figSamples = plt.figure()
 
-            pca0_points = []
-            pca1_points = []
-            pca_points_lists = [pca0_points, pca1_points]
-
-
-            # normalise
-            expansions = []
-            for cell in range(lowDimRepTogeth.shape[0]):
-                expansion = pca_obj.inverse_transform(lowDimRepTogeth[cell, :])
-                expansions.append(expansion)
-
-            mean_vector = np.mean(np.array(expansions), axis = 0)
-            std_vector = np.std(np.array(expansions), axis = 0)
-            print('mean', mean_vector)
+        pca0_points = []
+        pca1_points = []
+        pca_points_lists = [pca0_points, pca1_points]
 
 
-            for dim in range(lowDimRepTogeth.shape[1]):
-                for idx_sample in range(num_samples):
+        # normalise
+        expansions = []
+        for cell in range(lowDimRepTogeth.shape[0]):
+            expansion = pca_obj.inverse_transform(lowDimRepTogeth[cell, :])
+            expansions.append(expansion)
 
-                    sample = np.mean(lowDimRepTogeth, axis = 0)
-
-                    #sample[dim] = sigmas[dim][idx_sample]
-                    sample[dim] = dim_lims[dim][0] + idx_sample*( dim_lims[dim][1]-dim_lims[dim][0] )/num_samples
-
-                    expansion = pca_obj.inverse_transform(sample)
-                    for l in range(len(expansion)-1):
-                        expansion[l+1] = (expansion[l+1]-self.SH_extremes[l, 0])/(self.SH_extremes[l, 1]-self.SH_extremes[l, 0])
+        mean_vector = np.mean(np.array(expansions), axis = 0)
+        std_vector = np.std(np.array(expansions), axis = 0)
+        print('mean', mean_vector)
 
 
-                    pca_points_lists[dim].append(sample)
+        for dim in range(lowDimRepTogeth.shape[1]):
+            for idx_sample in range(num_samples):
 
-                    ax = figSamples.add_subplot(num_samples+1, lowDimRepTogeth.shape[1], (idx_sample*lowDimRepTogeth.shape[1]) + (dim+1))
+                sample = np.mean(lowDimRepTogeth, axis = 0)
 
-                    ax.bar([l for l in range(expansion.shape[0])], [i for i in expansion], color = 'magenta')
+                #sample[dim] = sigmas[dim][idx_sample]
+                sample[dim] = dim_lims[dim][0] + idx_sample*( dim_lims[dim][1]-dim_lims[dim][0] )/num_samples
 
-                    ax.set_ylim([-1.2, 1.2])
-
-                    xmin, xmax = ax.get_xlim()
-                    plt.plot([xmin, xmax], [0, 0], c = 'black', linewidth = 0.5)
-
-                    ax.set_xticks([1, 2, 3, 4, 5])
-                    if idx_sample != 3:
-                        ax.set_xticks([])
+                expansion = pca_obj.inverse_transform(sample)
+                for l in range(len(expansion)-1):
+                    expansion[l+1] = (expansion[l+1]-self.SH_extremes[l, 0])/(self.SH_extremes[l, 1]-self.SH_extremes[l, 0])
 
 
-            #ax = figSamples.add_subplot(num_samples+1, lowDimRepTogeth.shape[1], (idx_sample*lowDimRepTogeth.shape[1]) + (dim+1) + 1)
-            #ax.bar([l for l in range(sample_expansion.shape[0])], [np.log10(i) for i in mean_vector], color = 'red')
+                pca_points_lists[dim].append(sample)
 
-            ax.set_xticks([1, 2, 3, 4, 5])
+                ax = figSamples.add_subplot(num_samples+1, lowDimRepTogeth.shape[1], (idx_sample*lowDimRepTogeth.shape[1]) + (dim+1))
+
+                ax.bar([l for l in range(expansion.shape[0])], [i for i in expansion], color = 'magenta')
+
+                ax.set_ylim([-1.2, 1.2])
+
+                xmin, xmax = ax.get_xlim()
+                plt.plot([xmin, xmax], [0, 0], c = 'black', linewidth = 0.5)
+
+                ax.set_xticks([1, 2, 3, 4, 5])
+                if idx_sample != 3:
+                    ax.set_xticks([])
 
 
-        if rotInv == False:
+        #ax = figSamples.add_subplot(num_samples+1, lowDimRepTogeth.shape[1], (idx_sample*lowDimRepTogeth.shape[1]) + (dim+1) + 1)
+        #ax.bar([l for l in range(sample_expansion.shape[0])], [np.log10(i) for i in mean_vector], color = 'red')
 
-
-            fig3D = plt.figure()
-
-            pca0_points = []
-            pca1_points = []
-            pca_points_lists = [pca0_points, pca1_points]
-
-            for dim in range(lowDimRepTogeth.shape[1]):
-                for idx_sample in range(num_samples):
-
-                    sample = np.mean(lowDimRepTogeth, axis = 0)
-                    sample[dim] = sigmas[dim][idx_sample]
-                    sample_expansion = pca_obj.inverse_transform(sample)
-                    pca_points_lists[dim].append(sample)
-
-                    ax = fig3D.add_subplot(num_samples, lowDimRepTogeth.shape[1], (idx_sample*lowDimRepTogeth.shape[1]) + (dim+1), projection = '3d')
-
-                    xcoeffs, ycoeffs, zcoeffs = np.split(sample_expansion, 3)
-                    coeff_array_recon = np.concatenate([np.expand_dims(xcoeffs, 1), np.expand_dims(ycoeffs, 1), np.expand_dims(zcoeffs, 1)], axis = 1)
-                    xs, ys, zs, phis, thetas = self.lymphSnaps_dict[0].SH_reconstruct_xyz_from_spharm_coeffs(coeff_array_recon, max_l)
-
-                    tris = mtri.Triangulation(phis, thetas)
-                    collec = ax.plot_trisurf([i.real for i in ys], [i.real for i in zs], [i.real for i in xs], triangles = tris.triangles, cmap=plt.cm.CMRmap, edgecolor='none', linewidth = 0, antialiased = False)
-                    if color_param == 'phis':
-                        colors = np.mean(phis[tris.triangles], axis = 1)
-                        collec.set_array(colors)
-                    elif color_param == 'thetas':
-                        colors = np.mean(thetas[tris.triangles], axis = 1)
-                        collec.set_array(colors)
-
-            if rotInv == False:
-                equal_axes(*fig3D.axes)
-
-                for ax in fig3D.axes:
-                    ax.grid(False)
-                    ax.set_axis_off()
-                    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-                    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-                    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        ax.set_xticks([1, 2, 3, 4, 5])
 
 
 
-    def pca_plot_shape_trajectories(self, max_l, rotInv = True, colorBy = 'time'):
+    def pca_plot_shape_trajectories(self, max_l, colorBy = 'time'):
 
         if colorBy == 'speed' or colorBy == 'angle':
             self.set_speedsAndTurnings()
 
         if colorBy == 'speed':
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, rotInv = rotInv, removeSpeedNone = True, permAlterSeries = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeSpeedNone = True, permAlterSeries = True)
         elif colorBy == 'angle':
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, rotInv = rotInv, removeAngleNone = True, permAlterSeries = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeAngleNone = True, permAlterSeries = True)
         elif colorBy ==  'time':
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, rotInv = rotInv)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l)
         else:
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, rotInv = rotInv, removeSpeedNone = False, permAlterSeries = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeSpeedNone = False, permAlterSeries = True)
 
         if colorBy == 'time':
             list = [0, 1]
@@ -200,7 +170,7 @@ class PCA_Methods:
         vmin, vmax = min(list), max(list)
 
         fig2D_sing = plt.figure()
-        num_cols = (self.num_serieses // 3) +1
+        num_cols = (self.num_serieses // 3) + 1
         fig2D_mult = plt.figure()
 
         if not colorBy == 'time':
@@ -273,7 +243,7 @@ class PCA_Methods:
 
     def plot_pca_recons(self, n_pca_components, max_l, plot_every):
 
-        pca_obj, max_l, lowDimRep = self.get_pca_objs(n_pca_components, max_l, rotInv = True)
+        pca_obj, max_l, lowDimRep = self.get_pca_objs(n_pca_components, max_l)
         recon = pca_obj.inverse_transform(lowDimRep)
 
         figPCARecons = plt.figure()

@@ -4,7 +4,7 @@ import nibabel as nib
 from scipy.ndimage import zoom
 import os
 from lymphocytes.utils.disk import Utils_Disk
-
+from lymphocytes.utils.plotting import no_pane, equal_axes
 
 class Raw_Methods:
     """
@@ -37,10 +37,8 @@ class Raw_Methods:
         ax.plot_trisurf(self.vertices[0, :], self.vertices[1, :], self.vertices[2, :], triangles = np.asarray(self.faces[:, ::subsample_rate]).T)
 
         ax.grid(False)
-        ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-        ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-        ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 
+        no_pane(ax)
         equal_axes(ax)
 
 

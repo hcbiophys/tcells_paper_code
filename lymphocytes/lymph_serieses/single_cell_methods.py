@@ -1,6 +1,10 @@
 
 
 class Single_Cell_Methods:
+    """
+    Inherited by Lymph_Snap class.
+    Contains methods for series of a single cell.
+    """
 
     def plot_migratingCell(self, max_l = 5, idx_cell = 0, plot_every = 15):
 
@@ -89,9 +93,9 @@ class Single_Cell_Methods:
 
 
 
-        def plot_rotInv_series_bars(self, maxl = 5, plot_every = 1, means_adjusted = False):
+        def plot_rotInvRep_series_bars(self, maxl = 5, plot_every = 1, means_adjusted = False):
 
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = maxl, rotInv = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = maxl)
             pc_idx = 1
 
             fig = plt.figure()

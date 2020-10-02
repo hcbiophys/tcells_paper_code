@@ -22,7 +22,7 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
     Class for a single snap/frame of a lymphocyte series.
     Mixins are:
     - Raw_Methods: methods without spherical harmonics.
-    - SH_Methods:methods with spherical harmonics.
+    - SH_Methods: methods with spherical harmonics.
     """
 
     def __init__(self, frame, mat_filename, coeffPathStart, zoomedVoxelsPathStart, speed = None, angle = None):

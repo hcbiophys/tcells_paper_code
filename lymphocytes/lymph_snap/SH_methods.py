@@ -159,7 +159,6 @@ class SH_Methods:
         - max_l_list: list of maximum l values (i.e. different truncations).
         - color_var: parameter to color by (theta or phi).
         """
-        HERE
 
         fig_plotRecon_manyDegs = plt.figure()
 
@@ -182,6 +181,16 @@ class SH_Methods:
 
 
     def plotRecon_singleDeg(self, ax, max_l, color_param = 'thetas', elev = None, azim = None, normaliseScale = False):
+        """
+        Plot reconstruction at a single truncation degree.
+        Args:
+        - ax: axis to plot onto.
+        - max_l: max l value (i.e. truncation).
+        - color_param: parameter to color by ("thetas" / "phis").
+        - elev: elevation of view.
+        - azim: azimuthal angle of view.
+        - normaliseScale: ?
+        """
 
         xs, ys, zs, phis, thetas = self.SH_reconstruct_xyz_from_spharm_coeffs(self.coeff_array, max_l)
 
@@ -198,26 +207,13 @@ class SH_Methods:
         collec = ax.plot_trisurf([i.real for i in ys], [i.real for i in zs], [i.real for i in xs], triangles = tris.triangles, color=(0,0,0,0), edgecolor='Gray')
         ax.view_init(elev, azim)
 
-        """
-        if color_param == 'xs':
-            real_xs = np.array([i.real for i in xs])
-            colors = np.mean(real_xs[tris.triangles], axis = 1)
-            collec.set_array(colors)
-        elif color_param == 'ys':
-            real_ys = np.array([i.real for i in ys])
-            colors = np.mean(real_ys[tris.triangles], axis = 1)
-            collec.set_array(colors)
-        elif color_param == 'zs':
-            real_zs = np.array([i.real for i in zs])
-            colors = np.mean(real_zs[tris.triangles], axis = 1)
-            collec.set_array(colors)
         elif color_param == 'phis':
             colors = np.mean(phis[tris.triangles], axis = 1)
             collec.set_array(colors)
         elif color_param == 'thetas':
             colors = np.mean(thetas[tris.triangles], axis = 1)
             collec.set_array(colors)
-        """
+
 
         ax.grid(False)
         ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
@@ -227,5 +223,4 @@ class SH_Methods:
         Utils_Plotting.equal_axes(ax)
         #remove_ticks(ax)
         #ax.set_axis_off()
-
         #plt.colorbar(collec)

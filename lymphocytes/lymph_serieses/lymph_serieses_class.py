@@ -24,8 +24,22 @@ from lymphocytes.lymph_snap.lymph_snap_class import Lymph_Snap
 
 
 class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
+    """
+    Class for all lymphocyte serieses.
+    Mixins are:
+    - PCA_Methods: methods without involving reduced-dimensionality representation (via PCA).
+    - Single_Cell_Methods: methods suitable for a single cell series.
+    """
+
 
     def __init__(self, stack_triplets):
+        """
+        Args:
+        -- stack_triplets: (mat_filename, coeffPathStart, zoomedVoxelsPathStart) triplet, where...
+        - mat_filename: filename of .mat file containing all initial info.
+        - coeffPathStart: start path (without frame number) of SPHARM coefficients.
+        - zoomedVoxelsPathStart: start path (without frame number) for zoomed voxels (for speed reasons).
+        """
 
         x_ranges = []
         y_ranges = []
@@ -59,6 +73,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         return niigz_sorted, idxs
     """
 
+    SET EACH SEPARATELY THEN INSTEAN OF REMOVING CAN JUST CALL THE RELEVANT FUNCTION WHERE REQUIRED!
 
     """
     def set_speedsAndTurnings(self):
@@ -122,30 +137,32 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
 
     def plot_raw_volumes_series(self, zoom_factor = 1):
+        """
+        Plot volume changes as calculated from original voxel representations.
+        Args:
+        - zoom_factor: subsampling factor for the voxels.
+        """
 
         for lymph_series in self.lymph_serieses:
             volumes = []
             for lymph in lymph_series:
                 volumes.append(voxel_volume(lymph.niigz))
-                print('idx', idx)
-
             plt.plot([i for i in range(len(volumes))], volumes)
 
         plt.ylim([0, 1.1*max(volumes)])
-
         plt.show()
 
 
     def plot_cofms(self, colorBy = 'speed'):
+        """
+        Plots the centre of mass trajectories of each cell.
+        Args:
+        - colorBy: attribute to color by ("speed" / "angle").
+        """
 
         self.set_speedsAndTurnings()
 
         cmap = plt.cm.viridis
-
-        #if colorBy == 'speed' or colorBy == 'angle':
-        #    self.lymph_serieses = del_whereNone(self.lymph_serieses, colorBy)
-
-        #self.lymph_serieses = del_whereNone(self.lymph_serieses, 'coeff_array')
 
         fig = plt.figure()
 
@@ -155,14 +172,12 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         elif colorBy == 'angle':
             angles = [lymph.angle for sublist in self.lymph_serieses for lymph in sublist if lymph.angle is not None and lymph.coeff_array is not None]
             vmin, vmax = min(angles), max(angles)
-        print('vmin', vmin, 'vmax', vmax)
         norm = plt.Normalize(vmin, vmax)
 
 
         for idx_ax, lymph_series in enumerate(self.lymph_serieses):
-            print('new ax')
             ax = fig.add_subplot(2, (self.num_serieses//2)+2, idx_ax+1, projection = '3d')
-            ax.grid(False)
+
             if colorBy == 'idx':
                 ax.set_title(os.path.basename(self.lymph_serieses[idx_ax][0].mat_filename)[:-4] + '_' + str(min(colors_)) + '_' + str(max(colors_)))
             else:
@@ -172,6 +187,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                 voxels_1 = read_niigz(lymph_series[idx+1].niigz)
                 x_center_0, y_center_0, z_center_0 = np.argwhere(voxels_0 == 1).sum(0) / np.sum(voxels_0)
                 x_center_1, y_center_1, z_center_1 = np.argwhere(voxels_1 == 1).sum(0) / np.sum(voxels_1)
+
                 if colorBy == 'speed':
                     if lymph_series[idx].speed is None:
                         color = 'black'
@@ -184,39 +200,19 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                         color = cmap(norm(lymph_series[idx].angle))
                 if lymph_series[idx].coeff_array is None:
                     color = 'red'
-
                 if lymph_series[idx].exited:
                     color = 'magenta'
-
                 if color == 'black' or color == 'red' or color == 'magenta':
                     linewidth = 2
                 else:
                     linewidth = 4
                 ax.plot([x_center_0, x_center_1], [y_center_0, y_center_1], [z_center_0, z_center_1], c = color, linewidth = linewidth)
+                ax.grid(False)
 
 
         ax = fig.add_subplot(2, (self.num_serieses//2)+2,self.num_serieses+2, projection = '3d')
         voxels = read_niigz(self.lymph_serieses[0][0].niigz)
         ax.voxels(voxels, edgecolors = 'white')
-
-
-        """
-        for idx, cofms_list in enumerate(cofms_lists):
-
-            if colorBy == 'idx':
-                colors_ = [lymph.idx for lymph in self.lymph_serieses[idx]]
-                colors = cmap(colors_)
-            elif colorBy == 'speed':
-                colors_ = [lymph.speed for lymph in self.lymph_serieses[idx]]
-                colors = cmap(colors_)
-            elif colorBy == 'angle':
-                colors_ = [lymph.angle for lymph in self.lymph_serieses[idx]]
-                colors = cmap(colors_)
-        """
-
-        #cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-        #fig.colorbar(im, cax=cbar_ax)
-
 
         equal_axes_notSquare(*fig.axes)
         plt.show()
@@ -224,6 +220,9 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
 
     def plot_individAndHists(self, variable):
+        """
+        Plot histograms ???
+        """
 
         if variable == 'speed' or variable == 'angle':
             self.set_speedsAndTurnings()
@@ -233,7 +232,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         """
 
         if variable[:-1] == 'PC':
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = 5, rotInv = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = 5)
 
         cells = []
         colors = []
@@ -310,11 +309,12 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
             ax.set_xlim(0, 300)
 
 
-
-
-
-
-    def plot_rotInv_mean_std(self, maxl):
+    def plot_rotInvRep_mean_std(self, maxl):
+        """
+        Plot the mean and standard deviation of rotationally-invariant shape descriptor.
+        Args:
+        - maxl: truncations.
+        """
 
         vectors = []
         for lymph_series in self.lymph_serieses:
@@ -337,14 +337,20 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
 
 
-    def plot_recons_increasing_l(self, lmax, l):
+    def plot_recons_increasing_l(self, maxl, l):
+        """
+        Plot a sample of reconstructions in order of ascending l.
+        Args:
+        - maxl: the truncation of the representation.
+        - l: which l (energy) to order by (maximum l possible is the truncation, maxl).
+        """
 
         vectors = []
         lymphs = []
         for lymph_series in self.lymph_serieses:
             for lymph in lymph_series:
                 if not lymph.coeffPathStart is None:
-                    vector = lymph.SH_set_rotInv_vector(lmax)
+                    vector = lymph.SH_set_rotInv_vector(maxl)
                     vectors.append(vector)
                     lymphs.append(lymph)
 
@@ -359,7 +365,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
             vol = volumes[i]
 
             ax = fig1.add_subplot(1, len(lymphs), i+1, projection = '3d')
-            lymphs[i].SH_plotRecon_singleDeg(ax, lmax, 'phi', normaliseScale = True)
+            lymphs[i].SH_plotRecon_singleDeg(ax, maxl, 'phi', normaliseScale = True)
             ax.set_title(str(np.round(vol, 4)))
 
             ax.view_init(azim=0, elev=90)
@@ -372,13 +378,22 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
 
 
-    def plot_rotInv_2Dmanifold(self, grid_size, max_l, pca, just_x = False, just_y = False):
+    def plot_rotInvRep_2Dmanifold(self, grid_size, max_l, pca, just_x = False, just_y = False):
+        """
+        Plot the manifold of the rotationally-invariant description projected to 2D via PCA.
+        Args:
+        - grid_size: resolution of the manifol, i.e. dimensions of grid to show images in.
+        - max_l: truncation degree.
+        - pca: whether PCA used. If False, 2D representation is the first two energies (associated with first two ls).
+        - just_x: if True, shows 1D manifold along x.
+        - just_y: if True, shows 1D manifold along y.
+        """
 
         if pca:
 
             vectors = []
             lymphs = []
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, rotInv = True, permAlterSeries = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, permAlterSeries = True)
             for idx_series, lymph_series in enumerate(self.lymph_serieses):
                 for idx_cell, lymph in enumerate(lymph_series):
                     vectors.append(lowDimRepSplit[idx_series][idx_cell])
@@ -474,38 +489,14 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         axScatt.scatter([v[0] for v in vectors], [v[1] for v in vectors], s = 2)
 
 
-
-
-
-
-
-
-    def plot_speeds_angles(self):
-
-        self.set_speedsAndTurnings()
-
-        for idx_series in range(self.num_serieses):
-            speeds_cell = self.all_speeds[idx_series][1:-1]
-            angles_cell = self.all_angles[idx_series][1:-1]
-
-            colors = []
-            for idx in range(len(speeds_cell)):
-
-                if speeds_cell[idx] < 0.75 and angles_cell[idx] < 1.75:
-                    colors.append('red')
-                elif speeds_cell[idx] < 0.75 and angles_cell[idx] > 1.75:
-                    colors.append('blue')
-                else:
-                    colors.append('green')
-
-            plt.scatter(speeds_cell, angles_cell, c = colors)
-
-        plt.xlabel('Speeds')
-        plt.ylabel('Angles')
-        plt.show()
-
-
-    def correlate_with_speedAngle(self, max_l, rotInv, n_components, pca = False):
+    def correlate_with_speedAngle(self, max_l, n_components, pca = False):
+        """
+        Correlates a representation with speed and angle.
+        Args:
+        - max_l: truncation degree.
+        - n_components: number of representation components to correlate with.
+        - pca: whether to correlate with dimensioally-reduced (via PCA) representation.
+        """
 
         self.set_speedsAndTurnings()
 
@@ -513,7 +504,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         self.lymph_serieses = del_whereNone(self.lymph_serieses, 'speed')
 
         if pca:
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = n_components, max_l = max_l, rotInv = rotInv, permAlterSeries = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = n_components, max_l = max_l, permAlterSeries = True)
         else:
             lowDimRepSplit = []
             for idx_series in range(self.num_serieses):
@@ -521,8 +512,6 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                 for lymph in self.lymph_serieses[idx_series]:
                     split.append(lymph.SH_set_rotInv_vector(max_l))
                 lowDimRepSplit.append(split)
-
-
 
         fig = plt.figure()
         speeds = []
