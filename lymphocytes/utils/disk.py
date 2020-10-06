@@ -1,6 +1,9 @@
+import numpy as np
 import nibabel as nib
 import glob
 import os
+import h5py
+from scipy.ndimage import zoom
 
 
 def copy_voxels_notDone(doneDir, toCopyDir):
@@ -43,6 +46,31 @@ def load_and_check_nib():
     print('area', area)
     print('num', num)
 
+
+
+def write_all_zoomed_niigz(mat_filename, saveFormat, zoom_factor):
+
+    f = h5py.File(mat_filename, 'r')
+    OUT_group = f.get('OUT')
+
+    frames = np.asarray(OUT_group.get('FRAME')).flatten()
+
+    for frame in np.array(frames).flatten():
+        idx = np.where(frames == frame)
+        voxels = OUT_group.get('BINARY_MASK')
+        voxels_ref = voxels[idx]
+
+        voxels = f[voxels_ref[0][0]] # takes a long time
+
+        voxels = zoom(voxels, (zoom_factor, zoom_factor, zoom_factor), order = 0)
+
+        new_image = nib.Nifti1Image(voxels, affine=np.eye(4))
+        nib.save(new_image, saveFormat.format(int(frame)))
+
+
+
+
+
 def rm_done_from_inDir(inDir, Step1_SegPostProcessDir):
 
     for file_path1 in glob.glob(Step1_SegPostProcessDir + '*'):
@@ -54,8 +82,8 @@ def rm_done_from_inDir(inDir, Step1_SegPostProcessDir):
                 os.remove(file_path2)
 
 
-"""
+
 if __name__ == "__main__":
-utils_disk = Utils_Disk()
-utils_disk.rm_done_from_inDir('/Users/harry/Desktop/RUNNING/in/', '/Users/harry/Desktop/RUNNING/out/Step1_SegPostProcess/')
-"""
+    save_form = '/Users/harry/Desktop/lymphocytes/good_seg_data/stack3/zoomedVoxels_0.2/{}.nii.gz'
+    write_all_zoomed_niigz('/Users/harry/Desktop/lymphocytes/good_seg_data/stack3/Stack3-BC-Surf-Lim-New-T-corr_GAUSS_Export_Surf_corr.mat', save_form, 0.2)
+    #pass

@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import nibabel as nib
 from scipy.ndimage import zoom
 import os
-from lymphocytes.utils.disk import Utils_Disk
-from lymphocytes.utils.plotting import no_pane, equal_axes
+from lymphocytes.utils.disk import *
+from lymphocytes.utils.plotting import no_pane, equal_axes_3D
 
 class Raw_Methods:
     """
@@ -12,19 +12,6 @@ class Raw_Methods:
     Contains methods without spherical harmonics.
     """
 
-
-    def write_voxels_to_niigz(self, save_base, zoom_factor = 0.2):
-        """
-        Write (zoomed) voxels to niigz file to be processed by SPHARM-PDM.
-        Args:
-        - save_base: save path without the frame number.
-        - zoom_factor: subsampled factor.
-        """
-
-        voxels = zoom(self.voxels, (zoom_factor, zoom_factor, zoom_factor))
-
-        new_image = nib.Nifti1Image(voxels, affine=np.eye(4))
-        nib.save(new_image, save_base + str(self.frame) + '.nii.gz')
 
 
     def surface_plot(self, subsample_rate):
@@ -39,7 +26,7 @@ class Raw_Methods:
         ax.grid(False)
 
         no_pane(ax)
-        equal_axes(ax)
+        equal_axes_3D(ax)
 
 
     def show_voxels(self, origOrZoomed):
@@ -50,7 +37,7 @@ class Raw_Methods:
 
         if origOrZoomed == 'orig':
             voxels = self.voxels
-        elif origOrZoomed = 'zoomed':
+        elif origOrZoomed == 'zoomed':
             voxels = self.zoomed_voxels
 
         fig_showVoxels = plt.figure()

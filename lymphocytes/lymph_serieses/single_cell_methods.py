@@ -1,4 +1,5 @@
-
+import matplotlib.pyplot as plt
+import lymphocytes.utils.plotting as utils_plotting
 
 class Single_Cell_Methods:
     """
@@ -78,13 +79,16 @@ class Single_Cell_Methods:
         num_cols = (len(lymph_series) // 3) + 1
 
         for idx_plot, lymph in enumerate(lymph_series):
-
-            ax = figRecons.add_subplot(3, num_cols, idx_plot+1, projection = '3d')
-            lymph.SH_plotRecon_singleDeg(ax, max_l, color_param)
+            if lymph is not None:
+                print('Plotting snap')
+                ax = figRecons.add_subplot(3, num_cols, idx_plot+1, projection = '3d')
+                lymph.plotRecon_singleDeg(ax, max_l, color_param)
+            else:
+                print('None')
 
 
         ax_list = figRecons.axes
-        equal_axes(*ax_list)
+        utils_plotting.equal_axes_3D(*ax_list)
         #remove_ticks(*ax_list)
         plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
 

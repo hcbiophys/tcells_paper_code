@@ -16,6 +16,9 @@ import pyvista as pv
 from lymphocytes.lymph_snap.raw_methods import Raw_Methods
 from lymphocytes.lymph_snap.SH_methods import SH_Methods
 
+from lymphocytes.utils.voxels import process_voxels
+
+
 
 class Lymph_Snap(Raw_Methods, SH_Methods):
     """
@@ -25,7 +28,7 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
     - SH_Methods: methods with spherical harmonics.
     """
 
-    def __init__(self, frame, mat_filename, coeffPathStart, zoomedVoxelsPathStart, speed = None, angle = None):
+    def __init__(self, frame, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, speed = None, angle = None):
         """
         Args:
         - frame: frame number (beware of gaps in these as cells can exit the arenas).
@@ -38,7 +41,6 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
 
         self.mat_filename = mat_filename
         self.frame = frame
-        print(frame)
 
         f = h5py.File(mat_filename, 'r')
         OUT_group = f.get('OUT')
@@ -50,6 +52,8 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
         voxels = OUT_group.get('BINARY_MASK')
         voxels_ref = voxels[idx]
         self.voxels = f[voxels_ref[0][0]] # takes a long time
+        #self.voxels = process_voxels(voxels)
+
 
         vertices = OUT_group.get('VERTICES')
         vertices_ref = vertices[idx]
@@ -62,10 +66,10 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
         self.speed = speed
         self.angle = angle
 
-        self.zoomed_voxels = None
-        self.coeff_array = None
+        self._set_spharm_coeffs(coeffPathFormat.format(frame))
 
-        if zoomedVoxelsPathStart is not None:
-            self.zoomed_voxels = nib.load(zoomedVoxelsPathStart + '{}'.format(frame))
-        if not coeffPathStart is None:
-            self.SH_set_spharm_coeffs(coeffPathStart + '{}_pp_surf_SPHARM_ellalign.txt'.format(frame))
+        self.zoomed_voxels = None
+        if zoomedVoxelsPathFormat is not None:
+            self.zoomed_voxels_path = zoomedVoxelsPathFormat.format(frame)
+            zoomed_voxels = np.asarray(nib.load(self.zoomed_voxels_path).dataobj)
+            self.zoomed_voxels = process_voxels(zoomed_voxels)

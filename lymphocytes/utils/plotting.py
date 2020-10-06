@@ -1,4 +1,4 @@
-
+import numpy as np
 
 def equal_axes_3D(*axes):
 

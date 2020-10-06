@@ -1,6 +1,9 @@
+import numpy as np
 import nibabel as nib
-
-
+import skimage.morphology
+from scipy.ndimage.morphology import binary_fill_holes
+from scipy.ndimage.measurements import label
+import sys
 
 def find_voxel_ranges(voxels):
 
@@ -52,7 +55,7 @@ def find_voxel_ranges(voxels):
 
 def find_optimal_3dview(voxels):
 
-    x_range, y_range, z_range = self.find_voxel_ranges(voxels)
+    x_range, y_range, z_range = find_voxel_ranges(voxels)
 
     ranges = [x_range, y_range, z_range]
 
@@ -80,14 +83,7 @@ def find_optimal_3dview(voxels):
     return elev, azim
 
 
-def voxel_volume(voxels):
-
-    voxels = keep_only_largest_object(voxels)
-    voxels = binary_fill_holes(voxels).astype(int)
-
-    return np.sum(voxels)
-
-def read_niigz(niigz):
+def process_voxels(voxels):
 
     voxels = keep_only_largest_object(voxels)
     voxels = binary_fill_holes(voxels).astype(int)
@@ -96,12 +92,18 @@ def read_niigz(niigz):
 
 
 
-def keep_only_largest_object(voxels):
 
-        labels = morphology.label(voxels, connectivity = 1)
-        labels_num = [len(labels[labels==each]) for each in np.unique(labels)]
-        rank = np.argsort(np.argsort(labels_num))
-        max_index = list(rank).index(len(rank)-2)
-        new_array = np.zeros_like(array)
-        new_array[labels == max_index] = 1
-        return new_array
+
+def keep_only_largest_object(voxels):
+    #labeled, ncomponents = label(voxels)
+
+    labels = skimage.morphology.label(voxels, connectivity = 1)
+    labels_num = [len(labels[labels==each]) for each in np.unique(labels)]
+    rank = np.argsort(np.argsort(labels_num))
+    max_index = list(rank).index(len(rank)-2)
+    new_voxels = np.zeros_like(voxels)
+    new_voxels[labels == max_index] = 1
+
+    #labeled, ncomponents = label(new_voxels)
+
+    return new_voxels

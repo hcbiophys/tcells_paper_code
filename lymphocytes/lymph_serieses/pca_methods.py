@@ -1,3 +1,8 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import lymphocytes.utils.general as utils_general
+from sklearn.decomposition import PCA
+
 
 class PCA_Methods:
     """
@@ -5,9 +10,20 @@ class PCA_Methods:
     Contains methods that involve PCA.
     """
 
-    def _get_pca_objs(self, n_components, max_l, removeSpeedNone = False, removeAngleNone = False, permAlterSeries = False):
-        """
 
+    def _edit_serieses(self, removeLymphNones = False, removeSpeedNone = False, removeAngleNone = False):
+
+        if removeLymphNones:
+            self.lymph_serieses = utils_general.del_whereNone(self.lymph_serieses, 'lymph')
+        if removeSpeedNone:
+            self.lymph_serieses = utils_general.del_whereNone(self.lymph_serieses, 'speed')
+        if removeAngleNone:
+            self.lymph_serieses = utils_general.del_whereNone(self.lymph_serieses, 'angle')
+
+
+    def _get_pca_objs(self, n_components, max_l, removeSpeedNone = False, removeAngleNone = False):
+
+        """
         Args:
         - n_components: dimensionailty of low dimensional representation.
         - max_l: truncation of original representation.
@@ -22,28 +38,18 @@ class PCA_Methods:
         """
 
 
-        if permAlterSeries:
-            self.lymph_serieses = del_whereNone(self.lymph_serieses, 'coeff_array')
-            if removeSpeedNone:
-                self.lymph_serieses = del_whereNone(self.lymph_serieses, 'speed')
-            if removeAngleNone:
-                self.lymph_serieses = del_whereNone(self.lymph_serieses, 'angle')
-            lymph_serieses = self.lymph_serieses
-        else:
-            lymph_serieses = del_whereNone(self.lymph_serieses, 'coeff_array')
-            if removeSpeedNone:
-                lymph_serieses = del_whereNone(lymph_serieses, 'speed')
-            if removeAngleNone:
-                lymph_serieses = del_whereNone(lymph_serieses, 'angle')
+
+        self._edit_serieses(removeLymphNones = True, removeSpeedNone = removeSpeedNone, removeAngleNone = removeAngleNone)
 
         vectors = []
         idxs_newCell = [0]
         idx = 0
-        for lymph_series in lymph_serieses:
+        for lymph_series in self.lymph_serieses:
             for lymph in lymph_series:
-                vector = lymph.SH_set_rotInv_vector(max_l)
-                vectors.append(vector)
-                idx += 1
+                if lymph is not None:
+                    vector = lymph.get_rotInv_vector(max_l)
+                    vectors.append(vector)
+                    idx += 1
             idxs_newCell.append(idx)
 
         vectorsArray = np.array(vectors)
@@ -137,66 +143,34 @@ class PCA_Methods:
                 if idx_sample != 3:
                     ax.set_xticks([])
 
-
-        #ax = figSamples.add_subplot(num_samples+1, lowDimRepTogeth.shape[1], (idx_sample*lowDimRepTogeth.shape[1]) + (dim+1) + 1)
-        #ax.bar([l for l in range(sample_expansion.shape[0])], [np.log10(i) for i in mean_vector], color = 'red')
-
         ax.set_xticks([1, 2, 3, 4, 5])
 
 
 
     def pca_plot_shape_trajectories(self, max_l, colorBy = 'time'):
 
-        if colorBy == 'speed' or colorBy == 'angle':
-            self.set_speedsAndTurnings()
-
         if colorBy == 'speed':
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeSpeedNone = True, permAlterSeries = True)
+            self.set_speeds()
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeSpeedNone = True)
+            col_values = [lymph.speed for sublist in self.lymph_serieses for lymph in sublist]
         elif colorBy == 'angle':
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeAngleNone = True, permAlterSeries = True)
+            self.set_angles()
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeAngleNone = True)
+            col_values = [lymph.angle for sublist in self.lymph_serieses for lymph in sublist]
         elif colorBy ==  'time':
             pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l)
+            col_values = [0, 1]
         else:
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeSpeedNone = False, permAlterSeries = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, removeSpeedNone = False)
+            col_values = [np.sum(lymph.voxels) for sublist in self.lymph_serieses for lymph in sublist]
 
-        if colorBy == 'time':
-            list = [0, 1]
-        elif colorBy == 'volume':
-            list = [voxel_volume(lymph.niigz) for sublist in self.lymph_serieses for lymph in sublist]
-        elif colorBy == 'speed':
-            list = [lymph.speed for sublist in self.lymph_serieses for lymph in sublist]
-        elif colorBy == 'angle':
-            list = [lymph.angle for sublist in self.lymph_serieses for lymph in sublist]
-        vmin, vmax = min(list), max(list)
+        vmin, vmax = min(col_values), max(col_values)
 
         fig2D_sing = plt.figure()
         num_cols = (self.num_serieses // 3) + 1
         fig2D_mult = plt.figure()
 
-        if not colorBy == 'time':
-            for idx_series, cmap in zip(range(self.num_serieses), [plt.cm.Blues_r for i in range(self.num_serieses)]):
-
-                lowDimReps = lowDimRepSplit[idx_series]
-
-
-                if colorBy == 'volume':
-                    colors = [voxel_volume(i.niigz) for i in self.lymph_serieses[idx_series]]
-                elif colorBy == 'speed':
-                    colors = [i.speed for i in self.lymph_serieses[idx_series]]
-                elif colorBy == 'angle':
-                    colors = [i.angle for i in self.lymph_serieses[idx_series]]
-
-                ax = fig2D_sing.add_subplot(111)
-                im = ax.scatter([i[0] for i in lowDimReps], [i[1] for i in lowDimReps], c = colors, s = 8, vmin = vmin, vmax = vmax)
-
-                ax = fig2D_mult.add_subplot(3, num_cols, idx_series+1)
-                im = ax.scatter([i[0] for i in lowDimReps], [i[1] for i in lowDimReps], c = colors, vmin = vmin, vmax = vmax)
-                ax.set_title(os.path.basename(self.lymph_serieses[idx_series][0].mat_filename)[:-4])
-
-                ax.set_xlim([1.2*lowDimRepTogeth[:, 0].min(), 1.2*lowDimRepTogeth[:, 0].max()])
-                ax.set_ylim([1.2*lowDimRepTogeth[:, 1].min(), 1.2*lowDimRepTogeth[:, 1].max()])
-
-        else:
+        if colorBy == 'time':
 
             cmaps = [plt.cm.Blues_r, plt.cm.Greens_r, plt.cm.Greys_r, plt.cm.Reds_r, plt.cm.Purples_r]*40
 
@@ -227,13 +201,29 @@ class PCA_Methods:
                     ax.scatter(xs, ys, c = colors, s = 7)
                     ax.set_title(os.path.basename(self.lymph_serieses[idx_series][0].mat_filename)[:-4])
 
+        else:
 
-        #divider = make_axes_locatable(ax)
-        #cax = divider.append_axes('right', size='5%', pad=0.05)
-        #fig2D_mult.colorbar(im, cax=cax, orientation='vertical')
+            for idx_series, cmap in zip(range(self.num_serieses), [plt.cm.Blues_r for i in range(self.num_serieses)]):
 
-        #cbar_ax = fig2D_sing.add_axes([0.85, 0.15, 0.05, 0.7])
-        #fig2D_sing.colorbar(im, cax=cbar_ax)
+                lowDimReps = lowDimRepSplit[idx_series]
+
+                if colorBy == 'volume':
+                    colors = [np.sum(lymph.voxels) for lymph in self.lymph_serieses[idx_series]]
+                elif colorBy == 'speed':
+                    colors = [lymph.speed for lymph in self.lymph_serieses[idx_series]]
+                elif colorBy == 'angle':
+                    colors = [lymph.angle for lymph in self.lymph_serieses[idx_series]]
+
+                ax = fig2D_sing.add_subplot(111)
+                im = ax.scatter([i[0] for i in lowDimReps], [i[1] for i in lowDimReps], c = colors, s = 8, vmin = vmin, vmax = vmax)
+
+                ax = fig2D_mult.add_subplot(3, num_cols, idx_series+1)
+                im = ax.scatter([i[0] for i in lowDimReps], [i[1] for i in lowDimReps], c = colors, vmin = vmin, vmax = vmax)
+                ax.set_title(os.path.basename(self.lymph_serieses[idx_series][0].mat_filename)[:-4])
+
+                ax.set_xlim([1.2*lowDimRepTogeth[:, 0].min(), 1.2*lowDimRepTogeth[:, 0].max()])
+                ax.set_ylim([1.2*lowDimRepTogeth[:, 1].min(), 1.2*lowDimRepTogeth[:, 1].max()])
+
 
         equal_axes_notSquare_2D(*fig2D_mult.axes)
 

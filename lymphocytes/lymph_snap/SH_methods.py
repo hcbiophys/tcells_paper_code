@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import nibabel as nib
 from scipy.special import sph_harm
+import matplotlib.tri as mtri
 
-from lymphocytes.utils.voxels import Utils_Voxels
-from lymphocytes.utils.plotting import Utils_Plotting
+import lymphocytes.utils.voxels as utils_voxels
+import lymphocytes.utils.plotting as utils_plotting
 
 
 class SH_Methods:
@@ -13,7 +14,7 @@ class SH_Methods:
     Contains methods with spherical harmonics.
     """
 
-    def set_spharm_coeffs(self, coeffs_txt_file):
+    def _set_spharm_coeffs(self, coeffs_txt_file):
         """
         Set the SPHARM coeffs as self.coeff_array attribute.
         Args:
@@ -97,8 +98,8 @@ class SH_Methods:
 
         # fo scale invariance
         # use pre-saved zoomed voxels for speed reasons
-        volume = Utils_Voxels.voxel_volume(self.zoomed_voxels)
-        x_range, y_range, z_range = Utils_Voxels.find_voxel_ranges(self.zoomed_voxels)
+        volume = np.sum(self.zoomed_voxels)
+        x_range, y_range, z_range = utils_voxels.find_voxel_ranges(self.zoomed_voxels)
 
         vector = []
 
@@ -106,7 +107,7 @@ class SH_Methods:
             l_energy = 0
             for coord, range in zip([0, 1, 2], [x_range, y_range, z_range]):
                 for m in np.arange(0, l+1):
-                    clm = self.SH_get_clm(self.coeff_array, coord, l, m)
+                    clm = self._get_clm(coord, l, m)
                     clm /= range/100
                     #clm /= np.cbrt(volume/5000)
 
@@ -124,7 +125,7 @@ class SH_Methods:
         Reconstruct {x, y, z} shape from (truncated) self.coeff_array attribute.
         """
 
-        volume = Utils_Voxels.voxel_volume(self.zoomed_voxels)
+        volume = np.sum(self.zoomed_voxels)
 
         thetas = np.linspace(0, np.pi, 50)
         phis = np.linspace(0, 2*np.pi, 50)
@@ -142,7 +143,7 @@ class SH_Methods:
                 func_value = 0
                 for l in np.arange(0, max_l + 1):
                     for m in np.arange(0, l+1):
-                        clm = self.SH_get_clm(self.zoomed_voxels, coord_idx, l, m)
+                        clm = self._get_clm(coord_idx, l, m)
                         clm /= np.cbrt(volume/5000)
                         func_value += clm*sph_harm(m, l, p, t)
 
@@ -164,7 +165,7 @@ class SH_Methods:
 
         for idx in range(len(max_l_list)):
             ax = fig.add_subplot(1, len(max_l_list)+1, idx+1, projection = '3d')
-            xs, ys, zs, phis, thetas = self.SH_reconstruct_xyz_from_spharm_coeffs(max_l_list[idx])
+            xs, ys, zs, phis, thetas = self.reconstruct_xyz_from_spharm_coeffs(max_l_list[idx])
             if color_var == 'phis':
                 #ax.scatter([i.real for i in xs], [i.real for i in ys], [i.real for i in zs], s = 100, alpha = 1, c = phis)
                 #points = np.concatenate([np.expand_dims([i.real for i in xs], axis = 1), np.expand_dims([i.real for i in ys], axis = 1), np.expand_dims([i.real for i in zs], axis = 1) ], axis = 1)
@@ -180,7 +181,7 @@ class SH_Methods:
                 raise ValueError('Phi or Theta incorrect arg')
 
 
-    def plotRecon_singleDeg(self, ax, max_l, color_param = 'thetas', elev = None, azim = None, normaliseScale = False):
+    def plotRecon_singleDeg(self, ax, max_l, color_param = 'thetas', elev = None, azim = None):
         """
         Plot reconstruction at a single truncation degree.
         Args:
@@ -189,25 +190,24 @@ class SH_Methods:
         - color_param: parameter to color by ("thetas" / "phis").
         - elev: elevation of view.
         - azim: azimuthal angle of view.
-        - normaliseScale: ?
         """
 
-        xs, ys, zs, phis, thetas = self.SH_reconstruct_xyz_from_spharm_coeffs(self.coeff_array, max_l)
+        xs, ys, zs, phis, thetas = self.reconstruct_xyz_from_spharm_coeffs(max_l)
 
-        xs = xs
-        ys = ys
-        zs = zs
-        phis = phis
-        thetas = thetas
+        xs = xs[::4]
+        ys = ys[::4]
+        zs = zs[::4]
+        phis = phis[::4]
+        thetas = thetas[::4]
 
 
         tris = mtri.Triangulation(phis, thetas)
 
-        #collec = ax.plot_trisurf([i.real for i in ys], [i.real for i in zs], [i.real for i in xs], triangles = tris.triangles, cmap=plt.cm.PiYG, edgecolor='none', linewidth = 0, antialiased = False)
-        collec = ax.plot_trisurf([i.real for i in ys], [i.real for i in zs], [i.real for i in xs], triangles = tris.triangles, color=(0,0,0,0), edgecolor='Gray')
+        collec = ax.plot_trisurf([i.real for i in ys], [i.real for i in zs], [i.real for i in xs], triangles = tris.triangles, edgecolor='none', linewidth = 0, antialiased = False)
+        #collec = ax.plot_trisurf([i.real for i in ys], [i.real for i in zs], [i.real for i in xs], triangles = tris.triangles, color=(0,0,0,0), edgecolor='none')
         ax.view_init(elev, azim)
 
-        elif color_param == 'phis':
+        if color_param == 'phis':
             colors = np.mean(phis[tris.triangles], axis = 1)
             collec.set_array(colors)
         elif color_param == 'thetas':
@@ -220,7 +220,7 @@ class SH_Methods:
         ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
         ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 
-        Utils_Plotting.equal_axes(ax)
+        utils_plotting.equal_axes_3D(ax)
         #remove_ticks(ax)
         #ax.set_axis_off()
         #plt.colorbar(collec)

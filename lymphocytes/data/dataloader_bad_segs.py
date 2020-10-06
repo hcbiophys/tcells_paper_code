@@ -1,3 +1,8 @@
+"""
+BAD SEG DATA
+Original data with segmentation errors (tunneling to the inside).
+"""
+
 mat_filename_405s2 = '../batch1/405s2/mat/405s2.mat'
 coeffPathStart_405s2 = '../batch1/zoom0.2_coeffs/405s2/405s2_'
 niigzDir_405s2 = '../batch1/niigz_zoom0.2/405s2/'
@@ -16,7 +21,6 @@ exit_idxs_406s2 = []
 mat_filename_406s2_SMALL = '../zoom0.08_406s2/406s2.mat'
 coeffPathStart_406s2_SMALL = '../zoom0.08_406s2/coeffs/406s2_'
 niigzDir_406s2_SMALL = '../zoom0.08_406s2/niigz/'
-
 
 
 # -------------------

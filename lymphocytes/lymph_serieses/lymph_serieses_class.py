@@ -23,6 +23,10 @@ from lymphocytes.lymph_serieses.single_cell_methods import Single_Cell_Methods
 from lymphocytes.lymph_snap.lymph_snap_class import Lymph_Snap
 
 
+import lymphocytes.utils.voxels as utils_voxels
+import lymphocytes.utils.plotting as utils_plotting
+
+
 class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
     """
     Class for all lymphocyte serieses.
@@ -35,10 +39,10 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
     def __init__(self, stack_triplets):
         """
         Args:
-        -- stack_triplets: (mat_filename, coeffPathStart, zoomedVoxelsPathStart) triplet, where...
+        -- stack_triplets: (mat_filename, coeffPathFormat, zoomedVoxelsPathFormat) triplet, where...
         - mat_filename: filename of .mat file containing all initial info.
-        - coeffPathStart: start path (without frame number) of SPHARM coefficients.
-        - zoomedVoxelsPathStart: start path (without frame number) for zoomed voxels (for speed reasons).
+        - coeffPathFormat: start path (without frame number) of SPHARM coefficients.
+        - zoomedVoxelsPathFormat: start path (without frame number) for zoomed voxels (for speed reasons).
         """
 
         x_ranges = []
@@ -47,15 +51,20 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
         self.lymph_serieses = []
 
-        for (mat_filename, coeffPathStart, zoomedVoxelsPathStart) in stack_triplets:
+        for (mat_filename, coeffPathFormat, zoomedVoxelsPathFormat) in stack_triplets:
 
             lymph_series = []
 
             f = h5py.File(mat_filename, 'r')
             frames = f['OUT/FRAME']
 
-            for frame in np.array(frames).flatten():
-                    lymph_series.append(Lymph_Snap(mat_filename = mat_filename, frame = frame, coeffPathStart = coeffPathStart, zoomed_voxels_path = zoomedVoxelsPathStart, speed = None, angle = None))
+            max_frame = int(np.max(np.array(frames)))
+            for frame in range(1, max_frame+1):
+                if np.any(np.array(frames) == frame) and os.path.isfile(coeffPathFormat.format(frame)): # if it's within arena and SPHARM-PDM worked
+                    snap = Lymph_Snap(mat_filename = mat_filename, frame = frame, coeffPathFormat = coeffPathFormat, zoomedVoxelsPathFormat = zoomedVoxelsPathFormat, speed = None, angle = None)
+                    lymph_series.append(snap)
+                else:
+                    lymph_series.append(None)
 
             self.lymph_serieses.append(lymph_series)
             print('One cell series initialised')
@@ -73,10 +82,33 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         return niigz_sorted, idxs
     """
 
-    SET EACH SEPARATELY THEN INSTEAN OF REMOVING CAN JUST CALL THE RELEVANT FUNCTION WHERE REQUIRED!
+    def set_speeds(self):
 
-    """
-    def set_speedsAndTurnings(self):
+        for series in self.lymph_serieses:
+
+            idxs = [lypmh.idx for lypmh in series]
+            dict = {}
+            for idx, lymph in zip(idxs, series):
+                dict[idx] = lymph
+            for lymph in series:
+
+                # SPEEDS
+                if idx-2 in idxs and idx-1 in idxs and idx+1 in idxs and idx+2 in idxs:
+                     to_avg = []
+                     for idx_ in [idx-1, idx, idx+1, idx+2]:
+
+                         voxels_A = read_niigz(dict[idx_].niigz)
+                         x_center_A, y_center_A, z_center_A = np.argwhere(voxels_A == 1).sum(0) / np.sum(voxels_A)
+                         voxels_B = read_niigz(dict[idx_ - 1].niigz)
+                         x_center_B, y_center_B, z_center_B = np.argwhere(voxels_B == 1).sum(0) / np.sum(voxels_B)
+
+                         speed = np.sqrt((x_center_A-x_center_B)**2 + (y_center_A-y_center_B)**2 + (z_center_A-z_center_B)**2)
+                         to_avg.append(speed)
+                     lymph.speed = np.mean(to_avg)
+
+
+
+    def set_angles(self):
 
         for series in self.lymph_serieses:
 
@@ -103,21 +135,6 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                     lymph.angle = angle
 
 
-                # SPEEDS
-                if idx-2 in idxs and idx-1 in idxs and idx+1 in idxs and idx+2 in idxs:
-                     to_avg = []
-                     for idx_ in [idx-1, idx, idx+1, idx+2]:
-
-                         voxels_A = read_niigz(dict[idx_].niigz)
-                         x_center_A, y_center_A, z_center_A = np.argwhere(voxels_A == 1).sum(0) / np.sum(voxels_A)
-                         voxels_B = read_niigz(dict[idx_ - 1].niigz)
-                         x_center_B, y_center_B, z_center_B = np.argwhere(voxels_B == 1).sum(0) / np.sum(voxels_B)
-
-                         speed = np.sqrt((x_center_A-x_center_B)**2 + (y_center_A-y_center_B)**2 + (z_center_A-z_center_B)**2)
-                         to_avg.append(speed)
-                     lymph.speed = np.mean(to_avg)
-    """
-
     """
     def find_exiting_idxs(self):
 
@@ -136,7 +153,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
 
 
-    def plot_raw_volumes_series(self, zoom_factor = 1):
+    def plot_zoomedVoxels_volumes(self, zoom_factor = 1):
         """
         Plot volume changes as calculated from original voxel representations.
         Args:
@@ -144,9 +161,12 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         """
 
         for lymph_series in self.lymph_serieses:
+
             volumes = []
             for lymph in lymph_series:
-                volumes.append(voxel_volume(lymph.niigz))
+                print('processing snap')
+                if lymph is not None:
+                    volumes.append(np.sum(lymph.zoomed_voxels))
             plt.plot([i for i in range(len(volumes))], volumes)
 
         plt.ylim([0, 1.1*max(volumes)])
@@ -246,7 +266,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                     cell.append(0)
                     color.append('magenta')
                 elif variable == 'volume':
-                    cell.append(voxel_volume(lymph.niigz))
+                    print('EDIT HERE')
                     color.append('blue')
                 elif variable == 'speed':
                     if lymph.speed is None:
@@ -260,7 +280,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                         cell.append(0)
                         color.append('red')
                     else:
-                        vector = lymph.SH_set_rotInv_vector(5)
+                        vector = lymph.set_rotInv_vector(5)
                         cell.append(vector[int(variable[2:])])
                         color.append('blue')
                 elif variable[:-1] == 'PC':
@@ -319,7 +339,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         vectors = []
         for lymph_series in self.lymph_serieses:
             for lymph in lymph_series:
-                vector = lymph.SH_set_rotInv_vector(maxl)
+                vector = lymph.set_rotInv_vector(maxl)
                 vectors.append(vector)
 
         vectors = np.array(vectors)
@@ -349,8 +369,8 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         lymphs = []
         for lymph_series in self.lymph_serieses:
             for lymph in lymph_series:
-                if not lymph.coeffPathStart is None:
-                    vector = lymph.SH_set_rotInv_vector(maxl)
+                if not lymph.coeffPathFormat is None:
+                    vector = lymph.set_rotInv_vector(maxl)
                     vectors.append(vector)
                     lymphs.append(lymph)
 
@@ -365,7 +385,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
             vol = volumes[i]
 
             ax = fig1.add_subplot(1, len(lymphs), i+1, projection = '3d')
-            lymphs[i].SH_plotRecon_singleDeg(ax, maxl, 'phi', normaliseScale = True)
+            lymphs[i].plotRecon_singleDeg(ax, maxl, 'phi')
             ax.set_title(str(np.round(vol, 4)))
 
             ax.view_init(azim=0, elev=90)
@@ -393,7 +413,12 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
             vectors = []
             lymphs = []
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = max_l, permAlterSeries = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self._get_pca_objs(n_components = 2, max_l = max_l, removeSpeedNone = False, removeAngleNone = False)
+            for i in lowDimRepSplit:
+                print(len(i))
+            for i in self.lymph_serieses:
+                print(len(i))
+
             for idx_series, lymph_series in enumerate(self.lymph_serieses):
                 for idx_cell, lymph in enumerate(lymph_series):
                     vectors.append(lowDimRepSplit[idx_series][idx_cell])
@@ -409,8 +434,8 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
             lymphs = []
             for lymph_series in self.lymph_serieses:
                 for lymph in lymph_series:
-                    if lymph.coeff_array is not None:
-                        vector = lymph.SH_set_rotInv_vector(max_l)
+                    if lymph is not None:
+                        vector = lymph.set_rotInv_vector(max_l)
                         vectors.append(vector)
                         lymphs.append(lymph)
             for idx in range(len(vectors)):
@@ -440,49 +465,45 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
 
                 if not just_x and not just_y:
                     ax =  fig3D_long.add_subplot(grid_size+1, grid_size+1, (grid_size+1)*grid2 + grid1+1, projection = '3d')
-                    elev, azim = find_optimal_3dview(lymphs[idx].niigz)
-                    lymphs[idx].SH_plotRecon_singleDeg(ax, max_l, 'phi', elev = elev, azim = azim, normaliseScale = True)
+                    elev, azim = utils_voxels.find_optimal_3dview(lymphs[idx].zoomed_voxels)
+                    lymphs[idx].plotRecon_singleDeg(ax, max_l, 'thetas', elev = elev, azim = azim)
 
                     ax =  fig3D_short.add_subplot(grid_size+1, grid_size+1, (grid_size+1)*grid2 + grid1+1, projection = '3d')
                     azim += 90
-                    lymphs[idx].SH_plotRecon_singleDeg(ax, max_l, 'phi', elev = elev, azim = azim, normaliseScale = True)
+                    lymphs[idx].plotRecon_singleDeg(ax, max_l, 'thetas', elev = elev, azim = azim)
 
                     grids_done.append([grid1, grid2])
-                    print('plotting at {},{}: '.format(grid1, grid2), lymphs[idx].niigz)
-                    ax.set_title(os.path.basename(lymphs[idx].niigz)[:-7])
+                    ax.set_title(os.path.basename(lymphs[idx].zoomed_voxels_path))
                 elif just_x:
                     if grid2 == (np.mean([v[1] for v in vectors]) - min2) // (range2/grid_size):
-
                         ax =  fig3D_long.add_subplot(1, grid_size+1, grid1+1, projection = '3d')
-                        elev, azim = find_optimal_3dview(lymphs[idx].niigz)
-                        lymphs[idx].SH_plotRecon_singleDeg(ax, max_l, 'phi', elev = elev, azim = azim, normaliseScale = True)
+                        elev, azim = utils_voxels.find_optimal_3dview(lymphs[idx].zoomed_voxels)
+                        lymphs[idx].plotRecon_singleDeg(ax, max_l, 'thetas', elev = elev, azim = azim)
 
                         ax =  fig3D_short.add_subplot(1, grid_size+1, grid1+1, projection = '3d')
                         azim += 90
-                        lymphs[idx].SH_plotRecon_singleDeg(ax, max_l, 'phi', elev = elev, azim = azim, normaliseScale = True)
+                        lymphs[idx].plotRecon_singleDeg(ax, max_l, 'thetas', elev = elev, azim = azim)
 
                         grids_done.append([grid1, grid2])
-                        print('plotting at {},{}: '.format(grid1, grid2), lymphs[idx].niigz)
-                        ax.set_title('x_' + os.path.basename(lymphs[idx].niigz)[:-7])
+                        ax.set_title('x_' + os.path.basename(lymphs[idx].zoomed_voxels_path))
                 elif just_y:
                     if grid1 == (np.mean([v[0] for v in vectors]) - min1) // (range1/grid_size):
 
                         ax =  fig3D_long.add_subplot(1, grid_size+1, grid2+1, projection = '3d')
-                        elev, azim = find_optimal_3dview(lymphs[idx].niigz)
-                        lymphs[idx].SH_plotRecon_singleDeg(ax, max_l, 'phi', elev = elev, azim = azim, normaliseScale = True)
+                        elev, azim = utils_voxels.find_optimal_3dview(lymphs[idx].zoomed_voxels)
+                        lymphs[idx].plotRecon_singleDeg(ax, max_l, 'thetas', elev = elev, azim = azim)
 
                         ax =  fig3D_short.add_subplot(1, grid_size+1, grid2+1, projection = '3d')
                         azim += 90
-                        lymphs[idx].SH_plotRecon_singleDeg(ax, max_l, 'phi', elev = elev, azim = azim, normaliseScale = True)
+                        lymphs[idx].plotRecon_singleDeg(ax, max_l, 'thetas', elev = elev, azim = azim)
 
                         grids_done.append([grid1, grid2])
-                        print('plotting at {},{}: '.format(grid1, grid2), lymphs[idx].niigz)
-                        ax.set_title('y_' + os.path.basename(lymphs[idx].niigz)[:-7])
+                        ax.set_title('y_' + os.path.basename(lymphs[idx].zoomed_voxels_path))
 
 
 
-        equal_axes(*fig3D_long.axes)
-        equal_axes(*fig3D_short.axes)
+        utils_plotting.equal_axes_3D(*fig3D_long.axes)
+        utils_plotting.equal_axes_3D(*fig3D_short.axes)
 
         figScatt = plt.figure()
         axScatt = figScatt.add_subplot()
@@ -504,13 +525,13 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         self.lymph_serieses = del_whereNone(self.lymph_serieses, 'speed')
 
         if pca:
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = n_components, max_l = max_l, permAlterSeries = True)
+            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = n_components, max_l = max_l)
         else:
             lowDimRepSplit = []
             for idx_series in range(self.num_serieses):
                 split = []
                 for lymph in self.lymph_serieses[idx_series]:
-                    split.append(lymph.SH_set_rotInv_vector(max_l))
+                    split.append(lymph.set_rotInv_vector(max_l))
                 lowDimRepSplit.append(split)
 
         fig = plt.figure()
