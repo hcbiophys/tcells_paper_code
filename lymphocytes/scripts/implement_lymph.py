@@ -15,17 +15,20 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from lymphocytes.lymph_serieses.lymph_serieses_class import Lymph_Serieses
 
-from lymphocytes.data.dataloader_good_segs import stack_triplets
-
+from lymphocytes.data.dataloader_good_segs_1 import stack_triplets
+from lymphocytes.data.dataloader_good_segs_2 import stack_triplets
 
 
 if __name__ == '__main__':
 
     lymph_serieses = Lymph_Serieses(stack_triplets)
-    #lymph_serieses.plot_zoomedVoxels_volumes(zoom_factor = 1)
-    #lymph_serieses.plot_recon_series(max_l = 5, plot_every = 20, color_param = 'phis')
-    lymph_serieses.plot_rotInvRep_2Dmanifold(grid_size = 5, max_l = 5, pca = True, just_x = False, just_y = False)
 
+    #snap = lymph_serieses.lymph_serieses[0][0]
+
+    #lymph_serieses.plot_zoomedVoxels_volumes(zoom_factor = 1)
+    lymph_serieses.plot_recon_series(max_l = 15, plot_every = 5, color_param = 'phis', also_orig = False)
+    #lymph_serieses.plot_rotInvRep_2Dmanifold(grid_size = 10, max_l = 5, pca = True, just_x = False, just_y = False)
+    #lymph_serieses.lymph_serieses[0][0].show_voxels(origOrZoomed= 'zoomed')
 
     """
     lymph_serieses.plot_migratingCell(idx_cell = 0, max_l = 5, plot_every = 15)

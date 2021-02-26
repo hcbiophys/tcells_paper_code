@@ -45,9 +45,9 @@ class Raw_Methods:
         x, y, z = np.indices(voxels.shape)
         cols = np.empty(voxels.shape + (3,))
         cols[..., 0] = np.true_divide(z, 150)
-        c = colors.hsv_to_rgb(cols)
+        #c = colors.hsv_to_rgb(cols)
         ax = fig_showVoxels.add_subplot(111, projection = '3d')
-        ax.voxels(voxels, facecolors = c, edgecolors = 'white')
+        ax.voxels(voxels,  edgecolors = 'white')
 
     """
     def get_face_vertices(self, cell_idx, face_idx):

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import lymphocytes.utils.plotting as utils_plotting
+import sys
 
 class Single_Cell_Methods:
     """
@@ -66,11 +67,12 @@ class Single_Cell_Methods:
             ax.voxels(voxels)
 
 
-    def plot_recon_series(self, max_l, plot_every, color_param = 'phis'):
+    def plot_recon_series(self, max_l, plot_every, color_param = 'phis', also_orig = False):
 
         lymph_series = []
         for i in self.lymph_serieses:
             lymph_series += i
+
 
         lymph_series = lymph_series[::plot_every]
 
@@ -80,9 +82,10 @@ class Single_Cell_Methods:
 
         for idx_plot, lymph in enumerate(lymph_series):
             if lymph is not None:
-                print('Plotting snap')
+                print('Plotting frame', lymph.frame)
                 ax = figRecons.add_subplot(3, num_cols, idx_plot+1, projection = '3d')
                 lymph.plotRecon_singleDeg(ax, max_l, color_param)
+
             else:
                 print('None')
 
@@ -92,35 +95,44 @@ class Single_Cell_Methods:
         #remove_ticks(*ax_list)
         plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
 
-        plt.show()
+        if also_orig:
+
+            figOrigs = plt.figure()
+            for idx_plot, lymph in enumerate(lymph_series):
+                if lymph is not None:
+                    ax = figOrigs.add_subplot(3, num_cols, idx_plot+1, projection = '3d')
+                    lymph.show_voxels('zoomed')
 
 
 
 
-        def plot_rotInvRep_series_bars(self, maxl = 5, plot_every = 1, means_adjusted = False):
 
-            pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = maxl)
-            pc_idx = 1
 
-            fig = plt.figure()
-            vectors = []
 
-            volumes = []
-            speeds = []
-            angles = []
-            pc_vals = []
+    def plot_rotInvRep_series_bars(self, maxl = 5, plot_every = 1, means_adjusted = False):
 
-            num_cols = (len(self.lymph_serieses[0])//3) + 1
+        pca_obj, max_l, lowDimRepTogeth, lowDimRepSplit = self.get_pca_objs(n_components = 2, max_l = maxl)
+        pc_idx = 1
 
-            for idx in range(len(self.lymph_serieses[0])):
+        fig = plt.figure()
+        vectors = []
 
-                lymph = self.lymph_serieses[0][idx]
-                vector = lymph.SH_set_rotInv_vector(maxl)
-                vectors.append(vector)
+        volumes = []
+        speeds = []
+        angles = []
+        pc_vals = []
 
-                ax = fig.add_subplot(3, num_cols, idx+1)
-                ax.bar(range(len(vectors[idx])), np.log10(vectors[idx]))
-                ax.set_xlabel(str(idx), fontsize = 3.5)
-                ax.set_ylim([0, 4])
-                ax.set_xticks([])
-                ax.set_yticks([])
+        num_cols = (len(self.lymph_serieses[0])//3) + 1
+
+        for idx in range(len(self.lymph_serieses[0])):
+
+            lymph = self.lymph_serieses[0][idx]
+            vector = lymph.SH_set_rotInv_vector(maxl)
+            vectors.append(vector)
+
+            ax = fig.add_subplot(3, num_cols, idx+1)
+            ax.bar(range(len(vectors[idx])), np.log10(vectors[idx]))
+            ax.set_xlabel(str(idx), fontsize = 3.5)
+            ax.set_ylim([0, 4])
+            ax.set_xticks([])
+            ax.set_yticks([])

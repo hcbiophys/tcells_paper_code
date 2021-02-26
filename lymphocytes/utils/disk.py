@@ -4,7 +4,29 @@ import glob
 import os
 import h5py
 from scipy.ndimage import zoom
+import sys
+from lymphocytes.data.dataloader_good_segs_2 import stack_triplets
 
+
+def write_all_zoomed_niigz(mat_filename, saveFormat, zoom_factor):
+
+    f = h5py.File(mat_filename, 'r')
+    OUT_group = f.get('OUT')
+
+    frames = np.asarray(OUT_group.get('FRAME')).flatten()
+
+    for frame in np.array(frames).flatten():
+        print(frame)
+        idx = np.where(frames == frame)
+        voxels = OUT_group.get('BINARY_MASK')
+        voxels_ref = voxels[idx]
+
+        voxels = f[voxels_ref[0][0]] # takes a long time
+        #print(voxels.shape)
+        voxels = zoom(voxels, (zoom_factor, zoom_factor, zoom_factor), order = 0) # order 0 means not interpolation
+        #print(voxels.shape)
+        new_image = nib.Nifti1Image(voxels, affine=np.eye(4))
+        nib.save(new_image, saveFormat.format(int(frame)))
 
 def copy_voxels_notDone(doneDir, toCopyDir):
     """
@@ -48,24 +70,7 @@ def load_and_check_nib():
 
 
 
-def write_all_zoomed_niigz(mat_filename, saveFormat, zoom_factor):
 
-    f = h5py.File(mat_filename, 'r')
-    OUT_group = f.get('OUT')
-
-    frames = np.asarray(OUT_group.get('FRAME')).flatten()
-
-    for frame in np.array(frames).flatten():
-        idx = np.where(frames == frame)
-        voxels = OUT_group.get('BINARY_MASK')
-        voxels_ref = voxels[idx]
-
-        voxels = f[voxels_ref[0][0]] # takes a long time
-
-        voxels = zoom(voxels, (zoom_factor, zoom_factor, zoom_factor), order = 0)
-
-        new_image = nib.Nifti1Image(voxels, affine=np.eye(4))
-        nib.save(new_image, saveFormat.format(int(frame)))
 
 
 
@@ -84,6 +89,12 @@ def rm_done_from_inDir(inDir, Step1_SegPostProcessDir):
 
 
 if __name__ == "__main__":
-    save_form = '/Users/harry/Desktop/lymphocytes/good_seg_data/stack3/zoomedVoxels_0.2/{}.nii.gz'
-    write_all_zoomed_niigz('/Users/harry/Desktop/lymphocytes/good_seg_data/stack3/Stack3-BC-Surf-Lim-New-T-corr_GAUSS_Export_Surf_corr.mat', save_form, 0.2)
-    #pass
+    for idx, i in enumerate(stack_triplets):
+
+        print(i[0])
+
+        #mat_filename = '/Users/harry/Desktop/lymphocytes/good_seg_data_2/20190405_M101_1_5_mg_27_5_deg/stack4/Stack4_BC-T-corr-0_35um_Export_Surf_corr.mat'
+        mat_filename = i[0]
+        save_form = os.path.dirname(mat_filename) + '/zoomedVoxels_0.2/{}_{{}}.nii.gz'.format(idx)
+
+        write_all_zoomed_niigz(mat_filename, save_form, 0.2)

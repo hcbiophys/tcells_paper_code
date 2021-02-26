@@ -52,6 +52,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         self.lymph_serieses = []
 
         for (mat_filename, coeffPathFormat, zoomedVoxelsPathFormat) in stack_triplets:
+            print((mat_filename, coeffPathFormat, zoomedVoxelsPathFormat) )
 
             lymph_series = []
 
@@ -65,11 +66,14 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
                     lymph_series.append(snap)
                 else:
                     lymph_series.append(None)
+                    print('HERE')
+
 
             self.lymph_serieses.append(lymph_series)
             print('One cell series initialised')
 
         self.num_serieses = len(self.lymph_serieses)
+
 
     """
     def sort_niigzList(self, niigzList):
@@ -445,6 +449,9 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
             random.shuffle(c)
             vectors, lymphs = zip(*c)
 
+        idxs_anomalies = [i for i, vector in enumerate(vectors) if  vector[0] < -100000 or  vector[0] > 250000 or  vector[1] < -4000 or  vector[1] > 6000]
+        vectors = [vector for i,vector in enumerate(vectors) if i not in idxs_anomalies]
+        lymphs = [lymph for i,lymph in enumerate(lymphs) if i not in idxs_anomalies]
 
         min1, max1 = min([v[0] for v in vectors]), max([v[0] for v in vectors])
         range1 = max1-min1
@@ -459,6 +466,7 @@ class Lymph_Serieses(PCA_Methods, Single_Cell_Methods):
         fig3D_short = plt.figure(figsize = (10, 10))
         grids_done = []
         for idx, vector in enumerate(vectors):
+
             grid1 = (vector[0] - min1) // (range1/grid_size)
             grid2 = (vector[1] - min2) // (range2/grid_size)
             if not [grid1, grid2] in grids_done:

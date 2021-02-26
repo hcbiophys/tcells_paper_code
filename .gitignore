@@ -1,7 +1,7 @@
 batch*/
 
-bad_seg_data/
-good_seg_data/
+*data*/
+
 
 *.png
 *mp4

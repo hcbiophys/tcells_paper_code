@@ -60,6 +60,11 @@ class SH_Methods:
 
         self.coeff_array = coeff_array
 
+        # scale by voxel resolution
+        self.coeff_array[:, 0] *= 0.103
+        self.coeff_array[:, 1] *= 0.103
+        self.coeff_array[:, 2] *= 0.211
+
 
     def _get_clm(self, dimension, l, m):
         """
@@ -69,7 +74,6 @@ class SH_Methods:
         - l: 'energy' index.
         - m: rotational index.
         """
-
         if m == 0:
             a = self.coeff_array[l*l, dimension]
             b = 0

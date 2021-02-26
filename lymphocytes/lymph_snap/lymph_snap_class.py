@@ -54,6 +54,8 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
         self.voxels = f[voxels_ref[0][0]] # takes a long time
         #self.voxels = process_voxels(voxels)
 
+        #voxelsize = OUT_group.get('VOXELSIZE')
+
 
         vertices = OUT_group.get('VERTICES')
         vertices_ref = vertices[idx]
