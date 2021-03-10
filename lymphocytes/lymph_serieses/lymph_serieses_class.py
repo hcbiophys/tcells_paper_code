@@ -87,6 +87,7 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
         vectors = np.array([lymph.RI_vector for lymph_series in self.lymph_serieses for lymph in lymph_series if lymph])
 
         means = np.mean(vectors, axis = 0)
+        print('mean', means)
         stds = np.std(vectors, axis = 0)
 
         fig = plt.figure()
@@ -129,7 +130,7 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
             plt.plot([v[0] for v in vectors], [v[1] for v in vectors], c = color)
 
 
-    def plot_2Dmanifold(self, grid_size, pca, just_x = False, just_y = False):
+    def plot_2Dmanifold(self, grid_size, pca, n_components = None, just_x = False, just_y = False):
         """
         Plot the manifold of the rotationally-invariant description projected to 2D via PCA.
         Args:
@@ -141,6 +142,7 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
         """
         lymphs = [lymph for lymph_series in self.lymph_serieses for lymph in lymph_series]
         if pca:
+            self._set_pca(n_components)
             vectors = [lymph.pca for lymph in lymphs]
         else:
             vectors = [lymph.RI_vector for lymph in lymphs]
@@ -177,14 +179,14 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
                 elif just_x:
                     if grid2 == (np.mean([v[1] for v in vectors]) - min2) // (range2/grid_size):
                         ax =  fig.add_subplot(1, grid_size+1, grid1+1, projection = '3d')
-                        lymphs[idx].plotRecon_singleDeg(ax, max_l, 'thetas', elev = elev, azim = azim)
+                        lymphs[idx].plotRecon_singleDeg(ax)
                         grids_done.append([grid1, grid2])
                         ax.set_title('x_' + os.path.basename(lymphs[idx].zoomed_voxels_path))
                 elif just_y:
                     if grid1 == (np.mean([v[0] for v in vectors]) - min1) // (range1/grid_size):
 
                         ax =  fig.add_subplot(1, grid_size+1, grid2+1, projection = '3d')
-                        lymphs[idx].plotRecon_singleDeg(ax, max_l, 'thetas', elev = elev, azim = azim)
+                        lymphs[idx].plotRecon_singleDeg(ax)
                         grids_done.append([grid1, grid2])
                         ax.set_title('y_' + os.path.basename(lymphs[idx].zoomed_voxels_path))
 

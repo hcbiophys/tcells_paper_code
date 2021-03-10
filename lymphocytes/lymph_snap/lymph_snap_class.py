@@ -65,7 +65,6 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
         self.faces = np.array(f[faces_ref[0][0]]) -1
 
 
-
         self.zoomed_voxels = None
         self.volume = None
         if zoomedVoxelsPathFormat is not None:
@@ -78,8 +77,8 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
         self._set_spharm_coeffs(coeffPathFormat.format(frame))
         self.vector = None
         self.RI_vector = None
-        self._set_vector(max_l)
-        self._set_rotInv_vector(max_l)
+        self._set_vector()
+        self._set_rotInv_vector()
 
         self.speed = None
         self.angle = None

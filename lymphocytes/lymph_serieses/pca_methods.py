@@ -4,6 +4,7 @@ import lymphocytes.utils.general as utils_general
 from sklearn.decomposition import PCA
 import sys
 from sklearn.preprocessing import StandardScaler
+import copy
 
 class PCA_Methods:
     """
@@ -47,6 +48,28 @@ class PCA_Methods:
 
         for lymph_series in self.lymph_serieses:
             for lymph in lymph_series:
-                if lymph is not None:
                     lymph.pca = pca_obj.transform(np.array(lymph.RI_vector).reshape(1, -1))
                     lymph.pca = np.squeeze(lymph.pca, axis = 0)
+
+        return pca_obj
+
+    def PC_sampling(self, n_components):
+
+        pca_obj = self._set_pca(n_components)
+
+        PCs = np.array([lymph.pca for lymph_series in self.lymph_serieses for lymph in lymph_series])
+        mins = np.min(PCs, axis = 0)
+        maxs = np.max(PCs, axis = 0)
+        mean = np.mean(PCs, axis = 0)
+
+        fig = plt.figure()
+        for idx_PC in range(PCs.shape[1]):
+            for idx_sample, sample in enumerate([-2, -1, 0, 1, 2]):
+                mean_copy = copy.deepcopy(mean)
+                mean_copy[idx_PC] += sample*(maxs[idx_sample] - mins[idx_sample])/4
+                inverted = pca_obj.inverse_transform(mean_copy)
+                ax = fig.add_subplot(5, n_components, idx_PC*PCs.shape[1]+idx_sample+1)
+                ax.bar(range(len(inverted)), inverted)
+                if sample in [-2, 2]:
+                    print([np.round(i, 4) for i in inverted])
+            print('--')

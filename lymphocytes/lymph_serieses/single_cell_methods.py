@@ -64,7 +64,7 @@ class Single_Cell_Methods:
 
     def plot_recon_series(self, plot_every):
         fig = plt.figure()
-    
+
         lymphs_plot = self.lymph_serieses[0][::plot_every]
         num_cols = (len(lymphs_plot) // 3) + 1
 
@@ -73,17 +73,31 @@ class Single_Cell_Methods:
                 lymph.plotRecon_singleDeg(ax)
         utils_plotting.equal_axes_3D(*fig.axes)
 
-    def plot_rotInvRep_series_bars(self, maxl = 5, plot_every = 1, means_adjusted = False):
+    def plot_series_bars(self, plot_every, rotInv):
 
 
-        fig = plt.figure()
+        lymphs = self.lymph_serieses[0][::plot_every]
+        num_cols = (len(lymphs)//3) + 1
 
-        num_cols = (len(self.lymph_serieses[0])//3) + 1
+        if rotInv:
+            fig = plt.figure()
+            for idx, lymph in enumerate(lymphs):
+                ax = fig.add_subplot(3, num_cols, idx+1)
+                ax.bar(range(len(lymph.RI_vector)), lymph.RI_vector)
+        else:
+            fig_x, fig_y, fig_z = plt.figure(), plt.figure(), plt.figure()
+            for coord, fig in zip([0, 1, 2], [fig_x, fig_y, fig_z]):
+                for idx, lymph in enumerate(lymphs):
+                    ax = fig.add_subplot(3, num_cols, idx+1)
+                    if idx == 0:
+                        ax.set_title(str(coord))
+                    count = 0
+                    for l, color in zip([1, 2], ['red', 'blue']):
+                        for m in np.arange(0, l+1):
+                            clm = lymph._get_clm(coord, l, m)
+                            #mag = clm*np.conj(clm)
+                            mag = abs(clm)
+                            ax.bar(count, mag, color = color)
+                            count += 1
 
-        for lymph in self.lymph_serieses[0]:
-
-            lymph.set_rotInv_vector(maxl)
-
-            ax = fig.add_subplot(3, num_cols, idx+1)
-            ax.bar(range(len(lymph.RI_vector)), lymph.RI_vector)
-            ax.set_ylim([0, 4])
+            #ax.set_ylim([0, 4])

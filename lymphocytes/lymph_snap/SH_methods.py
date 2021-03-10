@@ -83,42 +83,40 @@ class SH_Methods:
         return complex(a, b)
 
 
-    def _set_vector(self, max_l):
+    def _set_vector(self):
         """
         Returns vector representation of (truncated) self.coeff_array.
         """
 
-        idx_trunc = (max_l*max_l + 2*(max_l+1)) + 1
+        idx_trunc = (self.max_l*self.max_l + 2*(self.max_l+1)) + 1
         self.vector = np.concatenate([self.coeff_array[:idx_trunc, 0], self.coeff_array[:idx_trunc, 1], self.coeff_array[:idx_trunc, 2]], axis = 0)
 
 
 
-    def _set_rotInv_vector(self, max_l):
+    def _set_rotInv_vector(self):
         """
         Returns vector representation of (truncated) rotationally invariant self.coeff_array.
         """
 
         vector = []
-        for l in np.arange(0, max_l + 1):
+        for l in np.arange(0, self.max_l + 1):
             l_energy = 0
             for coord in [0, 1, 2]:
                 for m in np.arange(0, l+1):
                     clm = self._get_clm(coord, l, m)
-                    l_energy += clm*np.conj(clm)
+                    #l_energy += clm*np.conj(clm)
+                    l_energy += abs(clm)
             vector.append(l_energy)
 
         self.RI_vector = [i.real for i in vector] # imaginary parts are 0
         self.RI_vector = self.RI_vector[1:] # translation invariance
-        self.RI_vector = [i/np.cbrt(self.volume) for i in self.RI_vector] # scale invariance
+        self.RI_vector = np.array([i/np.cbrt(self.volume) for i in self.RI_vector]) # scale invariance
 
 
     def reconstruct_xyz_from_spharm_coeffs(self):
         """
         Reconstruct {x, y, z} shape from (truncated) self.coeff_array attribute.
         """
-
-        volume = np.sum(self.zoomed_voxels)
-
         thetas = np.linspace(0, np.pi, 50)
         phis = np.linspace(0, 2*np.pi, 50)
         thetas, phis = np.meshgrid(thetas, phis)

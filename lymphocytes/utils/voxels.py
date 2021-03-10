@@ -54,23 +54,8 @@ def find_voxel_ranges(voxels):
 
 
 def find_optimal_3dview(voxels):
-
     x_range, y_range, z_range = find_voxel_ranges(voxels)
-
     ranges = [x_range, y_range, z_range]
-
-    print('shortest: ', ranges.index(min(ranges)))
-
-    """
-    if ranges.index(max(ranges)) == 0:
-        elev = 0
-        azim = 0
-    else:
-        elev = 0
-        azim = 90
-
-    return elev, azim
-    """
 
     if ranges.index(min(ranges)) == 0:
         azim = 0
