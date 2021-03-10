@@ -5,7 +5,7 @@ import os
 import h5py
 from scipy.ndimage import zoom
 import sys
-from lymphocytes.data.dataloader_good_segs_2 import stack_triplets
+#from lymphocytes.data.dataloader_good_segs_2 import stack_triplets
 
 
 def write_all_zoomed_niigz(mat_filename, saveFormat, zoom_factor):

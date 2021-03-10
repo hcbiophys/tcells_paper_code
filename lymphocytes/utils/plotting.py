@@ -71,15 +71,20 @@ def equal_axes_notSquare_2D(*axes):
         ax.set_ylim(min(y_mins), max(y_maxs))
 
 
-def remove_ticks(*axes):
+def remove_ticks_3D(*axes):
     for ax in axes:
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_zticks([])
 
+def label_axes_3D(*axes):
+    for ax in axes:
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
 
 
-def no_pane(*axes):
+def no_pane_3D(*axes):
     for ax in axes:
         ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
         ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))

@@ -15,43 +15,36 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from lymphocytes.lymph_serieses.lymph_serieses_class import Lymph_Serieses
 
-from lymphocytes.data.dataloader_good_segs_1 import stack_triplets
-from lymphocytes.data.dataloader_good_segs_2 import stack_triplets
+from lymphocytes.data.dataloader_good_segs_1 import stack_triplets_1
+from lymphocytes.data.dataloader_good_segs_2 import stack_triplets_2
 
 
 if __name__ == '__main__':
 
-    lymph_serieses = Lymph_Serieses(stack_triplets)
+    stack_triplets = stack_triplets_1 + stack_triplets_2
+    lymph_serieses = Lymph_Serieses([stack_triplets[0]], max_l = 3)
 
-    #snap = lymph_serieses.lymph_serieses[0][0]
-
-    #lymph_serieses.plot_zoomedVoxels_volumes(zoom_factor = 1)
-    lymph_serieses.plot_recon_series(max_l = 15, plot_every = 5, color_param = 'phis', also_orig = False)
-    #lymph_serieses.plot_rotInvRep_2Dmanifold(grid_size = 10, max_l = 5, pca = True, just_x = False, just_y = False)
     #lymph_serieses.lymph_serieses[0][0].show_voxels(origOrZoomed= 'zoomed')
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111, projection='3d')
+    #lymph_serieses.lymph_serieses[0][0].plotRecon_singleDeg(ax, max_l = 6, color_param = 'thetas', elev = None, azim = None)
+    #lymph_serieses.lymph_serieses[0][0].surface_plot(subsample_rate=50)
 
-    """
-    lymph_serieses.plot_migratingCell(idx_cell = 0, max_l = 5, plot_every = 15)
+    #lymph_serieses.plot_volumes()
+    #lymph_serieses.plot_rotInvRep_mean_std()
+    #lymph_serieses.scatter_first2_descriptors(pca=True)
+    #lymph_serieses.plot_recons_increasing_l(self, maxl, l)
+    #lymph_serieses.plot_2Dmanifold(grid_size = 8, pca = False, just_x = False, just_y = False)
 
-    lymph_serieses.plot_cofms(colorBy = 'speed')
+    ### single cell methods ###
+    #lymph_serieses.plot_migratingCell(plot_every = 10)
+    #lymph_serieses.plot_series_voxels(plot_every)
+    lymph_serieses.plot_recon_series(plot_every=10)
+    #lymph_serieses.plot_rotInvRep_series_bars(maxl = 5, plot_every = 1, means_adjusted = False)
 
-    lymph_serieses.plot_individAndHists(variable = string)
-
-    lymph_serieses.C_plot_raw_volumes_series(zoom_factor = 0.2)
-    lymph_serieses.C_plot_series_niigz(plot_every = 20)
-    lymph_serieses.C_plot_recon_series(max_l = 5, plot_every = 25, color_param = None)
-
-    lymph_serieses.plot_rotInv_mean_std(maxl = 5)
-    lymph_serieses.C_plot_rotInv_series_bars(maxl = 5, plot_every = 1, means_adjusted = False, colorBy = 'pc_vals')
-    lymph_serieses.plot_recons_increasing_l(lmax = 1, l = 1)
-    lymph_serieses.plot_rotInv_2Dmanifold(grid_size = 5, max_l = 5, pca = True, just_x = False, just_y = False)
-
-    lymph_serieses.pca_plot_sampling(max_l = 10, num_samples = 5, color_param = None, rotInv = True)
-    lymph_serieses.plot_speeds_angles()
-    lymph_serieses.pca_plot_shape_trajectories(max_l = 3, rotInv = True, colorBy = 'time')
-    lymph_serieses.correlate_with_speedAngle(max_l = 5, rotInv = True, n_components = 6, pca = False)
-    lymph_serieses.plot_pca_recons(n_pca_components, max_l, plot_every)
-    """
-
+    ### centroid variable methods ###
+    #lymph_serieses.plot_cofms(colorBy = 'speed')
+    #lymph_serieses.set_angles()
+    #lymph_serieses.correlate_shape_with_speedAngle(max_l, n_components, pca = False)
 
     plt.show()

@@ -2,6 +2,8 @@ import numpy as np
 
 
 
+def subsample_lists(freq, *args):
+    return [i[::freq] for i in args]
 
 
 def decimate_mat_voxels(mat_filename, idx_snap, decimation_factor, show, save_as):

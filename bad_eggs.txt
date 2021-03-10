@@ -1,0 +1,39 @@
+### Cells SPHARM-PDM doesn't like (stays on indefinitely...) ###
+
+
+bad_seg_data 
+------------
+
+stack4_132
+stack10_23
+stack5_21
+stack2_197
+stack5_20 - (extreme PCA values)
+
+good_seg_data_1
+-------------
+
+stack2_268
+
+good_seg_data_2
+-------------
+2_2
+2_56
+
+8_8
+8_32
+6_38
+
+
+### Anomalous SPHARM coefficients ###
+
+good_seg_data_1
+-------------
+
+stack3_107
+
+good_seg_data_2
+-------------
+
+8_7
+8_10

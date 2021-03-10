@@ -28,7 +28,7 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
     - SH_Methods: methods with spherical harmonics.
     """
 
-    def __init__(self, frame, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, speed = None, angle = None):
+    def __init__(self, frame, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, max_l):
         """
         Args:
         - frame: frame number (beware of gaps in these as cells can exit the arenas).
@@ -41,6 +41,7 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
 
         self.mat_filename = mat_filename
         self.frame = frame
+        self.max_l = max_l
 
         f = h5py.File(mat_filename, 'r')
         OUT_group = f.get('OUT')
@@ -53,9 +54,7 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
         voxels_ref = voxels[idx]
         self.voxels = f[voxels_ref[0][0]] # takes a long time
         #self.voxels = process_voxels(voxels)
-
         #voxelsize = OUT_group.get('VOXELSIZE')
-
 
         vertices = OUT_group.get('VERTICES')
         vertices_ref = vertices[idx]
@@ -63,15 +62,25 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
 
         faces = OUT_group.get('FACES')
         faces_ref = faces[idx]
-        self.faces = f[faces_ref[0][0]]
+        self.faces = np.array(f[faces_ref[0][0]]) -1
 
-        self.speed = speed
-        self.angle = angle
 
-        self._set_spharm_coeffs(coeffPathFormat.format(frame))
 
         self.zoomed_voxels = None
+        self.volume = None
         if zoomedVoxelsPathFormat is not None:
             self.zoomed_voxels_path = zoomedVoxelsPathFormat.format(frame)
             zoomed_voxels = np.asarray(nib.load(self.zoomed_voxels_path).dataobj)
             self.zoomed_voxels = process_voxels(zoomed_voxels)
+            self.volume = np.sum(self.zoomed_voxels)*(5**3)*(0.103**2)*0.211
+
+        self.coeff_array = None
+        self._set_spharm_coeffs(coeffPathFormat.format(frame))
+        self.vector = None
+        self.RI_vector = None
+        self._set_vector(max_l)
+        self._set_rotInv_vector(max_l)
+
+        self.speed = None
+        self.angle = None
+        self.pca = None

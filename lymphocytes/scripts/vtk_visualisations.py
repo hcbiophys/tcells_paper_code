@@ -98,6 +98,13 @@ def decimate_mat_mesh(mat_filename, idx_snap, decimation_factor, show):
         actor.SetMapper(mapper)
 
         renderer = vtk.vtkRenderer()
+
+        transform = vtk.vtkTransform()
+        transform.Scale(50, 50, 50)
+        axes = vtk.vtkAxesActor()
+        axes.SetUserTransform(transform)
+        renderer.AddActor(axes)
+
         renWin = vtk.vtkRenderWindow()
         renWin.AddRenderer(renderer)
         iren = vtk.vtkRenderWindowInteractor()
@@ -132,6 +139,6 @@ def decimate_mat_mesh(mat_filename, idx_snap, decimation_factor, show):
 
 
 if __name__ == "__main__":
-    frame = 31
+    frame = 1
     decimation_factor = 0.8
-    decimate_mat_mesh('/Users/harry/Desktop/lymphocytes/good_seg_data_2/20190405_M101_1_5_mg_27_5_deg/stack4/Stack4_BC-T-corr-0_35um_Export_Surf_corr.mat', frame, decimation_factor, show = True)
+    decimate_mat_mesh('../../good_seg_data_2/20190405_M101_1_5_mg_27_5_deg/stack4/Stack4_BC-T-corr-0_35um_Export_Surf_corr.mat', frame, decimation_factor, show = True)
