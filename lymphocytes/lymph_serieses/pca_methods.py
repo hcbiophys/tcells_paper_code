@@ -32,44 +32,35 @@ class PCA_Methods:
         """
 
         self._edit_serieses(removeLymphNones = True, removeSpeedNone = removeSpeedNone, removeAngleNone = removeAngleNone)
-
-        RI_vectors = []
-
-        for lymph_series in self.lymph_serieses:
-            for lymph in lymph_series:
-                if lymph is not None:
-                    RI_vectors.append(lymph.RI_vector)
-
-        RI_vectors = np.array(RI_vectors)
+        lymphs = utils_general.list_all_lymphs(self)
+        RI_vectors = np.array([lymph.RI_vector for lymph in lymphs])
 
         pca_obj = PCA(n_components = n_components)
         pca_obj.fit_transform(RI_vectors)
         print('EXPLAINED VARIANCE RATIO: ', pca_obj.explained_variance_ratio_)
 
-        for lymph_series in self.lymph_serieses:
-            for lymph in lymph_series:
-                    lymph.pca = pca_obj.transform(np.array(lymph.RI_vector).reshape(1, -1))
-                    lymph.pca = np.squeeze(lymph.pca, axis = 0)
+        for lymph in lymphs:
+            lymph.pca = pca_obj.transform(lymph.RI_vector.reshape(1, -1))
+            lymph.pca = np.squeeze(lymph.pca, axis = 0)
 
         return pca_obj
 
     def PC_sampling(self, n_components):
 
         pca_obj = self._set_pca(n_components)
-
-        PCs = np.array([lymph.pca for lymph_series in self.lymph_serieses for lymph in lymph_series])
+        lymphs = utils_general.list_all_lymphs(self)
+        PCs = np.array([lymph.pca for lymph in lymphs])
         mins = np.min(PCs, axis = 0)
         maxs = np.max(PCs, axis = 0)
         mean = np.mean(PCs, axis = 0)
+        print('PC mean', mean)
 
         fig = plt.figure()
         for idx_PC in range(PCs.shape[1]):
             for idx_sample, sample in enumerate([-2, -1, 0, 1, 2]):
                 mean_copy = copy.deepcopy(mean)
-                mean_copy[idx_PC] += sample*(maxs[idx_sample] - mins[idx_sample])/4
+                mean_copy[idx_PC] += sample*(maxs[idx_PC] - mins[idx_PC])/4
                 inverted = pca_obj.inverse_transform(mean_copy)
-                ax = fig.add_subplot(5, n_components, idx_PC*PCs.shape[1]+idx_sample+1)
+                ax = fig.add_subplot(n_components, 5, 5*idx_PC+idx_sample+1)
                 ax.bar(range(len(inverted)), inverted)
-                if sample in [-2, 2]:
-                    print([np.round(i, 4) for i in inverted])
-            print('--')
+                ax.set_ylim([-1, 3.5])

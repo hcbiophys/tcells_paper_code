@@ -28,7 +28,7 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
     - SH_Methods: methods with spherical harmonics.
     """
 
-    def __init__(self, frame, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, max_l):
+    def __init__(self, frame, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, idx_cell, max_l):
         """
         Args:
         - frame: frame number (beware of gaps in these as cells can exit the arenas).
@@ -40,6 +40,8 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
         """
 
         self.mat_filename = mat_filename
+
+        self.idx_cell = idx_cell
         self.frame = frame
         self.max_l = max_l
 
@@ -58,11 +60,14 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
 
         vertices = OUT_group.get('VERTICES')
         vertices_ref = vertices[idx]
-        self.vertices = f[vertices_ref[0][0]]
+        self.vertices = np.array(f[vertices_ref[0][0]]).T
 
         faces = OUT_group.get('FACES')
         faces_ref = faces[idx]
-        self.faces = np.array(f[faces_ref[0][0]]) -1
+        faces = np.array(f[faces_ref[0][0]]) - 1
+        faces = faces.astype(np.intc).T
+        faces = np.concatenate([np.full((faces.shape[0], 1), 3), faces], axis = 1)
+        self.faces = np.hstack(faces)
 
 
         self.zoomed_voxels = None
@@ -71,14 +76,18 @@ class Lymph_Snap(Raw_Methods, SH_Methods):
             self.zoomed_voxels_path = zoomedVoxelsPathFormat.format(frame)
             zoomed_voxels = np.asarray(nib.load(self.zoomed_voxels_path).dataobj)
             self.zoomed_voxels = process_voxels(zoomed_voxels)
+            self.zoomed_voxels = np.moveaxis(np.moveaxis(self.zoomed_voxels, 0, -1), 0, 1) # reorder
             self.volume = np.sum(self.zoomed_voxels)*(5**3)*(0.103**2)*0.211
+
+        self.orig_centroid = None
 
         self.coeff_array = None
         self._set_spharm_coeffs(coeffPathFormat.format(frame))
         self.vector = None
         self.RI_vector = None
         self._set_vector()
-        self._set_rotInv_vector()
+        self._set_RIvector()
+
 
         self.speed = None
         self.angle = None

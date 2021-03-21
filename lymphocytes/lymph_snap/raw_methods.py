@@ -3,8 +3,12 @@ import matplotlib.pyplot as plt
 import nibabel as nib
 from scipy.ndimage import zoom
 import os
+import pyvista as pv
+import pickle
+
 import lymphocytes.utils.disk as utils_disk
 import lymphocytes.utils.plotting as utils_plotting
+import lymphocytes.utils.general as utils_general
 
 class Raw_Methods:
     """
@@ -12,19 +16,23 @@ class Raw_Methods:
     Contains methods without spherical harmonics.
     """
 
-    def surface_plot(self, subsample_rate):
-        """
-        Plot the (subsampled) triangulation surface.
-        """
-        fig_surfacePlot = plt.figure()
-        ax = fig_surfacePlot.add_subplot(111, projection='3d')
+    def surface_plot(self, plotter=None, uropod_allign=False, color = (1, 1, 1), opacity = 1):
 
-        ax.plot_trisurf(self.vertices[0, :], self.vertices[1, :], self.vertices[2, :], triangles = np.asarray(self.faces[:, ::subsample_rate]).T)
-        ax.grid(False)
+        if uropod_allign:
+            point_cloud = self.uropod_allign_vertices_origin()
+            plotter.add_mesh(point_cloud)
 
-        utils_plotting.label_axes_3D(ax)
-        utils_plotting.no_pane(ax)
-        utils_plotting.equal_axes_3D(ax)
+
+        surf = pv.PolyData(self.vertices, self.faces)
+        if plotter is None:
+            surf.plot()
+        else:
+            plotter.add_mesh(surf, color = color, opacity = opacity)
+
+    def _set_orig_centroid(self):
+        if self.orig_centroid is None:
+            x, y, z = np.argwhere(self.zoomed_voxels == 1).sum(0) / np.sum(self.zoomed_voxels)
+            self.orig_centroid = np.array([x*5*0.103, y*5*0.103, z*5*0.211])
 
 
     def show_voxels(self):
@@ -35,4 +43,4 @@ class Raw_Methods:
         fig_showVoxels = plt.figure()
         ax = fig_showVoxels.add_subplot(111, projection = '3d')
         ax.voxels(self.zoomed_voxels,  edgecolors = 'white')
-        label_axes_3D(ax)
+        utils_plotting.label_axes_3D(ax)

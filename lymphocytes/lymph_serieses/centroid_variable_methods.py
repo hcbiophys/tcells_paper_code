@@ -1,127 +1,77 @@
-
+import numpy as np
+import matplotlib.pyplot as plt
+import lymphocytes.utils.plotting as utils_plotting
+import lymphocytes.utils.general as utils_general
 
 class Centroid_Variable_Methods:
 
-    def plot_cofms(self, colorBy = 'speed'):
+    def _set_centroids(self):
+
+        for lymph in [lymph for lymph_series in self.lymph_serieses for lymph in lymph_series]:
+            voxels = lymph.zoomed_voxels
+            x, y, z = np.argwhere(voxels == 1).sum(0) / np.sum(voxels)
+            lymph.centroid = (0.103*92.7*(x/180), 0.103*52.7*(y/102), 0.211*26.4*(z/25))
+            lymph.centroid = np.array([x, y, z])
+
+    def plot_centroids(self, color_by = 'speed'):
         """
         Plots the centre of mass trajectories of each cell.
         Args:
         - colorBy: attribute to color by ("speed" / "angle").
         """
 
-        self.set_speedsAndTurnings()
-
-        cmap = plt.cm.viridis
+        self._set_speeds()
 
         fig = plt.figure()
+        ax = fig.add_subplot(111, projection = '3d')
 
-        if colorBy == 'speed':
-            speeds = [lymph.speed for sublist in self.lymph_serieses for lymph in sublist if lymph.speed is not None and lymph.coeff_array is not None]
-            vmin, vmax = min(speeds), max(speeds)
-        elif colorBy == 'angle':
-            angles = [lymph.angle for sublist in self.lymph_serieses for lymph in sublist if lymph.angle is not None and lymph.coeff_array is not None]
-            vmin, vmax = min(angles), max(angles)
-        norm = plt.Normalize(vmin, vmax)
+        vmin, vmax = utils_general.get_color_lims(self.lymph_serieses, color_by)
 
 
         for idx_ax, lymph_series in enumerate(self.lymph_serieses):
-            ax = fig.add_subplot(2, (self.num_serieses//2)+2, idx_ax+1, projection = '3d')
 
-            if colorBy == 'idx':
-                ax.set_title(os.path.basename(self.lymph_serieses[idx_ax][0].mat_filename)[:-4] + '_' + str(min(colors_)) + '_' + str(max(colors_)))
-            else:
-                ax.set_title(os.path.basename(self.lymph_serieses[idx_ax][0].mat_filename)[:-4])
+
             for idx in range(len(lymph_series)-1):
-                voxels_0 = read_niigz(lymph_series[idx].niigz)
-                voxels_1 = read_niigz(lymph_series[idx+1].niigz)
-                x_center_0, y_center_0, z_center_0 = np.argwhere(voxels_0 == 1).sum(0) / np.sum(voxels_0)
-                x_center_1, y_center_1, z_center_1 = np.argwhere(voxels_1 == 1).sum(0) / np.sum(voxels_1)
+                (x_center_0, y_center_0, z_center_0) = lymph_series[idx].centroid
+                (x_center_1, y_center_1, z_center_1) = lymph_series[idx+1].centroid
 
-                if colorBy == 'speed':
-                    if lymph_series[idx].speed is None:
-                        color = 'black'
-                    else:
-                        color = cmap(norm(lymph_series[idx].speed))
-                elif colorBy == 'angle':
-                    if lymph_series[idx].angle is None:
-                        color = 'black'
-                    else:
-                        color = cmap(norm(lymph_series[idx].angle))
-                if lymph_series[idx].coeff_array is None:
-                    color = 'red'
-                if lymph_series[idx].exited:
-                    color = 'magenta'
-                if color == 'black' or color == 'red' or color == 'magenta':
-                    linewidth = 2
-                else:
-                    linewidth = 4
-                ax.plot([x_center_0, x_center_1], [y_center_0, y_center_1], [z_center_0, z_center_1], c = color, linewidth = linewidth)
+                color = utils_general.get_color(lymph_series[idx], color_by = color_by, vmin = vmin, vmax = vmax)
+
+                ax.plot([x_center_0, x_center_1], [y_center_0, y_center_1], [z_center_0, z_center_1], c = color)
                 ax.grid(False)
-
-
-        ax = fig.add_subplot(2, (self.num_serieses//2)+2,self.num_serieses+2, projection = '3d')
-        voxels = read_niigz(self.lymph_serieses[0][0].niigz)
-        ax.voxels(voxels, edgecolors = 'white')
-
-        equal_axes_notSquare(*fig.axes)
+        utils_plotting.set_limits_3D(*fig.axes)
+        utils_plotting.label_axes_3D(*fig.axes)
+        utils_plotting.equal_axes_notSquare_3D(*fig.axes)
         plt.show()
 
 
+    def _set_speeds(self):
+        self._set_centroids()
 
-
-
-    def set_speeds(self):
-
-        for series in self.lymph_serieses:
-
-            idxs = [lypmh.idx for lypmh in series]
+        for lymph_series in self.lymph_serieses:
+            frames = [lypmh.frame for lypmh in lymph_series]
             dict = {}
-            for idx, lymph in zip(idxs, series):
-                dict[idx] = lymph
-            for lymph in series:
+            for frame, lymph in zip(frames, lymph_series):
+                dict[frame] = lymph
+            for lymph in lymph_series:
+                frame = lymph.frame
+                if frame-2 in frames and frame-1 in frames and frame+1 in frames and frame+2 in frames:
+                     speeds = []
+                     vectors = []
+                     for frame_ in [frame-1, frame, frame+1, frame+2]:
 
-                # SPEEDS
-                if idx-2 in idxs and idx-1 in idxs and idx+1 in idxs and idx+2 in idxs:
-                     to_avg = []
-                     for idx_ in [idx-1, idx, idx+1, idx+2]:
-
-                         voxels_A = read_niigz(dict[idx_].niigz)
-                         x_center_A, y_center_A, z_center_A = np.argwhere(voxels_A == 1).sum(0) / np.sum(voxels_A)
-                         voxels_B = read_niigz(dict[idx_ - 1].niigz)
-                         x_center_B, y_center_B, z_center_B = np.argwhere(voxels_B == 1).sum(0) / np.sum(voxels_B)
+                         (x_center_A, y_center_A, z_center_A) = dict[frame_].centroid
+                         (x_center_B, y_center_B, z_center_B) = dict[frame_-1].centroid
 
                          speed = np.sqrt((x_center_A-x_center_B)**2 + (y_center_A-y_center_B)**2 + (z_center_A-z_center_B)**2)
-                         to_avg.append(speed)
-                     lymph.speed = np.mean(to_avg)
+                         speeds.append(speed)
 
+                         vector = np.array([x_center_A-x_center_B, y_center_A-y_center_B, z_center_A-z_center_B])
+                         vectors.append(vector)
 
-
-    def set_angles(self):
-
-        for series in self.lymph_serieses:
-
-            idxs = [lypmh.idx for lypmh in series]
-            dict = {}
-            for idx, lymph in zip(idxs, series):
-                dict[idx] = lymph
-            for lymph in series:
-
-                idx = lymph.idx
-                # ANGLES
-                if idx-1 in idxs and idx+1 in idxs:
-                    vecs = []
-                    for idx_ in [idx, idx+1]:
-
-                        voxels_A = read_niigz(dict[idx_].niigz)
-                        x_center_A, y_center_A, z_center_A = np.argwhere(voxels_A == 1).sum(0) / np.sum(voxels_A)
-                        voxels_B = read_niigz(dict[idx_ - 1].niigz)
-                        x_center_B, y_center_B, z_center_B = np.argwhere(voxels_B == 1).sum(0) / np.sum(voxels_B)
-
-                        vecs.append( np.array([x_center_A-x_center_B, y_center_A-y_center_B, z_center_A-z_center_B]) )
-
-                    angle = np.pi - np.arccos(np.dot(vecs[0], vecs[1])/(np.linalg.norm(vecs[0])*np.linalg.norm(vecs[1])))
-                    lymph.angle = angle
-
+                     lymph.speed = np.mean(speeds)
+                     angles = [np.arccos(np.dot(vectors[idx], vectors[idx+1])/(np.linalg.norm(vectors[idx])*np.linalg.norm(vectors[idx+1]))) for idx in range(len(vectors)-1)]
+                     lymph.angle = np.mean(angles)
 
 
     def correlate_shape_with_speedAngle(self, max_l, n_components, pca = False):
@@ -145,7 +95,7 @@ class Centroid_Variable_Methods:
             for idx_series in range(self.num_serieses):
                 split = []
                 for lymph in self.lymph_serieses[idx_series]:
-                    split.append(lymph.set_rotInv_vector(max_l))
+                    split.append(lymph.set_RIvector(max_l))
                 lowDimRepSplit.append(split)
 
         fig = plt.figure()

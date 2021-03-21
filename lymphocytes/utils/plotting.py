@@ -83,6 +83,11 @@ def label_axes_3D(*axes):
         ax.set_ylabel('y')
         ax.set_zlabel('z')
 
+def set_limits_3D(*axes):
+    for ax in axes:
+        ax.set_xlim([0, 180])
+        ax.set_ylim([0, 102])
+        ax.set_zlim([0, 25])
 
 def no_pane_3D(*axes):
     for ax in axes:

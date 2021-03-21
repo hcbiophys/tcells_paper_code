@@ -69,13 +69,6 @@ def load_and_check_nib():
     print('num', num)
 
 
-
-
-
-
-
-
-
 def rm_done_from_inDir(inDir, Step1_SegPostProcessDir):
 
     for file_path1 in glob.glob(Step1_SegPostProcessDir + '*'):
@@ -89,12 +82,12 @@ def rm_done_from_inDir(inDir, Step1_SegPostProcessDir):
 
 
 if __name__ == "__main__":
+    """
     for idx, i in enumerate(stack_triplets):
-
-        print(i[0])
-
         #mat_filename = '/Users/harry/Desktop/lymphocytes/good_seg_data_2/20190405_M101_1_5_mg_27_5_deg/stack4/Stack4_BC-T-corr-0_35um_Export_Surf_corr.mat'
         mat_filename = i[0]
         save_form = os.path.dirname(mat_filename) + '/zoomedVoxels_0.2/{}_{{}}.nii.gz'.format(idx)
-
         write_all_zoomed_niigz(mat_filename, save_form, 0.2)
+    """
+
+    rm_done_from_inDir('/Users/harry/Desktop/RUNNING/STACK2/', '/Users/harry/Desktop/RUNNING/out/Step1_SegPostProcess/')

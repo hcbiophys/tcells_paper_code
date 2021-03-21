@@ -1,6 +1,64 @@
 import numpy as np
+import scipy
+import matplotlib.pyplot as plt
+import pyvista as pv
+import random
+
+def shuffle_two_lists(list1, list2):
+    c = list(zip(list1, list2))
+    random.shuffle(c)
+    list1, list2 = zip(*c)
+    return list1, list2
 
 
+
+def list_all_lymphs(lymph_serieses):
+    lymphs = []
+    for lymph_series in lymph_serieses.lymph_serieses.values():
+        lymphs += [lymph for lymph in lymph_series if lymph is not None]
+    return lymphs
+
+
+def rotation_matrix_from_vectors(vec1, vec2):
+    a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
+    v = np.cross(a, b)
+    c = np.dot(a, b)
+    s = np.linalg.norm(v)
+    kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+    return rotation_matrix
+
+
+
+def get_color_lims(lymph_serieses, color_by):
+    if color_by == 'speed':
+        scalars = [lymph.speed for lymph_series in lymph_serieses for lymph in lymph_series if lymph is not None and lymph.speed is not None]
+    elif color_by == 'angle':
+        scalars = [lymph.angle for lymph_series in lymph_serieses for lymph in lymph_series if lymph is not None and lymph.speed is not None]
+    return min(scalars), max(scalars)
+
+def get_color(lymph, color_by, vmin, vmax):
+    cmap = plt.cm.Blues
+    norm = plt.Normalize(vmin, vmax)
+
+    if color_by == 'speed':
+        if lymph.speed is None:
+            color = 'red'
+        else:
+            color = cmap(norm(lymph.speed))
+    elif color_by == 'angle':
+        if lymph.angle is None:
+            color = 'red'
+        else:
+            color = cmap(norm(lymph.angle))
+    return color
+
+def faces_from_phisThetas(phis, thetas):
+    tri = scipy.spatial.Delaunay([(phis[idx], thetas[idx]) for idx in range(len(phis))])
+    faces = tri.simplices
+    faces = np.concatenate([np.full((faces.shape[0], 1), 3), faces], axis = 1)
+    faces = np.hstack(faces)
+    return faces
 
 def subsample_lists(freq, *args):
     return [i[::freq] for i in args]
@@ -22,24 +80,24 @@ def decimate_mat_voxels(mat_filename, idx_snap, decimation_factor, show, save_as
 
 
 
-def del_whereNone(nestedLists, attribute):
+def del_whereNone(lymph_serieses, attribute):
 
     print('series PERMANENTLY EDITED')
 
-    nestedLists_new = []
-    for list in nestedLists:
-        list_new = []
-        for item in list:
+    new_dict = {}
+    for key, values in lymph_serieses.items():
+        new_values = []
+        for lymph in values:
             if attribute == 'lymph':
-                if item is not None:
-                    list_new.append(item)
+                if lymph is not None:
+                    new_values.append(lymph)
             if attribute == 'speed':
-                if item.speed is not None:
-                    list_new.append(item)
+                if lymph.speed is not None:
+                    new_values.append(lymph)
             elif attribute == 'angle':
-                if item.angle is not None:
-                    list_new.append(item)
+                if lymph.angle is not None:
+                    new_values.append(lymph)
+        new_dict[key] = new_values
 
-        nestedLists_new.append(list_new)
 
-    return nestedLists_new
+    return new_dict
