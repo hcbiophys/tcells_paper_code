@@ -15,6 +15,8 @@ from sklearn.decomposition import PCA
 from scipy.stats import pearsonr
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import glob
+import pickle
+import random
 
 from lymphocytes.lymph_serieses.pca_methods import PCA_Methods
 from lymphocytes.lymph_serieses.single_cell_methods import Single_Cell_Methods
@@ -57,17 +59,19 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
                 frames = f['OUT/FRAME']
 
                 max_frame = int(np.max(np.array(frames)))
+
+                uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell),"rb"))
+
                 for frame in range(1, max_frame+1):
                     if np.any(np.array(frames) == frame) and os.path.isfile(coeffPathFormat.format(frame)): # if it's within arena and SPHARM-PDM worked
-                        snap = Lymph_Snap(mat_filename = mat_filename, frame = frame, coeffPathFormat = coeffPathFormat, zoomedVoxelsPathFormat = zoomedVoxelsPathFormat, idx_cell = idx_cell, max_l = max_l)
+                        snap = Lymph_Snap(mat_filename = mat_filename, frame = frame, coeffPathFormat = coeffPathFormat, zoomedVoxelsPathFormat = zoomedVoxelsPathFormat, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frame]))
+
                         lymph_series.append(snap)
 
                 self.lymph_serieses[idx_cell] = lymph_series
+                print('series added')
 
         self.num_serieses = len(self.lymph_serieses)
-
-
-
 
 
     def plot_volumes(self):
@@ -125,37 +129,46 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
 
 
 
-    def plot_first3_descriptors(self, pca, color_by):
+    def line_plot_3D(self, centroid_uropod_pca, color_by):
         """
         3D plot the first 3 descriptors moving in time.
         """
-        if color_by is not None:
+        if color_by == 'speed':
             self._set_speeds()
-            vmin, vmax = utils_general.get_color_lims(self.lymph_serieses, color_by)
+            vmin, vmax = utils_general.get_color_lims(self, color_by)
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection = '3d')
-        for lymph_series in self.lymph_serieses.values():
+        for idx_cell, lymph_series in self.lymph_serieses.items():
             color = np.random.rand(3,)
-            if pca:
-                self._set_pca(n_components=5,  removeSpeedNone = False, removeAngleNone = False)
-                vectors = [lymph.pca[:3] for lymph in lymph_series]
+            if centroid_uropod_pca == 'centroid':
+                vectorsNested = utils_general.get_nestedList_connectedFrames(lymph_series, 'centroid')
+            elif centroid_uropod_pca == 'uropod':
+                vectorsNested = utils_general.get_nestedList_connectedFrames(lymph_series, 'uropod')
+            elif centroid_uropod_pca == 'pca':
+                self._set_pca(n_components=3,  removeSpeedNone = False, removeAngleNone = False)
+                vectorsNested = utils_general.get_nestedList_connectedFrames(lymph_series, 'pca')
+
+
+            if color_by == 'speed':
+
+                for vectors in vectorsNested:
+                    for idx in range(len(vectors)-1):
+                        if getattr(lymph_series[idx], color_by) is not None:
+                            color = utils_general.get_color(lymph_series[idx], color_by = color_by, vmin = vmin, vmax = vmax)
+                            ax.plot((vectors[idx][0], vectors[idx+1][0]), (vectors[idx][1], vectors[idx+1][1]), (vectors[idx][2], vectors[idx+1][2]), c = color)
 
             else:
-                vectors = [lymph.RI_vector[:3] for lymph in lymph_series]
-            if color_by == 'speed' or color_by == 'angle':
-                for idx in range(len(lymph_series)-1):
-                    (x_center_0, y_center_0, z_center_0) = lymph_series[idx].centroid
-                    (x_center_1, y_center_1, z_center_1) = lymph_series[idx+1].centroid
+                for vectors in vectorsNested:
+                    ax.plot([v[0] for v in vectors], [v[1] for v in vectors], [v[2] for v in vectors], c = color)
+            ax.set_xlabel('#0')
+            ax.set_ylabel('#1')
+            ax.set_zlabel('#2')
 
-                    color = utils_general.get_color(lymph_series[idx], color_by = color_by, vmin = vmin, vmax = vmax)
-                    ax.plot((vectors[idx][0], vectors[idx+1][0]), (vectors[idx][1], vectors[idx+1][1]), (vectors[idx][2], vectors[idx+1][2]), c = color)
-
-            else:
-                ax.plot([v[0] for v in vectors], [v[1] for v in vectors], [v[2] for v in vectors], c = color)
-            ax.set_xlabel('PC_0')
-            ax.set_ylabel('PC_1')
-            ax.set_zlabel('PC_2')
+        if centroid_uropod_pca == 'centroid' or centroid_uropod_pca == 'uropod':
+            utils_plotting.set_limits_3D(*fig.axes)
+        utils_plotting.label_axes_3D(*fig.axes)
+        utils_plotting.equal_axes_notSquare_3D(*fig.axes)
 
 
     def plot_mean_lymph(self):
@@ -186,7 +199,6 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
 
 
 
-
     def plot_component_lymphs(self, grid_size, pca):
         """
         Plot seperate sampling of each of the 3 components (meshes and scatter)
@@ -195,13 +207,15 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
         plotted_points_all = []
 
         lymphs = utils_general.list_all_lymphs(self)
+        random.shuffle(lymphs)
+
         if pca:
             self._set_pca(n_components = 3)
             vectors = [lymph.pca for lymph in lymphs]
         else:
             vectors = [lymph.RI_vector for lymph in lymphs]
 
-        vectors, lymphs = utils_general.shuffle_two_lists(vectors, lymphs)
+
 
         for idx_component in range(3):
             plotted_points = []
@@ -223,7 +237,8 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
                 to_plot = grid_lymphs[idx_min]
                 plotted_points.append(grid_vectors[idx_min])
                 plotter.subplot(idx_component, grid)
-                to_plot.surface_plot(plotter, uropod_allign=True)
+                #to_plot.surface_plot(plotter, uropod_align=True)
+                to_plot.plotRecon_singleDeg(plotter, max_l = 2, uropod_align = True)
             plotted_points_all.append(plotted_points)
 
         plotter.show(cpos=[0, 1, 0])
@@ -237,22 +252,25 @@ class Lymph_Serieses(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods
         lymphs = utils_general.list_all_lymphs(self)
         if pca:
             self._set_pca(n_components = 3)
-            vectors = [np.take(lymph.pca, components) for lymph in lymphs]
-        else:
-            vectors = [np.take(lymph.RI_vector, components) for lymph in lymphs]
 
-        vectors, lymphs = utils_general.shuffle_two_lists(vectors, lymphs)
+
+        random.shuffle(lymphs)
 
         lymphs, vectors = lymphs[::7], vectors[::7]
         plotter = pv.Plotter()
-        for lymph, vector in zip(lymphs, vectors):
-            lymph.uropod_allign_vertices_origin(axis = np.array([1, 0, 0]))
+        for lymph in lymphs:
+            lymph._uropod_align(axis = np.array([1, 0, 0]))
 
             lymph.vertices *= 0.002
+
+            if pca:
+                vector = np.take(lymph.pca, components)
+            else:
+                vector = np.take(lymph.RI_vector, components)
             vector = np.append(vector, 0)
             lymph.vertices += vector
 
-            lymph.surface_plot(plotter=plotter, uropod_allign=False)
+            lymph.surface_plot(plotter=plotter, uropod_align=False)
 
 
         plotter.show()

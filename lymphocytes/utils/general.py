@@ -4,11 +4,45 @@ import matplotlib.pyplot as plt
 import pyvista as pv
 import random
 
-def shuffle_two_lists(list1, list2):
-    c = list(zip(list1, list2))
-    random.shuffle(c)
-    list1, list2 = zip(*c)
-    return list1, list2
+"""
+def get_idxs_l_in_vector(vector, max_l):
+    dict = {}
+    for l in np.arange(0, max_l + 1):
+        dict[l] = []
+        for m in np.arange(0, l+1):
+
+            if m == 0:
+                dict[l].append(l*l)
+            else:
+                dict[l].append(l*l + 2*m - 1)
+                dict[l].append(l*l + 2*m)
+    return dict
+"""
+
+
+
+
+def get_nestedList_connectedFrames(lymph_series, attribute):
+    nestedLists = []
+    frames = [lymph_series[0].frame]
+    to_add = [getattr(lymph_series[0], attribute)]
+    for lymph in lymph_series[1:]:
+
+        if lymph.frame - frames[-1] != 1:
+            nestedLists.append(to_add)
+            to_add = [getattr(lymph, attribute)]
+        else:
+            to_add.append(getattr(lymph, attribute))
+        frames.append(lymph.frame)
+    nestedLists.append(to_add)
+
+    return nestedLists
+
+#def shuffle_two_lists(list1, list2):
+#    c = list(zip(list1, list2))
+#    random.shuffle(c)
+#    list1, list2 = zip(*c)
+#    return list1, list2
 
 
 
@@ -31,10 +65,9 @@ def rotation_matrix_from_vectors(vec1, vec2):
 
 
 def get_color_lims(lymph_serieses, color_by):
+    lymphs = list_all_lymphs(lymph_serieses)
     if color_by == 'speed':
-        scalars = [lymph.speed for lymph_series in lymph_serieses for lymph in lymph_series if lymph is not None and lymph.speed is not None]
-    elif color_by == 'angle':
-        scalars = [lymph.angle for lymph_series in lymph_serieses for lymph in lymph_series if lymph is not None and lymph.speed is not None]
+        scalars = [lymph.speed for lymph in lymphs if lymph is not None and lymph.speed is not None]
     return min(scalars), max(scalars)
 
 def get_color(lymph, color_by, vmin, vmax):

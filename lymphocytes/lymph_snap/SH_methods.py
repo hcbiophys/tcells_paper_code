@@ -4,8 +4,8 @@ import nibabel as nib
 from scipy.special import sph_harm
 import matplotlib.tri as mtri
 import pyvista as pv
-from scipy.spatial.transform import Rotation
 import pickle
+from scipy.spatial.transform import Rotation
 
 import lymphocytes.utils.voxels as utils_voxels
 import lymphocytes.utils.plotting as utils_plotting
@@ -94,17 +94,13 @@ class SH_Methods:
         Returns vector representation of (truncated) self.coeff_array.
         """
 
-        idx_trunc = (self.max_l*self.max_l + 2*(self.max_l+1)) + 1
+        idx_trunc = self.max_l*self.max_l + 2*(self.max_l) + 1
         self.vector = np.concatenate([self.coeff_array[:idx_trunc, 0], self.coeff_array[:idx_trunc, 1], self.coeff_array[:idx_trunc, 2]], axis = 0)
 
     def _set_RIvector(self):
-        file = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(self.idx_cell),"rb")
-        uropods = pickle.load(file)
-        uropod_coords = np.array(uropods[self.frame])
 
 
-        self._set_orig_centroid()
-        self.RI_vector = [np.linalg.norm(self.orig_centroid - uropod_coords)]
+        self.RI_vector = [np.linalg.norm(self.centroid - self.uropod)]
         for l in np.arange(1, self.max_l + 1):
             l_energy = 0
             for coord in [0, 1, 2]:
@@ -113,12 +109,14 @@ class SH_Methods:
                     l_energy += clm*np.conj(clm)
             self.RI_vector.append(np.sqrt(l_energy.real)) # imaginary component is zero
 
-        self.RI_vector = np.array([i/np.cbrt(self.volume) for i in self.RI_vector]) # scale invariance
+        self.RI_vector = np.array(self.RI_vector)/np.cbrt(self.volume) # scale invariance
 
 
 
 
-    def reconstruct_xyz_from_spharm_coeffs(self, l_start = 0, max_l = None):
+
+
+    def reconstruct_xyz_from_spharm_coeffs(self, l_start = 1, max_l = None):
         """
         Reconstruct {x, y, z} shape from (truncated) self.coeff_array attribute.
         """
@@ -147,47 +145,9 @@ class SH_Methods:
 
 
 
-    def ellipsoid_allign_vertices_origin(self, axis = np.array([0, 0, 1])):
-        """
-        Shift centroid to origin and rotate to align uropod with an axis.
-        """
-        self._set_orig_centroid()
-        self.vertices -= self.orig_centroid
-
-        # get rotation matrix
-        xs, ys, zs, phis, thetas = self.reconstruct_xyz_from_spharm_coeffs(l_start = 1, max_l = 1)
-        dists = [np.sqrt(xs[idx]**2 + ys[idx]**2 + zs[idx]**2) for idx in range(len(xs))]
-        idx_max = dists.index(max(dists))
-        peak_vec = np.array([xs[idx_max], ys[idx_max], zs[idx_max]])
-        rotation_matrix = utils_general.rotation_matrix_from_vectors(peak_vec, axis)
-        R = Rotation.from_matrix(rotation_matrix)
-
-        self.vertices = R.apply(self.vertices)
 
 
-    def uropod_allign_vertices_origin(self, axis = np.array([0, 0, 1])):
-        """
-        Shift centroid to origin and rotate to align ellipsoid with an axis.
-        """
-        self._set_orig_centroid()
-        self.vertices -= self.orig_centroid
-
-        # get rotation matrix
-        file = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(self.idx_cell),"rb")
-        uropods = pickle.load(file)
-
-        uropod_vec = uropods[self.frame] - self.orig_centroid
-        rotation_matrix = utils_general.rotation_matrix_from_vectors(uropod_vec, axis)
-        R = Rotation.from_matrix(rotation_matrix)
-        self.vertices = R.apply(self.vertices)
-
-        point_cloud = uropods[self.frame] - self.orig_centroid
-        point_cloud = pv.PolyData(R.apply(point_cloud))
-
-        return point_cloud
-
-
-    def plotRecon_singleDeg(self, plotter, l_start = 0, max_l = None, ellipsoid_allign = False):
+    def plotRecon_singleDeg(self, plotter, max_l = None, uropod_align = False):
         """
         Plot reconstruction at a single truncation degree.
         Args:
@@ -198,15 +158,24 @@ class SH_Methods:
         - azim: azimuthal angle of view.
         """
 
-        xs, ys, zs, phis, thetas = self.reconstruct_xyz_from_spharm_coeffs(l_start = l_start, max_l = max_l)
+        xs, ys, zs, phis, thetas = self.reconstruct_xyz_from_spharm_coeffs(l_start = 0, max_l = max_l)
         #[xs, ys, zs, phis, thetas] = utils_general.subsample_lists(3, xs, ys, zs, phis, thetas)
         [xs, ys, zs, phis, thetas] = [np.array(i) for i in [xs, ys, zs, phis, thetas]]
 
         vertices = np.array(np.concatenate([xs[..., np.newaxis] , ys[..., np.newaxis] , zs[..., np.newaxis] ], axis = 1))
-        if ellipsoid_allign:
-            vertices = self.R.apply(vertices)
+        if uropod_align:
+            # don't change class attributes here
+            vertices -= self.uropod
+            uropod = np.array([0, 0, 0])
+
+            rotation_matrix = utils_general.rotation_matrix_from_vectors(self.centroid-self.uropod, np.array([0, 0, 1]))
+            R = Rotation.from_matrix(rotation_matrix)
+            vertices = R.apply(vertices)
+        if uropod_align:
+            plotter.add_mesh(np.array([0, 0, 0]), color = (1, 0, 0))
+        #else:
+        #    plotter.add_mesh(self.uropod, color = (1, 0, 0))
 
         faces = utils_general.faces_from_phisThetas(phis, thetas)
         surf = pv.PolyData(vertices, faces)
         plotter.add_mesh(surf)
-        plotter.add_axes()

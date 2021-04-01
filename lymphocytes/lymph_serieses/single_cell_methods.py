@@ -33,7 +33,7 @@ class Single_Cell_Methods:
             self.frames.append(lymph.frame)
             self.uropod_coords.append(None)
             plotter = pv.Plotter()
-            lymph.surface_plot(plotter=plotter, ellipsoid_allign=False)
+            lymph.surface_plot(plotter=plotter, uropod_align=False)
             plotter.enable_point_picking(callback = self._uropod_callback, show_message=True,
                        color='pink', point_size=10,
                        use_mesh=True, show_point=True)
@@ -49,7 +49,7 @@ class Single_Cell_Methods:
 
 
 
-    def plot_orig_series(self, idx_cell, plot_every):
+    def plot_orig_series(self, idx_cell, uropod_align, plot_every):
         """
         Plot original mesh series, with point at the uropods
         """
@@ -61,8 +61,8 @@ class Single_Cell_Methods:
         #R = lymphs_plot[0].R
         for idx_plot, lymph in enumerate(lymphs_plot):
             plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
-            lymphs_plot[idx_plot-1].surface_plot(plotter=plotter, ellipsoid_allign=False, color = (0.3, 0.3, 1), opacity = 0.5)
-            lymph.surface_plot(plotter=plotter, ellipsoid_allign=False)
+            lymphs_plot[idx_plot-1].surface_plot(plotter=plotter, uropod_align=uropod_align, color = (0.3, 0.3, 1), opacity = 0.5)
+            lymph.surface_plot(plotter=plotter, uropod_align=uropod_align)
 
 
         plotter.show(cpos=[0, 1, 0])
@@ -70,27 +70,21 @@ class Single_Cell_Methods:
 
     def plot_uropod_trajectory(self, idx_cell):
 
-        file = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell),"rb")
-        uropods = pickle.load(file)
-
         fig = plt.figure()
         ax = fig.add_subplot(111, projection = '3d')
-        uropod_coords = [uropods[lymph.frame] for lymph in self.lymph_serieses[idx_cell]]
-        ax.plot([i[0] for i in uropod_coords], [i[1] for i in uropod_coords], [i[2] for i in uropod_coords])
+        uropods = [lymph.uropod for lymph in self.lymph_serieses[idx_cell]]
+        ax.plot([i[0] for i in uropods], [i[1] for i in uropods], [i[2] for i in uropods])
 
 
     def plot_migratingCell(self, idx_cell, plot_every = 15):
         """
         Plot all meshes of a cell in one window
         """
-        file = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell),"rb")
-        uropods = pickle.load(file)
 
         lymphs = self.lymph_serieses[idx_cell][::plot_every]
         plotter = pv.Plotter()
         for lymph in lymphs:
             color = np.random.rand(3,)
-            lymph.vertices -= uropods[lymph.frame]
             surf = pv.PolyData(lymph.vertices, lymph.faces)
             plotter.add_mesh(surf, color = color)
         box = pv.Box(bounds=(0, 92.7, 0, 52.7, 0, 26.4))
