@@ -13,15 +13,15 @@ import lymphocytes.utils.general as utils_general
 
 class SH_Methods:
     """
-    Inherited by Lymph_Snap class.
+    Inherited by Cell_Frame class.
     Contains methods with spherical harmonics.
     """
 
     def _set_spharm_coeffs(self, coeffs_txt_file):
         """
-        Set the SPHARM coeffs as self.coeff_array attribute.
+        Set the SPHARM coeffs as self.coeff_array attribute
         Args:
-        - coeffs_txt_file: full path to load (including the frame).
+        - coeffs_txt_file: full path to load (including the frame)
         NOTE: Not initially in correct order, so reordering applied so columns are (x, y, z)
         """
 
@@ -66,18 +66,18 @@ class SH_Methods:
         self.coeff_array[:, [0, 1, 2]] = self.coeff_array[:, [2, 1, 0]]
 
         # scale by voxel resolution
-        self.coeff_array[:, 0] *= 5*0.103 # 5 since zoomed by 5x, 0.103 for voxel resolution
-        self.coeff_array[:, 1] *= 5*0.103
-        self.coeff_array[:, 2] *= 5*0.211
+        self.coeff_array[:, 0] *= 5*self.xyz_res[0] # 5 since zoomed by 5x, 0.103 for voxel resolution
+        self.coeff_array[:, 1] *= 5*self.xyz_res[1]
+        self.coeff_array[:, 2] *= 5*self.xyz_res[2]
 
 
     def _get_clm(self, dimension, l, m):
         """
-        Get clm (spherical harmonic complex coefficient) from the self.coeff_array atttribute.
+        Get clm (spherical harmonic complex coefficient) from the self.coeff_array atttribute
         Args:
-        - dimension: {x, y, or z}.
-        - l: 'energy' index.
-        - m: rotational index.
+        - dimension: {x, y, or z}
+        - l: 'energy' index
+        - m: rotational index
         """
         if m == 0:
             a = self.coeff_array[l*l, dimension]
@@ -85,40 +85,44 @@ class SH_Methods:
         else:
             a = self.coeff_array[l*l + 2*m - 1, dimension]
             b = self.coeff_array[l*l + 2*m, dimension]
-
         return complex(a, b)
 
 
-    def _set_vector(self):
+    def _set_vector(self, plot = False, ax = None):
         """
-        Returns vector representation of (truncated) self.coeff_array.
+        Sets the vector representation of (truncated) self.coeff_array
         """
-
         idx_trunc = self.max_l*self.max_l + 2*(self.max_l) + 1
         self.vector = np.concatenate([self.coeff_array[:idx_trunc, 0], self.coeff_array[:idx_trunc, 1], self.coeff_array[:idx_trunc, 2]], axis = 0)
 
     def _set_RIvector(self):
+        """
+        Sets the rotationally invariant descriptor
+        """
 
-
-        self.RI_vector = [np.linalg.norm(self.centroid - self.uropod)]
+        self.RI_vector = [(3/2)*np.linalg.norm(self.centroid - self.uropod)/(np.cbrt(self.volume))] # here is the first descriptor, distance between centroid and uropod
         for l in np.arange(1, self.max_l + 1):
             l_energy = 0
             for coord in [0, 1, 2]:
                 for m in np.arange(0, l+1):
                     clm = self._get_clm(coord, l, m)
+                    clm /= np.cbrt(self.volume) # from LBS particles and LBS fragments
                     l_energy += clm*np.conj(clm)
             self.RI_vector.append(np.sqrt(l_energy.real)) # imaginary component is zero
 
-        self.RI_vector = np.array(self.RI_vector)/np.cbrt(self.volume) # scale invariance
 
-
-
+        self.RI_vector = np.array(self.RI_vector) # scale invariance
+        self.RI_vector0 = self.RI_vector[0]
+        self.RI_vector1 = self.RI_vector[1]
+        self.RI_vector2 = self.RI_vector[2]
+        self.RI_vector3 = self.RI_vector[3]
 
 
 
     def reconstruct_xyz_from_spharm_coeffs(self, l_start = 1, max_l = None):
         """
-        Reconstruct {x, y, z} shape from (truncated) self.coeff_array attribute.
+        Reconstruct {x, y, z} shape from (truncated) self.coeff_array attribute
+        - l_start: determines whether it's reconstructed at the origin or not
         """
         if max_l is None:
             max_l = self.max_l
@@ -141,21 +145,9 @@ class SH_Methods:
         return xs, ys, zs, phis, thetas
 
 
-
-
-
-
-
-
-    def plotRecon_singleDeg(self, plotter, max_l = None, uropod_align = False):
+    def plotRecon_singleDeg(self, plotter, max_l = None, uropod_align = False, color = (1, 1, 1)):
         """
-        Plot reconstruction at a single truncation degree.
-        Args:
-        - ax: axis to plot onto.
-        - max_l: max l value (i.e. truncation).
-        - color_param: parameter to color by ("thetas" / "phis").
-        - elev: elevation of view.
-        - azim: azimuthal angle of view.
+        Plot reconstruction at a single truncation degree
         """
 
         xs, ys, zs, phis, thetas = self.reconstruct_xyz_from_spharm_coeffs(l_start = 0, max_l = max_l)
@@ -171,11 +163,10 @@ class SH_Methods:
             rotation_matrix = utils_general.rotation_matrix_from_vectors(self.centroid-self.uropod, np.array([0, 0, 1]))
             R = Rotation.from_matrix(rotation_matrix)
             vertices = R.apply(vertices)
-        if uropod_align:
-            plotter.add_mesh(np.array([0, 0, 0]), color = (1, 0, 0))
+            plotter.add_mesh(pv.Sphere(radius=0.1, center=(0, 0, 0)), color = (1, 0, 0))
         #else:
         #    plotter.add_mesh(self.uropod, color = (1, 0, 0))
 
         faces = utils_general.faces_from_phisThetas(phis, thetas)
         surf = pv.PolyData(vertices, faces)
-        plotter.add_mesh(surf)
+        plotter.add_mesh(surf, color = color)

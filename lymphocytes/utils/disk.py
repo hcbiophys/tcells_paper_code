@@ -22,7 +22,6 @@ def write_all_zoomed_niigz(mat_filename, saveFormat, zoom_factor):
         voxels_ref = voxels[idx]
 
         voxels = f[voxels_ref[0][0]] # takes a long time
-        #print(voxels.shape)
         voxels = zoom(voxels, (zoom_factor, zoom_factor, zoom_factor), order = 0) # order 0 means not interpolation
         #print(voxels.shape)
         new_image = nib.Nifti1Image(voxels, affine=np.eye(4))
@@ -80,14 +79,24 @@ def rm_done_from_inDir(inDir, Step1_SegPostProcessDir):
                 os.remove(file_path2)
 
 
+def copy_coefs_into_dir(inDir, outDir, idx_cell):
+    for file in glob.glob(inDir + '{}_*SPHARM.coef'.format(idx_cell)):
+        os.rename(file, outDir + os.path.basename(file))
+
+
+
+
 
 if __name__ == "__main__":
-    """
-    for idx, i in enumerate(stack_triplets):
-        #mat_filename = '/Users/harry/Desktop/lymphocytes/good_seg_data_2/20190405_M101_1_5_mg_27_5_deg/stack4/Stack4_BC-T-corr-0_35um_Export_Surf_corr.mat'
-        mat_filename = i[0]
-        save_form = os.path.dirname(mat_filename) + '/zoomedVoxels_0.2/{}_{{}}.nii.gz'.format(idx)
-        write_all_zoomed_niigz(mat_filename, save_form, 0.2)
-    """
+    inDir = '/Users/harry/Desktop/RUNNING/out/Step3_ParaToSPHARMMesh/'
 
-    rm_done_from_inDir('/Users/harry/Desktop/RUNNING/STACK2/', '/Users/harry/Desktop/RUNNING/out/Step1_SegPostProcess/')
+    #for idx_cell in [3, 5]:
+        #outDir = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210426_M415_OT1GFP_CNA35mCherry_CTDR_1_5000_1_5_25deg/cell_{}/coeffs/'.format(idx_cell)
+        #copy_coefs_into_dir(inDir, outDir, idx_cell)
+
+
+
+
+
+
+    #rm_done_from_inDir('/Users/harry/Desktop/RUNNING/STACK2/', '/Users/harry/Desktop/RUNNING/out/Step1_SegPostProcess/')
