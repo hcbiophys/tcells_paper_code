@@ -22,14 +22,14 @@ class Single_Cell_Methods:
         print(point)
         self.uropod_coords[-1] = point
 
-    def select_uropods(self, idx_cell, plot_every):
+    def select_uropods(self, idx_cell):
         """
         Select the uropods
         """
         self.frames = []
         self.uropod_coords = []
 
-        lymphs = self.cells[idx_cell][::plot_every]
+        lymphs = self.cells[idx_cell]
 
 
         for idx_plot, lymph in enumerate(lymphs):
@@ -49,8 +49,8 @@ class Single_Cell_Methods:
                     if idx_closest in lymph.faces[idx*4:(idx+1)*4]:
                         scalars.append(0.5)
                     else:
-                        scalars.append(0.2)
-                lymph.surface_plot(plotter=plotter, uropod_align=False, opacity = 1, scalars = scalars)
+                        scalars.append(0)
+                lymph.surface_plot(plotter=plotter, uropod_align=False, opacity = 0.1, scalars = scalars)
 
             self.uropod_coords.append(None)
             plotter.enable_point_picking(callback = self._uropod_callback, show_message=True,
@@ -95,7 +95,6 @@ class Single_Cell_Methods:
             if color_by is not None:
                 if getattr(lymph, color_by) is not None:
                     color = (1-(getattr(lymph, color_by)-vmin)/(vmax-vmin), 1, 1)
-                    print(color_by, getattr(lymph, color_by), 'vmin:{}, vmax:{}'.format(vmin, vmax))
             lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color)
 
         plotter.show(cpos=[0, 1, 0])
@@ -162,7 +161,6 @@ class Single_Cell_Methods:
         """
         fig = plt.figure(figsize = (1, 6))
         self._set_pca(n_components = 3)
-        self.set_pca_normalized()
         lymphs = self.cells[idx_cell][::plot_every]
         for idx, lymph in enumerate(lymphs):
             ax = fig.add_subplot(len(lymphs), 1, idx+1)

@@ -7,13 +7,88 @@ from scipy.ndimage import zoom
 import sys
 #from lymphocytes.data.dataloader_good_segs_2 import stack_triplets
 
-
-def write_all_zoomed_niigz(mat_filename, saveFormat, zoom_factor):
-
+def get_attribute_from_mat(mat_filename, zeiss_bool):
+    """
+    returns attributes: frames, voxels, vertices, faces
+    """
     f = h5py.File(mat_filename, 'r')
-    OUT_group = f.get('OUT')
 
-    frames = np.asarray(OUT_group.get('FRAME')).flatten()
+    frames_all, voxels_all, vertices_all, faces_all = [], [], [], []
+
+    if not zeiss_bool:
+        OUT_group = f.get('OUT')
+
+        frames = f['OUT/FRAME']
+
+        frames = OUT_group.get('FRAME')
+        frames = np.array(frames).flatten()
+
+        for frame in frames:
+            frames_all.append(frame)
+            idx = np.where(frames == frame)
+
+            voxels = OUT_group.get('BINARY_MASK')
+            voxels_ref = voxels[idx]
+            voxels = f[voxels_ref[0][0]] # takes a long time
+            voxels_all.append(voxels)
+
+            vertices = OUT_group.get('VERTICES')
+            vertices_ref = vertices[idx]
+            vertices = np.array(f[vertices_ref[0][0]]).T
+            vertices_all.append(vertices)
+
+            faces = OUT_group.get('FACES')
+            faces_ref = faces[idx]
+            faces = np.array(f[faces_ref[0][0]]) - 1 # note: indexing for these starts at 1, so subtraction of 1 needed
+            faces = faces.astype(np.intc).T
+            faces = np.concatenate([np.full((faces.shape[0], 1), 3), faces], axis = 1).flatten()
+            faces_all.append(faces)
+
+
+    else:
+
+        OUT_group = f.get('DataOut')
+        surf_refs = OUT_group.get('Surf')
+        frame_refs = np.array(surf_refs[0, :]).flatten()
+        frames = np.array([np.array(f[frame_ref])[0][0] for frame_ref in frame_refs])
+        max_frame = int(np.max(frames))
+
+        for frame in range(1, max_frame+1):
+            frames_all.append(frame)
+            idx = np.where(frames == frame)[0][0]
+
+
+            voxels = f[surf_refs[2, idx]] # takes a long time
+            voxels_all.append(voxels)
+
+
+            vertices = f[surf_refs[3, idx]]
+            vertices = np.array(vertices).T
+            vertices_all.append(vertices)
+
+            faces = f[surf_refs[4, idx]]
+            faces = np.array(faces) # note: indexing for these starts at 0, so no subtraction of 1 needed
+            faces = faces.astype(np.intc).T
+            faces = np.concatenate([np.full((faces.shape[0], 1), 3), faces], axis = 1).flatten()
+            faces_all.append(faces)
+
+
+
+    return frames_all, voxels_all, vertices_all, faces_all
+
+
+
+
+
+
+
+
+def write_all_zoomed_niigz(mat_filename, save_format, zoom_factor = 0.2):
+
+
+
+    frames_all, voxels_all, vertices_all, faces_all = get_attribute_from_mat(mat_filename=mat_filename, zeiss_bool=False)
+
 
     for frame in np.array(frames).flatten():
         print(frame)
@@ -25,7 +100,7 @@ def write_all_zoomed_niigz(mat_filename, saveFormat, zoom_factor):
         voxels = zoom(voxels, (zoom_factor, zoom_factor, zoom_factor), order = 0) # order 0 means not interpolation
         #print(voxels.shape)
         new_image = nib.Nifti1Image(voxels, affine=np.eye(4))
-        nib.save(new_image, saveFormat.format(int(frame)))
+        nib.save(new_image, save_format.format(int(frame)))
 
 def copy_voxels_notDone(doneDir, toCopyDir):
     """
@@ -89,12 +164,14 @@ def copy_coefs_into_dir(inDir, outDir, idx_cell):
 
 if __name__ == "__main__":
     inDir = '/Users/harry/Desktop/RUNNING/out/Step3_ParaToSPHARMMesh/'
+    outDir =  '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210426_M415_OT1GFP_CNA35mCherry_CTDR_1_5000_1_5_25deg/cell_7/coeffs/'
 
-    #for idx_cell in [3, 5]:
-        #outDir = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210426_M415_OT1GFP_CNA35mCherry_CTDR_1_5000_1_5_25deg/cell_{}/coeffs/'.format(idx_cell)
-        #copy_coefs_into_dir(inDir, outDir, idx_cell)
+    #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210426_M415_OT1GFP_CNA35mCherry_CTDR_1_5000_1_5_25deg/cell_7/Cell7_BC_0_35_Export_Surf_corr.mat'
+    #save_format = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210426_M415_OT1GFP_CNA35mCherry_CTDR_1_5000_1_5_25deg/cell_7/zoomedVoxels_0.2/7_{}.nii.gz'
 
+    #write_all_zoomed_niigz(mat_filename, save_format)
 
+    copy_coefs_into_dir(inDir, outDir, idx_cell=7)
 
 
 

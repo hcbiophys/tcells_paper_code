@@ -24,14 +24,12 @@ from lymphocytes.cells.cells_class import Cells
 import lymphocytes.utils.general as utils_general
 
 
-
 if __name__ == '__main__':
     #idx_cells = ['2_{}'.format(i) for i in range(10)] + ['3_0_0' + '3_0_1'] + ['3_1_{}'.format(i) for i in range(6)]
 
-    idx_cell = '2_2'
-    cells = Cells(stack_quads_2 + stack_quads_3, cells_model = 'all', max_l = 15) # I think I have to ignore stack_quads_2 as these are duplicates?
+    idx_cell = '3_0_2'
+    cells = Cells(stack_quads_2 + stack_quads_3, cells_model = [idx_cell], max_l = 15) # I think I have to ignore stack_quads_2 as these are duplicates?
     #for attribute in ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction']:
-
     ### single frame methods ###
     #cells._set_delta_centroids()
     #lymphs = utils_general.list_all_lymphs(cells)
@@ -42,8 +40,8 @@ if __name__ == '__main__':
 
     ### single cell methods ###
     #cells.plot_migratingCell(idx_cell=idx_cell, plot_every = 15)
-    #cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = attribute, plot_every = 25)
-    #cells.select_uropods(idx_cell=idx_cell, plot_every=1)
+    #cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 2)
+    cells.select_uropods(idx_cell=idx_cell)
     #cells.plot_uropod_centroid_line(idx_cell = idx_cell, plot_every = 1)
     #cells.plot_uropod_trajectory(idx_cell = 4)
     #cells.plot_attribute(idx_cell, attribute = 'RI_vector0')
@@ -63,14 +61,17 @@ if __name__ == '__main__':
     #cells.PC_sampling(n_components = 3)
     #cells.plot_component_lymphs(grid_size=8, pca=True, plot_original = False)
     #cells.plot_component_lymphs(grid_size=8, pca=True, plot_original = True)
-    #cells.line_plot_3D(centroid_uropod_pca = 'pca', color_by = None, threshold_morphs = False)
+    #cells.line_plot_3D(centroid_uropod_pca = 'pca', color_by = None)
     #cells.plot_2D_embeddings(pca = True, components = (0, 1))
-    cells.correlation(independents = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction'], dependents = ['morph_deriv', 'delta_centroid', 'delta_sensing_direction'])
+    #cells.correlation(independents = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction'], dependents = ['morph_deriv', 'delta_centroid', 'delta_sensing_direction'])
     #cells.rigid_motions()
+    #cells.plot_PC_space(plot_original = False)
+    #cells.plot_PC_space(plot_original = True)
+    #cells.plot_PC_space()
 
     ### centroid variable methods ###
     #cells.plot_centroids(color_by = 'delta_centroid')
     #cells.set_angles()
     #cells.correlate_shape_with_delta_centroidAngle(max_l, n_components, pca = False)
-
-    plt.show()
+    #cells.gather_time_series()
+    #plt.show()

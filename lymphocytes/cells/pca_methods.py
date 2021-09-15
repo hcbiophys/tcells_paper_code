@@ -6,7 +6,7 @@ import sys
 from sklearn.preprocessing import StandardScaler
 import copy
 import pyvista as pv
-
+import random
 import lymphocytes.utils.general as utils_general
 
 
@@ -36,6 +36,9 @@ class PCA_Methods:
             pca_obj.fit_transform(RI_vectors)
             print('EXPLAINED VARIANCE RATIO: ', pca_obj.explained_variance_ratio_)
 
+
+
+
             for lymph in lymphs:
                 lymph.pca = pca_obj.transform(lymph.RI_vector.reshape(1, -1))
                 lymph.pca = np.squeeze(lymph.pca, axis = 0)
@@ -43,20 +46,17 @@ class PCA_Methods:
                 lymph.pca1 = lymph.pca[1]
                 lymph.pca2 = lymph.pca[2]
 
+            # set normalized PCs
+            pcas = np.array([lymph.pca for lymph in lymphs])
+            means = np.mean(pcas, axis = 0)
+            stds = np.std(pcas, axis = 0)
+            all_pcas_normalized = (pcas - means)/stds
+            for idx, lymph in enumerate(lymphs):
+                lymph.pca_normalized = all_pcas_normalized[idx, :]
+
             self.pca_set = True
 
             return pca_obj
-
-    def set_pca_normalized(self):
-
-        lymphs = utils_general.list_all_lymphs(self)
-        pcas = np.array([lymph.pca for lymph in lymphs])
-        means = np.mean(pcas, axis = 0)
-        stds = np.std(pcas, axis = 0)
-        all_pcas_normalized = (pcas - means)/stds
-        for idx, lymph in enumerate(lymphs):
-            lymph.pca_normalized = all_pcas_normalized[idx, :]
-
 
 
 
@@ -120,7 +120,6 @@ class PCA_Methods:
 
         if pca:
             self._set_pca(n_components = 3)
-            self.set_pca_normalized()
             vectors = [lymph.pca for lymph in lymphs]
         else:
             vectors = [lymph.RI_vector for lymph in lymphs]
@@ -152,7 +151,7 @@ class PCA_Methods:
                 if plot_original:
                     to_plot.surface_plot(plotter, uropod_align=True)
                 else:
-                    to_plot.plotRecon_singleDeg(plotter, max_l = 2, uropod_align = True)
+                    to_plot.plotRecon_singleDeg(plotter, max_l = 3, uropod_align = True)
 
                 ax = fig_bars.add_subplot(3, grid_size, (idx_component*grid_size)+grid+1)
 
@@ -169,3 +168,61 @@ class PCA_Methods:
 
         plotter.show(cpos=[0, 1, 0])
         self._scatter_plotted_components(vectors, plotted_points_all)
+
+
+    def plot_PC_space(self, plot_original = True):
+        """
+        Plot a sample of cells in the 3D PCA space
+        """
+
+        def _plot_lymph(lymph):
+            plotter = pv.Plotter()
+            lymph.surface_plot(plotter=plotter)
+            plotter.show()
+
+
+        self._set_pca(n_components = 3)
+        lymphs = utils_general.list_all_lymphs(self)
+        random.shuffle(lymphs)
+
+        plotter = pv.Plotter()
+        scale_factor = 40
+
+        coords_plotted = []
+        for lymph in lymphs:
+            #if random.randint(0, 50) == 0:
+            if len([i for i in coords_plotted if np.linalg.norm(lymph.pca_normalized-i) < 0.75]) == 0:
+                vertices, faces = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = 3, uropod_align = True, horizontal_align = True)
+                uropod = np.array([0, 0, 0])
+                if plot_original:
+                    #uropod, centroid, vertices = lymph._uropod_align(axis = np.array([0, 0, -1]))
+                    uropod, centroid, vertices = lymph._uropod_and_horizontal_align()
+                    faces = lymph.faces
+                vertices /= scale_factor
+                vertices += lymph.pca_normalized
+                uropod = np.float64(uropod) + lymph.pca_normalized
+
+                surf = pv.PolyData(vertices, faces)
+
+                surf = surf.decimate(0.98)
+
+                #color = (1, 1, 1)
+                vmin, vmax = utils_general.get_color_lims(self, color_by = 'pca1')
+                color = (1-(lymph.pca1-vmin)/(vmax-vmin), 1, 1)
+
+
+                plotter.add_mesh(surf, color = color)
+
+
+                plotter.add_mesh(pv.Sphere(radius=0.5/scale_factor, center=uropod), color = (1, 0, 0))
+                plotter.add_lines(np.array([[-3, 0, 0], [3, 0, 0]]), color = (0, 0, 0))
+                plotter.add_lines(np.array([[0, -3, 0], [0, 3, 0]]), color = (0, 0, 0))
+                plotter.add_lines(np.array([[0, 0, -3], [0, 0, 3]]), color = (0, 0, 0))
+
+                #poly = pv.PolyData(np.array([[3, 0, 0], [0, 3, 0], [0, 0, 3]]))
+                #poly["My Labels"] = ['PC 1', 'PC 2', 'PC 3']
+                #plotter.add_point_labels(poly, "My Labels", point_size=2, font_size=25)
+
+                coords_plotted.append(lymph.pca_normalized)
+
+        plotter.show(cpos = (1, -1, 0.5))

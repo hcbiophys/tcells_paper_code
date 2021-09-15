@@ -24,8 +24,9 @@ from lymphocytes.cells.pca_methods import PCA_Methods
 from lymphocytes.cells.single_cell_methods import Single_Cell_Methods
 from lymphocytes.cells.centroid_variable_methods import Centroid_Variable_Methods
 from lymphocytes.cell_frame.cell_frame_class import Cell_Frame
+from lymphocytes.behavior_analysis.consecutive_frames_class import Consecutive_Frames
 
-
+import lymphocytes.utils.disk as utils_disk
 import lymphocytes.utils.voxels as utils_voxels
 import lymphocytes.utils.plotting as utils_plotting
 import lymphocytes.utils.general as utils_general
@@ -53,26 +54,30 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         self.cell_colors = {}
 
         for (idx_cell, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, xyz_res, color, t_res) in stack_quads:
+
             if cells_model == 'all' or idx_cell in cells_model:
+                print('idx_cell: {}'.format(idx_cell))
                 lymph_series = []
 
-                f = h5py.File(mat_filename, 'r')
-                frames = f['OUT/FRAME']
+                #uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
 
-                max_frame = int(np.max(np.array(frames)))
+                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_bool=False)
 
-                uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
+                for idx in range(len(frames_all)):
 
-                for frame in range(1, max_frame+1):
-                    if np.any(np.array(frames) == frame) and os.path.isfile(coeffPathFormat.format(frame)): # if it's within arena and SPHARM-PDM worked
-                        snap = Cell_Frame(mat_filename = mat_filename, frame = frame, coeffPathFormat = coeffPathFormat, zoomedVoxelsPathFormat = zoomedVoxelsPathFormat, xyz_res = xyz_res, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frame]))
+                    if os.path.isfile(coeffPathFormat.format(int(frames_all[idx]))): # if it's within arena and SPHARM-PDM worked
+                        #snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, zoomedVoxelsPathFormat = zoomedVoxelsPathFormat, xyz_res = xyz_res, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), voxels = voxels_all[idx], vertices = vertices_all[idx], faces = faces_all[idx])
+                        snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, zoomedVoxelsPathFormat = zoomedVoxelsPathFormat, xyz_res = xyz_res, idx_cell = idx_cell, max_l = max_l, uropod = None, voxels = voxels_all[idx], vertices = vertices_all[idx], faces = faces_all[idx])
+
                         snap.color = color
                         snap.t_res = t_res
                         lymph_series.append(snap)
                 self.cells[idx_cell] = lymph_series
-                print('max_frame: ', max_frame)
+                print('max_frame: {}'.format(max(frames_all)))
 
         self.pca_set = False
+
+
     """
     def set_curvatures(self):
 
@@ -120,7 +125,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                 for lymphs in lymphsNested:
                     frame_list = [lymph.frame for lymph in lymphs if getattr(lymph, attribute) is not None]
                     attribute_list = [getattr(lymph, attribute) for lymph in lymphs if getattr(lymph, attribute)  is not None]
-                    axes_line[idx_attribute].plot(frame_list, attribute_list, color = lymphs[0].color, label = lymphs[0].idx_cell)
+                    axes_line[idx_attribute].plot([lymphs[0].t_res*i for i in frame_list], attribute_list, color = lymphs[0].color, label = lymphs[0].idx_cell, marker = 'o')
                     all_attributes[idx_attribute] += attribute_list
                     if idx_attribute != len(attributes)-1:
                         axes_line[idx_attribute].set_xticks([])
@@ -273,13 +278,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
         plotter.show()
 
-    def _add_to_dict2(self, dict2, lymph):
-        dict2['frame'].append(lymph.frame)
-        dict2['PC0'].append(lymph.pca[0])
-        dict2['PC1'].append(lymph.pca[1])
-        dict2['PC2'].append(lymph.pca[2])
-        dict2['delta_centroid'].append(lymph.delta_centroid)
-        dict2['delta_sensing_direction'].append(lymph.delta_sensing_direction)
+
 
 
     def correlation(self, independents, dependents):
@@ -355,42 +354,46 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         plt.show()
         """
 
-        morph_deriv_thresh_low = 0.075
-        delta_sensing_direction_thresh_low = 0.02
-        delta_sensing_direction_thresh_high = 0.08
+        morph_deriv_thresh_low = 0.025
+        delta_sensing_direction_thresh_low = 0.01
+        delta_sensing_direction_thresh_high = 0.03
         self._set_pca(n_components=3)
 
         self._set_morph_derivs()
         self._set_centroid_attributes('delta_sensing_direction')
+        self._set_centroid_attributes('delta_centroid')
 
         fig = plt.figure()
-        lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if lymph.morph_deriv is not None and lymph.delta_sensing_direction is not None]
+        lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if lymph.morph_deriv is not None and lymph.delta_sensing_direction is not None and lymph.delta_centroid is not None]
 
 
         for idx_pc, pc in enumerate(['pca0', 'pca1', 'pca2']):
 
-            ax = fig.add_subplot(2, 3, idx_pc+1)
+            ax = fig.add_subplot(1, 3, idx_pc+1)
             for lymph in lymphs:
-                if lymph.morph_deriv > morph_deriv_thresh_low or lymph.delta_sensing_direction < delta_sensing_direction_thresh_low:
-                    ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'o', s = 5, alpha = 0.5, linewidths = 0)
+                if lymph.morph_deriv < morph_deriv_thresh_low:
+                    if lymph.delta_sensing_direction < delta_sensing_direction_thresh_low:
+                        ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'o', s = 5, alpha = 0.5, linewidths = 0)
             for lymph in lymphs:
                 if lymph.morph_deriv < morph_deriv_thresh_low and lymph.delta_sensing_direction > delta_sensing_direction_thresh_low:
                     ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'x', s = 15)
             ax.tick_params(axis="both",direction="in")
             if idx_pc != 0:
                 ax.set_yticks([])
-            ax.set_xticks([])
+            #ax.set_xticks([])
 
+            """
             ax = fig.add_subplot(2, 3, 3+idx_pc+1)
             for lymph in lymphs:
-                if lymph.morph_deriv > morph_deriv_thresh_low or lymph.delta_sensing_direction > delta_sensing_direction_thresh_low:
+                if lymph.morph_deriv > morph_deriv_thresh_low or lymph.delta_sensing_direction > delta_sensing_direction_thresh_low and lymph.delta_centroid < 0.15:
                     ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'o', s = 5, alpha = 0.5, linewidths = 0)
             for lymph in lymphs:
-                if lymph.morph_deriv < morph_deriv_thresh_low and lymph.delta_sensing_direction < delta_sensing_direction_thresh_low:
+                if lymph.morph_deriv < morph_deriv_thresh_low and lymph.delta_sensing_direction < delta_sensing_direction_thresh_low and lymph.delta_centroid > 0.15:
                     ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'x', s = 15)
             ax.tick_params(axis="both",direction="in")
             if idx_pc != 0:
                 ax.set_yticks([])
+            """
 
         plt.subplots_adjust(hspace = 0, wspace = 0)
         plt.show()
@@ -400,47 +403,37 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
     def gather_time_series(self):
+        """
+        Gather shape time series into dictionary with sub dictionaries containing joint (or gaps of size 1) frame series
+        """
+
 
         self._set_pca(n_components=3)
         self._set_centroid_attributes('delta_centroid', num_either_side = 2)
         self._set_centroid_attributes('delta_sensing_direction', num_either_side = 2)
 
-        dict1 = {}
+        all_consecutive_frames = []
 
         alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
         for idx_cell, lymph_series in self.cells.items():
 
             count = 0
-            dict2 = {'frame':[], 'PC0':[], 'PC1':[], 'PC2':[], 'delta_centroid':[], 'delta_sensing_direction':[]}
-            prev_values = [0, None, None, None, None, None]
+            consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res = lymph_series[0].t_res)
+            prev_values = [None, None, None, None]
             for idx_lymph, lymph in enumerate(lymph_series):
-                if lymph.delta_centroid is not None and lymph.delta_sensing_direction is not None:
-                    if idx_lymph == 0 or lymph.frame-prev_values[0] == 1:
-                        self._add_to_dict2(dict2, lymph)
-                    elif lymph.frame-prev_values[0] == 2: #linear interpolation if only 1 frame missing
-                        dict2['frame'].append(lymph.frame-1)
-                        dict2['PC0'].append( (dict2['PC0'][-1]+lymph.pca[0])/2 )
-                        dict2['PC1'].append( (dict2['PC1'][-1]+lymph.pca[0])/2 )
-                        dict2['PC2'].append( (dict2['PC2'][-1]+lymph.pca[0])/2 )
-                        dict2['delta_centroid'].append( (dict2['delta_centroid'][-1]+lymph.delta_centroid)/2 )
-                        dict2['delta_sensing_direction'].append( (dict2['delta_sensing_direction'][-1]+lymph.delta_sensing_direction)/2 )
-                        self._add_to_dict2(dict2, lymph)
+                if idx_lymph == 0 or lymph.frame-prev_values[0] == 1:
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2])
+                elif lymph.frame-prev_values[0] == 2: #linear interpolation if only 1 frame missing
+                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2)
+                else:
+                    all_consecutive_frames.append(consecutive_frames)
+                    count += 1
+                    consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res = lymph_series[0].t_res)
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2])
+                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2]]
 
-                    else:
-                        plt.scatter(lymph.frame, 0)
-                        plt.plot(dict2['frame'], dict2['PC0'])
-                        dict1[str(idx_cell)+alphabet[count]] = dict2
-                        count += 1
-                        dict2 = {'frame':[], 'PC0':[], 'PC1':[], 'PC2':[], 'delta_centroid':[], 'delta_sensing_direction':[]}
+            all_consecutive_frames.append(consecutive_frames)
 
-                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction]
-
-            dict1[str(idx_cell)+alphabet[count]] = dict2
-            plt.plot(dict2['frame'], dict2['PC0'])
-            plt.show()
-            plt.close()
-
-
-        pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/posture_series/all.pickle','wb')
-        pickle.dump(dict1, pickle_out)
+        pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series.pickle','wb')
+        pickle.dump(all_consecutive_frames, pickle_out)

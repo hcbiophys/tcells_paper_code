@@ -27,10 +27,10 @@ class Raw_Methods:
 
         if uropod_align:
             uropod, centroid, vertices = self._uropod_align()
-            plotter.add_mesh(pv.Sphere(radius=0.1, center=uropod), color = (1, 0, 0))
+            plotter.add_mesh(pv.Sphere(radius=1, center=uropod), color = (1, 0, 0))
             surf = pv.PolyData(vertices, self.faces)
         else:
-            plotter.add_mesh(pv.Sphere(radius=0.5, center=self.uropod), color = (1, 0, 0))
+            #plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
             surf = pv.PolyData(self.vertices, self.faces)
 
 
@@ -38,7 +38,7 @@ class Raw_Methods:
             plotter.add_mesh(surf, color = color, opacity = opacity)
         else:
             plotter.add_mesh(surf, color = color, scalars = scalars, opacity = opacity)
-        
+
 
     def _set_centroid(self):
         """
@@ -59,24 +59,44 @@ class Raw_Methods:
 
 
 
-    def _uropod_align(self, axis = np.array([0, 0, 1])):
+    def _uropod_align(self, axis = np.array([0, 0, -1])):
         """
         Shift centroid to origin and rotate to align ellipsoid with an axis.
         """
 
-        if not self.uropod_aligned:
 
-            vertices = self.vertices - self.uropod
-            centroid = self.centroid - self.uropod
-            print(np.mean(vertices))
-            uropod = np.array([0, 0, 0])
+        vertices = self.vertices - self.uropod
+        centroid = self.centroid - self.uropod
+        print(np.mean(vertices))
+        uropod = np.array([0, 0, 0])
 
-            rotation_matrix = utils_general.rotation_matrix_from_vectors(centroid, axis)
-            R = Rotation.from_matrix(rotation_matrix)
-            vertices = R.apply(vertices)
-            centroid = R.apply(centroid)
+        rotation_matrix = utils_general.rotation_matrix_from_vectors(centroid, axis)
+        R = Rotation.from_matrix(rotation_matrix)
+        vertices = R.apply(vertices)
+        centroid = R.apply(centroid)
 
         return uropod, centroid, vertices
+
+
+    def _uropod_and_horizontal_align(self):
+
+        uropod, centroid, vertices = self._uropod_align()
+        ranges = []
+        for idx in range(2):
+            coord_range = np.max(vertices[:, idx]) - np.min(vertices[:, idx])
+            ranges.append(coord_range)
+
+        horiz_vector = [0, 0, 0]
+        horiz_vector[ranges.index(max(ranges))] = 1
+        rotation_matrix = utils_general.rotation_matrix_from_vectors(horiz_vector, (-1, -1, 0))
+
+        R = Rotation.from_matrix(rotation_matrix)
+        vertices = R.apply(vertices)
+        centroid = R.apply(centroid)
+
+        return uropod, centroid, vertices
+
+
 
 
 
