@@ -6,6 +6,7 @@ import os
 import pyvista as pv
 import pickle
 from scipy.spatial.transform import Rotation
+from scipy.ndimage import measurements
 
 import lymphocytes.utils.disk as utils_disk
 import lymphocytes.utils.plotting as utils_plotting
@@ -39,13 +40,66 @@ class Raw_Methods:
         else:
             plotter.add_mesh(surf, color = color, scalars = scalars, opacity = opacity)
 
+        """
+        plotter.add_lines(np.array([[-100, 0, 0], [100, 0, 0]]), color = (0, 0, 0))
+        plotter.add_lines(np.array([[0, -100, 0], [0, 100, 0]]), color = (0, 0, 0))
+        plotter.add_lines(np.array([[0, 0, -100], [0, 0, 100]]), color = (0, 0, 0))
+        """
 
-    def _set_centroid(self):
+    def voxel_point_cloud(self, plotter):
+
+
+        voxels = np.array(self.voxels)
+        voxels = np.moveaxis(np.moveaxis(voxels, 0, -1), 0, 1)
+
+        def remove_extra_edge(idx_coord, voxels):
+            coords = [0, 1, 2]
+            other_coords = [i for i in coords if i != idx_coord]
+            for row in range(voxels.shape[other_coords[0]]):
+                for col in range(voxels.shape[other_coords[1]]):
+                    for go in range(voxels.shape[coords[idx_coord]]):
+                        if idx_coord == 0:
+                            if voxels[go, row, col] == 1:
+                                voxels[go, row, col]  = 0
+                                break
+
+                        elif idx_coord == 1:
+                            if voxels[row, go, col] == 1:
+                                voxels[row, go, col] = 0
+                                break
+
+                        elif idx_coord == 2:
+                            if voxels[row, col, go] == 1:
+                                voxels[row, col, go] = 0
+                                break
+
+            return voxels
         """
-        Set the centroid attribute
+        for idx_coord in [0, 1, 2]:
+            print('idx_coord', idx_coord)
+            voxels = remove_extra_edge(idx_coord, voxels)
         """
-        x, y, z = np.argwhere(self.zoomed_voxels == 1).sum(0) / np.sum(self.zoomed_voxels)
-        self.centroid = np.array([x*5*self.xyz_res[0], y*5*self.xyz_res[1], z*5*self.xyz_res[2]])
+
+
+        lw, num = measurements.label(voxels)
+        area = measurements.sum(voxels, lw, index=np.arange(lw.max() + 1))
+
+
+        for idx, j in enumerate(list(np.unique(lw))[1:]):
+            voxels_sub = np.zeros_like(lw)
+            voxels_sub[lw == j] = 1
+
+            coordinates = np.argwhere(voxels_sub == 1)*np.array(self.xyz_res) + 0.5*np.array(self.xyz_res)
+            point_cloud = pv.PolyData(coordinates)
+            color = np.random.rand(3)
+            plotter.add_mesh(point_cloud, color = color, opacity = 0.3)
+
+
+        x, y, z = coordinates.sum(0) / np.sum(voxels)
+        self.voxels_centroid = np.array([x, y, z])
+
+
+
 
 
     def uropod_centroid_line_plot(self, plotter=None, color = (1, 1, 1)):
@@ -95,19 +149,3 @@ class Raw_Methods:
         centroid = R.apply(centroid)
 
         return uropod, centroid, vertices
-
-
-
-
-
-    def show_voxels(self):
-        """
-        Plot zoomed voxels (zoomed for delta_centroid)
-        """
-        fig_showVoxels = plt.figure()
-        ax = fig_showVoxels.add_subplot(111, projection = '3d')
-        ax.voxels(self.zoomed_voxels,  edgecolors = 'white')
-        utils_plotting.label_axes_3D(ax)
-
-        print(self.zoomed_voxels.shape)
-        sys.exit()

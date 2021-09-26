@@ -66,9 +66,9 @@ class SH_Methods:
         self.coeff_array[:, [0, 1, 2]] = self.coeff_array[:, [2, 1, 0]]
 
         # scale by voxel resolution
-        self.coeff_array[:, 0] *= 5*self.xyz_res[0] # 5 since zoomed by 5x, 0.103 for voxel resolution
-        self.coeff_array[:, 1] *= 5*self.xyz_res[1]
-        self.coeff_array[:, 2] *= 5*self.xyz_res[2]
+        self.coeff_array[:, 0] *= (1/self.zoom_factor)*self.xyz_res[0]
+        self.coeff_array[:, 1] *= (1/self.zoom_factor)*self.xyz_res[1]
+        self.coeff_array[:, 2] *= (1/self.zoom_factor)*self.xyz_res[2]
 
 
     def _get_clm(self, dimension, l, m):
@@ -142,6 +142,11 @@ class SH_Methods:
                         func_value += clm*sph_harm(m, l, p, t)
                 list.append(func_value.real)
 
+        if self.idx_cell[:2] == 'zm':
+            xs = [x + self.centroid[0] - self.calibration[0] for x in xs] # self.centroid is the mesh centroid
+            ys = [y + self.centroid[1] - self.calibration[1] for y in ys]
+            zs = [z + self.centroid[2] - self.calibration[2] for z in zs]
+
         return xs, ys, zs, phis, thetas
 
     def _get_vertices_faces_plotRecon_singleDeg(self, max_l = None, uropod_align = False, horizontal_align = False):
@@ -150,15 +155,19 @@ class SH_Methods:
         [xs, ys, zs, phis, thetas] = [np.array(i) for i in [xs, ys, zs, phis, thetas]]
 
         vertices = np.array(np.concatenate([xs[..., np.newaxis] , ys[..., np.newaxis] , zs[..., np.newaxis] ], axis = 1))
+        uropod = self.uropod
 
         if uropod_align:
             # don't change class attributes here
+            print(np.mean(vertices), np.mean(self.uropod))
             vertices -= self.uropod
+            centroid = self.centroid - self.uropod
             uropod = np.array([0, 0, 0])
 
-            rotation_matrix = utils_general.rotation_matrix_from_vectors(self.centroid-self.uropod, np.array([0, 0, -1]))
+            rotation_matrix = utils_general.rotation_matrix_from_vectors(centroid-uropod, np.array([0, 0, -1]))
             R = Rotation.from_matrix(rotation_matrix)
             vertices = R.apply(vertices)
+
 
         if horizontal_align:
             ranges = []
@@ -175,21 +184,25 @@ class SH_Methods:
 
         faces = utils_general.faces_from_phisThetas(phis, thetas)
 
-        return vertices, faces
+        return vertices, faces, uropod
 
 
 
 
-    def plotRecon_singleDeg(self, plotter, max_l = None, uropod_align = False, color = (1, 1, 1)):
+    def plotRecon_singleDeg(self, plotter, max_l = None, uropod_align = False, color = (1, 1, 1), opacity = 1):
         """
         Plot reconstruction at a single truncation degree
         """
 
-        vertices, faces = self._get_vertices_faces_plotRecon_singleDeg(max_l = max_l, uropod_align = uropod_align)
+        vertices, faces, uropod = self._get_vertices_faces_plotRecon_singleDeg(max_l = max_l, uropod_align = uropod_align)
 
-
-
-        plotter.add_mesh(pv.Sphere(radius=1, center=(0, 0, 0)), color = (1, 0, 0))
+        plotter.add_mesh(pv.Sphere(radius=1, center=uropod), color = (1, 0, 0))
 
         surf = pv.PolyData(vertices, faces)
-        plotter.add_mesh(surf, color = color)
+        plotter.add_mesh(surf, color = color, opacity = opacity)
+
+        """
+        plotter.add_lines(np.array([[-10, 0, 0], [10, 0, 0]]), color = (0, 0, 0))
+        plotter.add_lines(np.array([[0, -10, 0], [0, 10, 0]]), color = (0, 0, 0))
+        plotter.add_lines(np.array([[0, 0, -10], [0, 0, 10]]), color = (0, 0, 0))
+        """

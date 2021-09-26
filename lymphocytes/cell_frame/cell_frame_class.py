@@ -18,8 +18,6 @@ from lymphocytes.cell_frame.SH_methods import SH_Methods
 
 from lymphocytes.utils.voxels import process_voxels
 
-
-
 class Cell_Frame(Raw_Methods, SH_Methods):
     """
     Class for a single snap/frame of a lymphocyte series
@@ -28,13 +26,12 @@ class Cell_Frame(Raw_Methods, SH_Methods):
     - SH_Methods: methods with spherical harmonics
     """
 
-    def __init__(self, frame, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, xyz_res, idx_cell, max_l, uropod, voxels, vertices, faces):
+    def __init__(self, frame, mat_filename, coeffPathFormat, voxels, xyz_res, zoom_factor, idx_cell, max_l, uropod, calibration, vertices, faces):
         """
         Args:
         - frame: frame number (beware of gaps in these as cells can exit the arenas)
         - mat_filename: .mat file holding the series (read using h5py)
         - coeffPathStart: start of paths for SPHARM coefficients
-        - zoomedVoxelsPathStart: start of paths for the zoomed voxels (saves on processing time)
         - xyz_res: resolution of the voxels (pre-zooming)
         - idx_cell: index of the cell, e.g. '3_1_0'
         - max_l: l tunrcagtion for shape descriptor
@@ -44,37 +41,37 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.mat_filename = mat_filename
         self.frame = frame
         self.idx_cell = idx_cell
+        self.voxels = voxels
         self.xyz_res = xyz_res
+        self.zoom_factor = zoom_factor
         self.color = None
         self.t_res = None
         self.max_l = max_l
         self.uropod = uropod
+        self.calibration = calibration
 
-
-        self.voxels = voxels
         self.vertices = vertices
         self.faces = faces
 
-        self.zoomed_voxels = None
-        if zoomedVoxelsPathFormat is not None:
-            zoomed_voxels = np.asarray(nib.load(zoomedVoxelsPathFormat.format(int(frame))).dataobj)
-            self.zoomed_voxels = process_voxels(zoomed_voxels)
-            self.zoomed_voxels = np.moveaxis(np.moveaxis(self.zoomed_voxels, 0, -1), 0, 1) # reorder
-            self.volume = np.sum(self.zoomed_voxels)*(5**3)*xyz_res[0]*xyz_res[1]*xyz_res[2]
-        self.centroid = None
-        self._set_centroid()
-
+        surf = pv.PolyData(self.vertices, self.faces)
+        self.centroid = surf.center_of_mass()
+        self.volume = surf.volume
 
         self.coeff_array = None
-        #self._set_spharm_coeffs(coeffPathFormat.format(int(frame)))
         self.vector = None
         self.RI_vector = None
         self.RI_vector0 = None
         self.RI_vector1 = None
         self.RI_vector2 = None
         self.RI_vector3 = None
-        #self._set_vector()
-        #self._set_RIvector()
+
+
+        self._set_spharm_coeffs(coeffPathFormat.format(int(frame)))
+        self._set_vector()
+        self._set_RIvector()
+        
+
+
 
         self.morph_deriv = None
 

@@ -7,6 +7,7 @@ import sys
 import h5py # Hierarchical Data Format 5
 import nibabel as nib
 from scipy.ndimage import zoom
+from scipy.ndimage import measurements
 from scipy.special import sph_harm
 from matplotlib import cm, colors
 from mayavi import mlab
@@ -17,37 +18,53 @@ pv.set_plot_theme("document")
 from mkalgo.mk import mk_eab
 import pickle
 
-#from lymphocytes.data.dataloader_good_segs_1 import stack_quads_1
-from lymphocytes.data.dataloader_good_segs_2 import stack_quads_2
-from lymphocytes.data.dataloader_good_segs_3 import stack_quads_3
+#from lymphocytes.data.dataloader_good_segs_1 import stack_attributes_1
+from lymphocytes.data.dataloader_good_segs_2 import stack_attributes_2
+from lymphocytes.data.dataloader_good_segs_3 import stack_attributes_3
 from lymphocytes.cells.cells_class import Cells
 import lymphocytes.utils.general as utils_general
 
 
 if __name__ == '__main__':
-    #idx_cells = ['2_{}'.format(i) for i in range(10)] + ['3_0_0' + '3_0_1'] + ['3_1_{}'.format(i) for i in range(6)]
+    #idx_cells = ['2_{}'.format(i) for i in range(10)] + ['3_0_{}'.format(i) for i in range(3)] + ['3_1_{}'.format(i) for i in range(6)] + ['zm_3_2_{}'.format(i) for i in range(10)]
+    idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_0_{}'.format(i) for i in range(3)] + ['3_1_{}'.format(i) for i in range(6)] + ['zm_3_2_{}'.format(i) for i in [0, 1, 2, 3, 4, 5, 6, 9]]
 
-    idx_cell = '3_0_2'
-    cells = Cells(stack_quads_2 + stack_quads_3, cells_model = [idx_cell], max_l = 15) # I think I have to ignore stack_quads_2 as these are duplicates?
+    cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = idx_cells, max_l = 15) # I think I have to ignore stack_attributes_2 as these are duplicates?
     #for attribute in ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction']:
     ### single frame methods ###
     #cells._set_delta_centroids()
     #lymphs = utils_general.list_all_lymphs(cells)
-    #cells.cells[idx_cell][0].surface_plot(plotter=plotter)
-    #cells.cells[0][0].show_voxels()
+
+    """
+    idx_frame = 5
+    single_frame = [i for i in cells.cells[idx_cell] if i.frame == idx_frame][0]
+    plotter = pv.Plotter()
+    cells.cells[idx_cell][idx_frame].surface_plot(plotter, color = (0.5, 1, 1), opacity = 0.5)
+    #single_frame.voxel_point_cloud(plotter)
+    cells.cells[idx_cell][0].plotRecon_singleDeg(plotter, max_l = 3, uropod_align = True, color = (1, 1, 0.5), opacity = 0.5)
+    plotter.show()
+    sys.exit()
+    """
+
+
+
+    #cells.cells[idx_cell][0].show_voxels()
     #cells.cells[idx_cell][50].surface_plot(plotter = plotter, uropod_align = True)
     #cells.plot_l_truncations(idx_cell=idx_cell)
 
+
     ### single cell methods ###
-    #cells.plot_migratingCell(idx_cell=idx_cell, plot_every = 15)
-    #cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 2)
-    cells.select_uropods(idx_cell=idx_cell)
+    #cells.plot_migratingCell(idx_cell=idx_cell, plot_every = 20)
+    #cells.plot_orig_series(idx_cell='zm_3_2_1', uropod_align = False, color_by = None, plot_every = 12)
+    #cells.plot_voxels_series(idx_cell=idx_cell, plot_every = 10)
+    #cells.select_uropods(idx_cell=idx_cell)
+    #cells.save_calibrations(idx_cell=idx_cell)
     #cells.plot_uropod_centroid_line(idx_cell = idx_cell, plot_every = 1)
     #cells.plot_uropod_trajectory(idx_cell = 4)
     #cells.plot_attribute(idx_cell, attribute = 'RI_vector0')
     #cells.plot_series_PCs(idx_cell=idx_cell, plot_every=15)
     #cells.plot_series_voxels(plot_every)
-    #cells.plot_recon_series(idx_cell = idx_cell, max_l = 2, color_by = 'pca2', plot_every=5)
+    #cells.plot_recon_series(idx_cell = idx_cell, max_l = 7, color_by = None, plot_every=20)
     #cells.gather_time_series()
 
 
@@ -67,11 +84,10 @@ if __name__ == '__main__':
     #cells.rigid_motions()
     #cells.plot_PC_space(plot_original = False)
     #cells.plot_PC_space(plot_original = True)
-    #cells.plot_PC_space()
 
     ### centroid variable methods ###
     #cells.plot_centroids(color_by = 'delta_centroid')
     #cells.set_angles()
     #cells.correlate_shape_with_delta_centroidAngle(max_l, n_components, pca = False)
-    #cells.gather_time_series()
+    cells.gather_time_series()
     #plt.show()

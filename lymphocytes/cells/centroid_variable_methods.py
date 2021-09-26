@@ -68,9 +68,11 @@ class Centroid_Variable_Methods:
                 if lymph.mean_centroid is not None:
                     if frame-1 in frames and dict[frame-1].mean_centroid is not None:
                         lymph.delta_centroid = np.linalg.norm(lymph.mean_centroid-dict[frame-1].mean_centroid)
+                        lymph.delta_centroid /= np.cbrt(lymph.volume)
                         lymph.delta_centroid /= lymph.t_res
                     elif frame+1 in frames and dict[frame+1].mean_centroid is not None:
                         lymph.delta_centroid = np.linalg.norm(dict[frame+1].mean_centroid-lymph.mean_centroid)
+                        lymph.delta_centroid /= np.cbrt(lymph.volume)
                         lymph.delta_centroid /= lymph.t_res
 
 

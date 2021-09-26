@@ -80,7 +80,7 @@ class PCA_Methods:
         fig_sampling = plt.figure()
 
         for idx_PC in range(PCs.shape[1]):
-
+            print('HERE')
 
             min_copy = copy.deepcopy(mean)
             min_copy[idx_PC] = mins[idx_PC]
@@ -104,6 +104,7 @@ class PCA_Methods:
                     ax.set_xticks([])
 
         plt.subplots_adjust(hspace = 0.1, wspace = 0)
+        plt.show()
 
 
 
@@ -138,6 +139,7 @@ class PCA_Methods:
                 grid_vectors = [] # vectors that could be good for this part of the PC
                 grid_lymphs = []
                 for vector, lymph in zip(vectors, lymphs):
+                    #if int((vector[idx_component] - min_) // (range_/grid_size)) in [grid, grid+1]:
                     if int((vector[idx_component] - min_) // (range_/grid_size)) == grid:
                         grid_vectors.append(vector)
                         grid_lymphs.append(lymph)
@@ -148,6 +150,8 @@ class PCA_Methods:
                 to_plot = grid_lymphs[idx_min]
                 plotted_points.append(grid_vectors[idx_min])
                 plotter.subplot(idx_component, grid)
+
+
                 if plot_original:
                     to_plot.surface_plot(plotter, uropod_align=True)
                 else:
@@ -192,8 +196,7 @@ class PCA_Methods:
         for lymph in lymphs:
             #if random.randint(0, 50) == 0:
             if len([i for i in coords_plotted if np.linalg.norm(lymph.pca_normalized-i) < 0.75]) == 0:
-                vertices, faces = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = 3, uropod_align = True, horizontal_align = True)
-                uropod = np.array([0, 0, 0])
+                vertices, faces, uropod = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = 3, uropod_align = True, horizontal_align = True)
                 if plot_original:
                     #uropod, centroid, vertices = lymph._uropod_align(axis = np.array([0, 0, -1]))
                     uropod, centroid, vertices = lymph._uropod_and_horizontal_align()

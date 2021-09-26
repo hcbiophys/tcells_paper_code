@@ -13,9 +13,12 @@ import pyvista as pv
 pv.set_plot_theme("document")
 import random
 
-from lymphocytes.data.dataloader_good_segs_2 import stack_quads_2
-from lymphocytes.data.dataloader_good_segs_3 import stack_quads_3
+from lymphocytes.data.dataloader_good_segs_2 import stack_attributes_2
+from lymphocytes.data.dataloader_good_segs_3 import stack_attributes_3
 from lymphocytes.cells.cells_class import Cells
+
+
+
 
 def move_sympyplot_to_axes(p, ax):
     backend = p.backend(p)
@@ -43,10 +46,7 @@ class CWT():
                 i.pca1_list = i.pca1_list[::2]
                 i.pca2_list = i.pca2_list[::2]
 
-                plt.plot(i.pca0_list)
-                plt.plot(i.pca1_list)
-                plt.plot(i.pca2_list)
-                plt.show()
+
 
 
         idxs_keep = [i for i,j in enumerate(self.all_consecutive_frames) if len(j.pca0_list) > min_length]
@@ -77,7 +77,7 @@ class CWT():
         fake_series = [1 for i in range(40)]
 
         coef, freqs = pywt.cwt(fake_series, self.scales, self.wavelet)
-        coef = abs(coef)
+        #coef = abs(coef)
 
         plt.imshow(coef)
         plt.show()
@@ -96,11 +96,16 @@ class CWT():
                 func = (1/sqrt(morB*pi))*exp((-((t_-5)/scale)**2)/morB)*exp(2*pi*1.j*morC*((t_-5)/scale))
                 func +=  (scale-min(self.scales)) + (scale-min(self.scales))*I
             elif self.wavelet[:4] == 'cgau':
-
                 func = exp(-1.j*((t_-5)/scale))*exp(-((t_-5)/scale)**2)  # t_-scale*2 for plotting each shifted horizontally
                 for _ in range(int(self.wavelet[4])):
                     func = func.diff(t_)
                 func +=  (scale-min(self.scales)) + (scale-min(self.scales))*I
+            elif self.wavelet[:4] == 'mexh':
+                func = (1-(((t_-5)/scale)**2))*exp(-0.5*(((t_-5)/scale)**2))
+            elif self.wavelet[:4] == 'gaus':
+                func = exp(-(((t_-5)/scale)**2))
+                for _ in range(int(self.wavelet[4])):
+                    func = func.diff(t_)
 
             if frames_plot == 'all':
                 p_real = plot(re(func), show = False, xlim = [-10, 500], ylim = [-2, 7])
@@ -131,7 +136,7 @@ class CWT():
 
 
 
-    def set_spectograms(self, chop = 3):
+    def set_spectograms(self, chop = 3, with_signals = False):
 
         features = ['pca0_list', 'pca1_list', 'pca2_list']
         self.num_features = len(features)
@@ -141,7 +146,9 @@ class CWT():
             spectogram = []
             for idx_attribute, attribute in enumerate(features):
                 coef, freqs = pywt.cwt(getattr(consecutive_frames, attribute), self.scales, self.wavelet)
-                coef = abs(coef)
+                #coef = abs(coef)
+                if with_signals:
+                    coef = np.vstack([getattr(consecutive_frames, attribute), coef])
                 spectogram.append(coef)
             spectogram = np.concatenate(spectogram, axis = 0)
             spectogram = spectogram[:, chop:-chop]
@@ -160,7 +167,7 @@ class CWT():
             for idx_feature in range(self.num_features):
                 ax = fig.add_subplot(self.num_features, 1, idx_feature+1)
                 spect_section = spectogram[idx_feature*int(spectogram.shape[0]/self.num_features):(idx_feature+1)*int(spectogram.shape[0]/self.num_features), :]
-                ax.imshow(spect_section, vmin = -0.362, vmax = 0.654)
+                ax.imshow(spect_section, vmin = -0.25, vmax = 0.25)
         else:
             fig = plt.figure()
             for idx_feature in range(self.num_features):
@@ -192,18 +199,51 @@ class CWT():
 
     def plot_embeddings(self):
 
+
+
         fig = plt.figure()
-        ax1 = fig.add_subplot(1, 2, 1)
-        ax2 = fig.add_subplot(1, 2, 2)
+        ax = fig.add_subplot(111)
+        xs, ys, colors, names = [], [], [], []
         for consecutive_frames in self.all_consecutive_frames:
-            color = np.random.rand(3,)
-            ax1.plot(consecutive_frames.embeddings[:, 0], consecutive_frames.embeddings[:, 1], random.choice(['-o', '-^', '-x', '-p']), c = color, label = consecutive_frames.name)
-            ax2.scatter(consecutive_frames.embeddings[:, 0], consecutive_frames.embeddings[:, 1], c = color)
-            for row in range(consecutive_frames.embeddings.shape[0]):
-                ax1.text(consecutive_frames.embeddings[row, 0], consecutive_frames.embeddings[row, 1], str(consecutive_frames.frame_list[row]), color=color, fontsize=12)
-        ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.tight_layout()
-        #plt.show()
+            colors += [np.random.rand(3,)]*len(consecutive_frames.frame_list)
+            xs += list(consecutive_frames.embeddings[:, 0])
+            ys += list(consecutive_frames.embeddings[:, 1])
+            names += [consecutive_frames.name + '-' + str(i) for i in consecutive_frames.frame_list]
+
+
+        sc = ax.scatter(xs, ys, c = colors)
+        for consecutive_frames in self.all_consecutive_frames:
+            if consecutive_frames.name == 'zm_3_2_0a':
+                ax.plot(consecutive_frames.embeddings[:, 0], consecutive_frames.embeddings[:, 1])
+
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+
+        annot = ax.annotate("", xy=(0,0), xytext=(20,20),textcoords="offset points",
+                    bbox=dict(boxstyle="round", fc="w"),
+                    arrowprops=dict(arrowstyle="->"))
+        annot.set_visible(False)
+
+        def update_annot(ind):
+            pos = sc.get_offsets()[ind["ind"][0]]
+            annot.xy = pos
+            text = "{}".format(" ".join([names[n] for n in ind["ind"]]))
+            annot.set_text(text)
+            #annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
+            annot.get_bbox_patch().set_alpha(0.4)
+        def hover(event):
+            vis = annot.get_visible()
+            if event.inaxes == ax:
+                cont, ind = sc.contains(event)
+                if cont:
+                    update_annot(ind)
+                    annot.set_visible(True)
+                    fig.canvas.draw_idle()
+                else:
+                    if vis:
+                        annot.set_visible(False)
+                        fig.canvas.draw_idle()
+
+        fig.canvas.mpl_connect("motion_notify_event", hover)
 
 
     def k_means_clustering(self, plot = False):
@@ -235,6 +275,7 @@ class CWT():
             fig_kde = plt.figure()
             ax = fig_kde.add_subplot(111)
             ax.imshow(pdf_array[::-1, :])
+            ax.set_title('min:{:.2g}, max:{:.2g}'.format(np.min(pdf_array), np.max(pdf_array)))
         #plt.show()
         return pdf_array
 
@@ -263,33 +304,35 @@ class CWT():
             plt.show()
 
 
-def show_cell_series_clustered(idx_segments, frame_lists, wavelet = None, scales = None, chop = None):
+def show_cell_series_clustered(idx_segments, center_frames, wavelet = None, scales = None, chop = None):
     alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
-    for idx_segment, frame_list in zip(idx_segments, frame_lists):
+    for idx_segment, center_frame in zip(idx_segments, center_frames):
         idx_cell, letter_keep = idx_segment[:-1], idx_segment[-1]
-        cells = Cells(stack_quads_2 + stack_quads_3, cells_model = [idx_cell], max_l = 15)
+        cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = [idx_cell], max_l = 15)
         for lymph_series in cells.cells.values():
             dict = {}
             prev_frame = None
             count = 0
             keep = []
+            frame_list_1 = np.linspace(center_frame-6, center_frame+6, 5)
+            frame_list_2 = np.linspace(center_frame-6, center_frame+6, 5)
             for idx_lymph, lymph in enumerate(lymph_series):
                 if prev_frame is not None and lymph.frame-prev_frame > 2:
                     count +=1
                 letter = alphabet[count]
-                if letter == letter_keep and lymph.frame in frame_list:
+                if letter == letter_keep and lymph.frame in frame_list_1:
                     keep.append(lymph)
                 prev_frame = lymph.frame
         cells.cells[idx_cell] = keep
-        cells.plot_orig_series(idx_cell=idx_cell, uropod_align = True, color_by = None, plot_every = 1)
+        cells.plot_orig_series(idx_cell=idx_cell, uropod_align = True, color_by = None, plot_every = 1, flat = True)
 
         all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series.pickle',"rb"))
         cfs = [i for i in all_consecutive_frames if i.name == idx_cell + letter_keep][0]
 
         fig = plt.figure()
         ax1, ax2 = fig.add_subplot(1, 2, 1), fig.add_subplot(1, 2, 2)
-        idxs_plot = [i for i,j in enumerate(cfs.frame_list) if j in frame_list]
+        idxs_plot = [i for i,j in enumerate(cfs.frame_list) if j in frame_list_2]
         ax1.plot(range(len(idxs_plot)), [j for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], color = 'red')
         ax1.plot(range(len(idxs_plot)), [j for i,j in enumerate(cfs.pca1_list) if i in idxs_plot], color = 'blue')
         ax1.plot(range(len(idxs_plot)), [j for i,j in enumerate(cfs.pca2_list) if i in idxs_plot], color = 'green')
@@ -300,54 +343,53 @@ def show_cell_series_clustered(idx_segments, frame_lists, wavelet = None, scales
         if wavelet is not None and scales is not None and chop is not None:
             cwt = CWT(wavelet = wavelet, scales = scales, idx_segment = idx_segment)
             cwt.set_spectograms(chop = chop)
-            print('fl', cwt.all_consecutive_frames[0].frame_list)
-            print('spect shape', cwt.all_consecutive_frames[0].spectogram.shape)
-            idxs_keep = [i for i,j in enumerate(cwt.all_consecutive_frames[0].frame_list) if j in frame_list]
-            print('frame_list', frame_list)
-            print('idxs_keep', idxs_keep)
-
+            idxs_keep = [i for i,j in enumerate(cwt.all_consecutive_frames[0].frame_list) if j in frame_list_2]
             truncated_spectogram = cwt.all_consecutive_frames[0].spectogram[:, idxs_keep]
-            ax2.imshow(truncated_spectogram)
+            ax2.imshow(truncated_spectogram, vmin = -0.25, vmax = 0.25)
         plt.show()
 
-"""
-## clusters ##
-2_0a, 12
-3_1_4a 13
-3_1_3a 64
-3_1_2b 49
-3_1_0c 93
-2_4a 47
-2_7a 71
-"""
-#show_cell_series_clustered(idx_segments = ['2_0a', '3_1_4a', '3_1_3a', '3_1_2b', '3_1_0c', '2_4a', '2_7a'],
-#                            frame_lists = [range(i-5, i+5) for i in [12, 13, 64, 49, 93, 47, 71]],
-#                            wavelet = 'cgau1', scales = [0.6*i for i in range(1, 5)], chop = 3)
-#sys.exit()
 
-wavelets = ['cgau1', 'cgau2', 'cgau3',  'cgau8', 'cmor{}-{}'.format(morB, morC)]
-scales_lists = [[0.6*i for i in range(1, 5)], [0.8*i for i in range(1, 5)], [1*i for i in range(1, 5)], [1.4*i for i in range(1, 5)], [0.65*i for i in range(1, 5)]]
+show_cell_series_clustered(idx_segments = ['zm_3_2_6a', '2_4a', '3_1_3a', '3_0_0a' ,'3_0_0a', '2_9c', '2_6a', 'zm_3_2_41'],
+                            center_frames = [71, 9, 25, 36, 20, 198, 33, 60],
+                            wavelet = 'mexh', scales = [0.5*i for i in range(1, 5)], chop = 3)
+sys.exit()
+
+CHANGE IT SO SECTOGRAMS AND SERIES SHOW ALL IN WINDOW OF 10
+
+
+
+
+# COMPLEX
+#wavelets = ['cgau1', 'cgau2', 'cgau3',  'cgau8', 'cmor{}-{}'.format(morB, morC)]
+#scales_lists = [[0.6*i for i in range(1, 5)], [0.8*i for i in range(1, 5)], [1*i for i in range(1, 5)], [1.4*i for i in range(1, 5)], [0.65*i for i in range(1, 5)]]
+
+# REAL
+wavelets = ['mexh', 'gaus1', 'gaus2', 'gaus3']
+scales_lists = [[0.5*i for i in range(1, 5)], [0.4*i for i in range(1, 5)], [0.6*i for i in range(1, 5)], [0.8*i for i in range(1, 5)]]
+
+# f_nyquist = 0.5
 for wavelet, scales in zip(wavelets, scales_lists):
-    if wavelet == 'cgau1':
 
 
+    cwt = CWT(wavelet = wavelet, scales = scales, idx_segment = 'all')
+    #cwt.print_freqs()
 
-        cwt = CWT(wavelet = wavelet, scales = scales, idx_segment = 'all')
+    #cwt.edge_effect_size()
+
+    cwt.set_spectograms(chop = 3, with_signals = False)
+
+    #spectograms_all = [i.spectogram for i in cwt.all_consecutive_frames]
+    #spectograms_all = np.concatenate(spectograms_all, axis = 1)
 
 
-        #cwt.print_freqs()
-        #cwt.edge_effect_size()
+    #cwt.plot_wavelet_series_spectogram(d3 = False, name = 'all')
 
+    cwt.set_tsne_embeddings()
+    cwt.plot_embeddings()
+    #cwt.k_means_clustering(plot = True)
+    #color_by_split = [i[:, 0].flatten() for i in cwt.embeddings_split]
+    #cwt.plot_time_series(color_by_split = color_by_split)
 
-        cwt.set_spectograms(chop = 3)
-        cwt.plot_wavelet_series_spectogram(d3 = False, name = 'all')
+    cwt.kde(plot = True)
 
-        cwt.set_tsne_embeddings()
-        cwt.plot_embeddings()
-        #cwt.k_means_clustering(plot = True)
-        #color_by_split = [i[:, 0].flatten() for i in cwt.embeddings_split]
-        #cwt.plot_time_series(color_by_split = color_by_split)
-
-        cwt.kde(plot = True)
-
-        plt.show()
+    plt.show()

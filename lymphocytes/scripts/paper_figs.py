@@ -5,8 +5,8 @@ from mayavi import mlab
 from scipy.special import sph_harm
 import pyvista as pv
 pv.set_plot_theme("document")
-from lymphocytes.data.dataloader_good_segs_1 import stack_quads_1
-from lymphocytes.data.dataloader_good_segs_2 import stack_quads_2
+from lymphocytes.data.dataloader_good_segs_1 import stack_attributes_1
+from lymphocytes.data.dataloader_good_segs_2 import stack_attributes_2
 from lymphocytes.cells.cells_class import Cells
 import lymphocytes.utils.general as utils_general
 
@@ -36,7 +36,7 @@ def visualise_spherical_harmonics():
 
 def cell_mapping_to_sphere(idx_cell = 2):
 
-    cells = Cells(stack_quads_1+stack_quads_2, cells_model = [idx_cell], max_l = 15)
+    cells = Cells(stack_attributes_1+stack_attributes_2, cells_model = [idx_cell], max_l = 15)
     lymph = cells.cells[idx_cell][0]
 
     # reconstruction
@@ -72,7 +72,7 @@ def cell_mapping_to_sphere(idx_cell = 2):
     mlab.show()
 
 def justify_extra_descriptor_var():
-    cells = Cells(stack_quads_1+stack_quads_2, cells_model = [4], max_l = 15) # I think I have to ignore stack_quads_2 as these are duplicates?
+    cells = Cells(stack_attributes_1+stack_attributes_2, cells_model = [4], max_l = 15) # I think I have to ignore stack_attributes_2 as these are duplicates?
     lymph1 = cells.cells[4][10]
     lymph2 = cells.cells[4][50]
     fig = plt.figure(figsize = (1.1, 0.9))

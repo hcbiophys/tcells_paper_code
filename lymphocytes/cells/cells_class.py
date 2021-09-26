@@ -27,7 +27,6 @@ from lymphocytes.cell_frame.cell_frame_class import Cell_Frame
 from lymphocytes.behavior_analysis.consecutive_frames_class import Consecutive_Frames
 
 import lymphocytes.utils.disk as utils_disk
-import lymphocytes.utils.voxels as utils_voxels
 import lymphocytes.utils.plotting as utils_plotting
 import lymphocytes.utils.general as utils_general
 
@@ -43,9 +42,9 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
     """
 
 
-    def __init__(self, stack_quads, cells_model, max_l):
+    def __init__(self, stack_attributes, cells_model, max_l):
         """
-        - stack_quads: (idx_cell, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, xyz_res)
+        - stack_attributes: (idx_cell, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, xyz_res)
         - cells_model: indexes of the cells to model, e.g. ['3_1_0', '3_1_2']
         """
 
@@ -53,21 +52,35 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         self.cells = {}
         self.cell_colors = {}
 
-        for (idx_cell, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, xyz_res, color, t_res) in stack_quads:
+        for (idx_cell, mat_filename, coeffPathFormat, xyz_res, color, t_res, zoom_factor) in stack_attributes:
 
             if cells_model == 'all' or idx_cell in cells_model:
                 print('idx_cell: {}'.format(idx_cell))
                 lymph_series = []
 
-                #uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
+                uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
 
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_bool=False)
+
+                if idx_cell[:2] == 'zs':
+                    frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_single')
+                elif idx_cell[:2] == 'zm':
+                    frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_many', idx_cell = int(idx_cell[-1]), include_voxels = True)
+                    calibrations = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/calibrations/cell_{}.pickle'.format(idx_cell), "rb"))
+                else:
+                    frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='not_zeiss', include_voxels = True)
 
                 for idx in range(len(frames_all)):
 
+
                     if os.path.isfile(coeffPathFormat.format(int(frames_all[idx]))): # if it's within arena and SPHARM-PDM worked
-                        #snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, zoomedVoxelsPathFormat = zoomedVoxelsPathFormat, xyz_res = xyz_res, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), voxels = voxels_all[idx], vertices = vertices_all[idx], faces = faces_all[idx])
-                        snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, zoomedVoxelsPathFormat = zoomedVoxelsPathFormat, xyz_res = xyz_res, idx_cell = idx_cell, max_l = max_l, uropod = None, voxels = voxels_all[idx], vertices = vertices_all[idx], faces = faces_all[idx])
+
+                        if idx_cell[:2] == 'zm':
+                            snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), calibration = np.array(calibrations[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
+                        else:
+                            snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), calibration = None, vertices = vertices_all[idx], faces = faces_all[idx])
+
+
+                        #snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = None, calibration = None, vertices = vertices_all[idx], faces = faces_all[idx])
 
                         snap.color = color
                         snap.t_res = t_res
@@ -100,7 +113,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
     def plot_attributes(self, attributes):
         """
-        Plot volume changes as calculated from original voxel representations
+        Plot time series and histograms of cell attributes (e.g. volume, principal components etc. )
         """
 
         fig_lines, fig_hists = plt.figure(figsize = (2, 7)), plt.figure(figsize = (2, 7))
@@ -237,12 +250,15 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         Scatter points of the plotted meshes
         """
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+        ax1 = fig.add_subplot(121, projection='3d')
+        ax2 = fig.add_subplot(122, projection='3d')
         for i in vectors:
-            ax.scatter(i[0], i[1], i[2], s = 1, c = 'lightskyblue')
+            ax1.scatter(i[0], i[1], i[2], s = 1, c = 'lightskyblue')
         for i, color in zip(plotted_points_all, ['red', 'green', 'black']):
             for j in i:
-                ax.scatter(j[0], j[1], j[2], s = 6, c = color)
+                ax1.scatter(j[0], j[1], j[2], s = 6, c = color)
+                ax2.scatter(j[0], j[1], j[2], s = 6, c = color)
+        plt.show()
 
 
 
@@ -309,6 +325,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                     colors = [lymph.color  for lymph in plot_lymphs]
                     result = scipy.stats.linregress(np.array(xs), np.array(ys))
                     ax.scatter(xs, ys, s=0.1, c = colors)
+
                     model_xs = np.linspace(min(list(xs)), max(list(xs)), 50)
                     ax.plot(model_xs, [result.slope*i+result.intercept for i in model_xs], c = 'red')
                     ax.tick_params(axis="both",direction="in")
