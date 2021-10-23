@@ -29,8 +29,6 @@ import lymphocytes.utils.general as utils_general
 if __name__ == '__main__':
     idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_1_{}'.format(i) for i in range(6)] + ['zm_3_3_{}'.format(i) for i in range(8)]
     random.shuffle(idx_cells)
-    #idx_cell = 'zm_3_3_2'
-    #idx_cells = [idx_cell]
 
 
     cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = idx_cells, max_l = 15)
@@ -57,7 +55,7 @@ if __name__ == '__main__':
 
 
     ### single cell methods ###
-    #cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 4)
+    #cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 1)
     #cells.plot_migratingCell(idx_cell=idx_cell, color_by = 'time', plot_every = 5)
 
     #cells.plot_voxels_series(idx_cell=idx_cell, plot_every = 10)
@@ -85,6 +83,7 @@ if __name__ == '__main__':
     #cells.plot_component_lymphs(grid_size=7, pca=True, plot_original = True)
     #cells.line_plot_3D(centroid_uropod_pca = 'pca', color_by = None)
     #cells.plot_2D_embeddings(pca = True, components = (0, 1))
+    #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction', 'run'])
     cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction', 'run'])
     #cells.rigid_motions()
     #cells.plot_PC_space(plot_original = False)

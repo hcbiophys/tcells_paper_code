@@ -49,44 +49,17 @@ class CWT():
             self.all_consecutive_frames = [i for i in self.all_consecutive_frames if i.name == idx_segment]
 
 
-        all_pc0, all_pc1, all_pc2 = [], [], []
-        for cfs in self.all_consecutive_frames:
-            all_pc0 += list(cfs.pca0_list)
-            all_pc1 += list(cfs.pca1_list)
-            all_pc2 += list(cfs.pca2_list)
-
 
 
         """
-        acorrs = [[], [], []]
+        acorrs = [[], [], [], []]
         for i in self.all_consecutive_frames:
-            if len(i.pca0_list) > 50:
-                for idx, l in enumerate([i.pca0_list, i.pca1_list, i.pca2_list]):
-                    acf = list(sm.tsa.acf(l, nlags = 99, missing = 'conservative'))
-                    acf += [np.nan for _ in range(100-len(acf))]
-                    acorrs[idx].append(np.array(acf))
-                data = np.vstack([np.array(i.pca0_list), np.array(i.pca1_list), np.array(i.pca2_list)])
-                print(data.shape)
-                noise = np.random.normal(0, 1, size=data.shape)
+            for idx, l in enumerate([i.pca0_list, i.pca1_list, i.pca2_list, i.run_list]):
+                acf = list(sm.tsa.acf(l, nlags = 99, missing = 'conservative'))
+                acf += [np.nan for _ in range(100-len(acf))]
+                acorrs[idx].append(np.array(acf))
 
-
-                residuals = []
-                residuals_noise = []
-                max_lag = 25
-                for i in range(1, max_lag):
-                    model = VAR(data.T)
-                    model_noise = VAR(noise.T)
-                    results = model.fit(i)
-                    residuals.append(np.sum(abs(results.resid)))
-                    results_noise = model_noise.fit(i)
-                    residuals_noise.append(np.sum(abs(results_noise.resid)))
-                #print(results.summary())
-                plt.plot(list(range(1, max_lag)), residuals, color = 'red')
-                plt.plot(list(range(1, max_lag)), residuals_noise, color = 'black')
-                plt.show()
-
-
-        for acorr, color in zip(acorrs, ['red', 'green', 'blue']):
+        for acorr, color in zip(acorrs, ['red', 'green', 'blue', 'pink']):
             acorr = np.array([acorr])
             concat = np.concatenate(acorr, axis = 0)
             m = np.nanmean(abs(concat), axis = 0)
@@ -95,6 +68,7 @@ class CWT():
         plt.show()
         sys.exit()
         """
+
 
         #DO KDE WITH SMALLER TIME SCALES TO VALIDATE THAT (low number of) MOTIFS STRUCTURE IS AT ~50s
         idxs_keep = [i for i,j in enumerate(self.all_consecutive_frames) if len(j.pca0_list) > min_length]
@@ -180,6 +154,7 @@ class CWT():
             ax.plot([j for j in range(len(frames_plot.pca1_list))], frames_plot.pca1_list, color = 'blue')
             ax.plot([j for j in range(len(frames_plot.pca2_list))], frames_plot.pca2_list, color = 'green')
             ax.set_ylim([-1, 1])
+        plt.show()
 
 
 
@@ -199,8 +174,11 @@ class CWT():
                 spectogram.append(coef)
                 """
 
-                mexh_scales = [0.5*i for i in range(2, 5)]
-                gaus1_scales = [0.4*i for i in range(2, 9, 2)]
+                # CHANGED
+                #mexh_scales = [0.5*i for i in range(2, 5)]
+                #gaus1_scales = [0.4*i for i in range(2, 9, 2)]
+                mexh_scales = [0.5*2]
+                gaus1_scales = [0.4*2]
                 coef, _ = pywt.cwt(getattr(consecutive_frames, attribute), mexh_scales, 'mexh')
                 spectogram.append(coef)
                 coef, _ = pywt.cwt(getattr(consecutive_frames, attribute), gaus1_scales, 'gaus1')
@@ -225,18 +203,30 @@ class CWT():
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        ax.imshow(spectogram, vmin = -0.6, vmax = 0.6)
+        # CHANGED
+        #ax.imshow(spectogram, vmin = -0.6, vmax = 0.6)
+        ax.imshow(spectogram, vmin = -0.25, vmax = 0.25)
 
-        for ins in [3, 8, 12, 17, 21]:
+        # CHANGED
+        #for ins in [3, 8, 12, 17, 21]:
+        for ins in [1, 3, 5, 7, 9]:
             spectogram = np.insert(spectogram, ins, np.zeros(shape = (spectogram.shape[1],)), 0)
-        ax.imshow(spectogram, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
+        # CHANGED
+        #ax.imshow(spectogram, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
+        ax.imshow(spectogram, cmap = 'PiYG', vmin = -0.25, vmax = 0.25)
         ax.axis('off')
 
 
     def plot_wavelet_series_spectogram(self, name = 'all'):
         for cfs in self.all_consecutive_frames:
             if name == 'all' or cfs.name == name:
-                #self._plot_wavelets(frames_plot = consecutive_frames)
+                # CHANGED
+                #mexh_scales = [0.5*i for i in range(2, 5)]
+                #gaus1_scales = [0.4*i for i in range(2, 9, 2)]
+                mexh_scales = [0.5*2]
+                gaus1_scales = [0.4*2]
+                self._plot_wavelets(frames_plot = cfs, wavelet = 'mexh', scales = mexh_scales)
+                self._plot_wavelets(frames_plot = cfs, wavelet = 'gaus1', scales = gaus1_scales)
                 self._plot_spectogram(spectogram = cfs.spectogram)
                 fig2 = plt.figure()
                 ax = fig2.add_subplot(111)
@@ -283,12 +273,25 @@ class CWT():
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-
+        """
         #all = np.concatenate([i.spectogram for i in self.all_consecutive_frames], axis = 1)
         #colors = np.max(abs(all), axis = 0)
         colors = []
         for i in self.all_consecutive_frames:
-            colors += list(i.run_list)
+            #colors += list(i.run_list)
+            for j in i.run_list:
+                if j > 0.0075:
+                    colors.append('red')
+                elif j < 0.002:
+                    colors.append('blue')
+                else:
+                    colors.append('grey')
+        """
+
+        #plt.plot(colors, c = 'black')
+        #plt.show()
+
+
 
 
 
@@ -429,7 +432,9 @@ def show_cell_series_clustered(idx_segments, center_frames):
                 if prev_frame is not None and lymph.frame-prev_frame > 2:
                     count +=1
                 letter = alphabet[count]
-                if letter == letter_keep and abs(lymph.frame*lymph.t_res - center_frame*lymph.t_res) < 25:
+                # CAHNGED
+                #if letter == letter_keep and abs(lymph.frame*lymph.t_res - center_frame*lymph.t_res) < 25:
+                if letter == letter_keep and abs(lymph.frame*lymph.t_res - center_frame*lymph.t_res) < 15:
                     keep.append(lymph)
                     lymph_t_res = lymph.t_res
                 prev_frame = lymph.frame
@@ -442,25 +447,32 @@ def show_cell_series_clustered(idx_segments, center_frames):
         fig = plt.figure()
         gs = gridspec.GridSpec(2, 2)
         ax1, ax2, ax3 = fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, :])
-        idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs(j*lymph_t_res-center_frame*lymph_t_res) < 25]
+        # CHANGED
+        #idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs(j*lymph_t_res-center_frame*lymph_t_res) < 25]
+        idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs(j*lymph_t_res-center_frame*lymph_t_res) < 15]
 
-        ax1.plot([i for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], [j for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], color = 'red')
-        ax1.plot([i for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], [j for i,j in enumerate(cfs.pca1_list) if i in idxs_plot], color = 'blue')
-        ax1.plot([i for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], [j for i,j in enumerate(cfs.pca2_list) if i in idxs_plot], color = 'green')
+        ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], color = 'red')
+        ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca1_list) if i in idxs_plot], color = 'blue')
+        ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca2_list) if i in idxs_plot], color = 'green')
         ax1.set_ylim([-1, 1])
 
         # show spectogram
         spect = cfs.spectogram[:, idxs_plot]
         vert = cfs.spectogram[:, cfs.closest_frames.index(center_frame)][:, None]
-        for ins in [3, 8, 12, 17, 21]:
+        # CHANGED
+        #for ins in [3, 8, 12, 17, 21]:
+        for ins in [1, 3, 5, 7, 9]:
             empty = np.empty(shape = (len(idxs_plot),))
             spect = np.insert(spect, ins, empty.fill(np.nan), 0)
             empty = np.empty(shape = (1,))
             vert = np.insert(vert, ins, empty.fill(np.nan), 0)
         vert = np.vstack([vert.T]*4)
 
-        ax2.imshow(spect, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
-        ax3.imshow(vert, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
+        # CHANGED
+        #ax2.imshow(spect, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
+        #ax3.imshow(vert, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
+        ax2.imshow(spect, cmap = 'PiYG', vmin = -0.25, vmax = 0.25)
+        ax3.imshow(vert, cmap = 'PiYG', vmin = -0.25, vmax = 0.25)
         ax2.axis('off')
         ax3.axis('off')
         plt.show()
@@ -478,18 +490,13 @@ wavelets = ['mexh', 'gaus1', 'gaus2', 'gaus3']
 scales_lists = [[0.5*i for i in range(2, 5)], [0.4*i for i in range(2, 9, 2)], [0.6*i for i in range(2, 5)], [0.8*i for i in range(2, 4)]]
 
 # f_nyquist = 0.5
+
+
 """
-show_cell_series_clustered(idx_segments = ['zm_3_3_2a'],
-                            center_frames = [65])
+show_cell_series_clustered(idx_segments = ['2_1a', '2_1a', '3_1_0c'],
+                            center_frames = [55, 225, 99])
 sys.exit()
 """
-
-
-
-
-CHANGE THE SCALES (REDUCE?) BY LOOKING AT THE RUN GRAPHS TO SEE IF THE T-SNE SPACE BETTER SEPARATES RUN AND TUMBLE FEATURES
-
-
 
 
 
@@ -501,14 +508,13 @@ cwt = CWT(idx_segment = 'all', chop = 5)
 cwt.set_spectograms()
 
 
+
 #cwt.plot_wavelet_series_spectogram(name = 'all')
 
 cwt.set_tsne_embeddings()
-cwt.plot_embeddings(load_or_save = 'load', file_name = 'both', path_of = None)
-#cwt.k_means_clustering(plot = True)
-#color_by_split = [i[:, 0].flatten() for i in cwt.embeddings_split]
-#cwt.plot_time_series(color_by_split = color_by_split)
+cwt.plot_embeddings(load_or_save = 'load', file_name = 'both_quick', path_of = '3_1_0c')
 
-cwt.kde(load_or_save = 'load', file_name = 'both')
+
+cwt.kde(load_or_save = 'load', file_name = 'both_quick')
 
 plt.show()
