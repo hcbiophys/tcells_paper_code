@@ -2,7 +2,8 @@ batch*/
 cell_info.docx
 *data*/
 
-
+*.docx
+*.pickle
 *.png
 *mp4
 videos/
