@@ -6,6 +6,7 @@ import matplotlib.tri as mtri
 import pyvista as pv
 import pickle
 from scipy.spatial.transform import Rotation
+import math
 
 import lymphocytes.utils.voxels as utils_voxels
 import lymphocytes.utils.plotting as utils_plotting
@@ -63,12 +64,16 @@ class SH_Methods:
 
         self.coeff_array = coeff_array
 
-        self.coeff_array[:, [0, 1, 2]] = self.coeff_array[:, [2, 1, 0]]
+        if not self.idx_cell[:2] == 'zm':
+            self.coeff_array[:, [0, 1, 2]] = self.coeff_array[:, [2, 1, 0]]
+
+
+
 
         # scale by voxel resolution
-        self.coeff_array[:, 0] *= (1/self.zoom_factor)*self.xyz_res[0]
-        self.coeff_array[:, 1] *= (1/self.zoom_factor)*self.xyz_res[1]
-        self.coeff_array[:, 2] *= (1/self.zoom_factor)*self.xyz_res[2]
+        self.coeff_array[:, 0] *= self.xyz_res[0]
+        self.coeff_array[:, 1] *= self.xyz_res[1]
+        self.coeff_array[:, 2] *= self.xyz_res[2]
 
 
     def _get_clm(self, dimension, l, m):
@@ -108,6 +113,9 @@ class SH_Methods:
                     clm = self._get_clm(coord, l, m)
                     clm /= np.cbrt(self.volume) # from LBS particles and LBS fragments
                     l_energy += clm*np.conj(clm)
+            if math.isnan(np.sqrt(l_energy.real)):
+                print(self.frame, clm)
+
             self.RI_vector.append(np.sqrt(l_energy.real)) # imaginary component is zero
 
 
@@ -142,10 +150,20 @@ class SH_Methods:
                         func_value += clm*sph_harm(m, l, p, t)
                 list.append(func_value.real)
 
+        """
         if self.idx_cell[:2] == 'zm':
+
             xs = [x + self.centroid[0] - self.calibration[0] for x in xs] # self.centroid is the mesh centroid
             ys = [y + self.centroid[1] - self.calibration[1] for y in ys]
             zs = [z + self.centroid[2] - self.calibration[2] for z in zs]
+
+
+
+            xs = [x + np.min(self.vertices[:, 0]) for x in xs]
+            ys = [y + np.min(self.vertices[:, 1]) for y in ys]
+            zs = [z + np.min(self.vertices[:, 2]) for z in zs]
+        """
+
 
         return xs, ys, zs, phis, thetas
 
@@ -196,7 +214,7 @@ class SH_Methods:
 
         vertices, faces, uropod = self._get_vertices_faces_plotRecon_singleDeg(max_l = max_l, uropod_align = uropod_align)
 
-        plotter.add_mesh(pv.Sphere(radius=1, center=uropod), color = (1, 0, 0))
+        #plotter.add_mesh(pv.Sphere(radius=1, center=uropod), color = (1, 0, 0))
 
         surf = pv.PolyData(vertices, faces)
         plotter.add_mesh(surf, color = color, opacity = opacity)

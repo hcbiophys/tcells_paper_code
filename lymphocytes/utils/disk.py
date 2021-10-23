@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import measurements
 from scipy.ndimage.morphology import binary_fill_holes
 import pickle
+import nrrd
+pv.set_plot_theme("document")
 
 
 
@@ -85,24 +87,33 @@ def get_attribute_from_mat(mat_filename, zeiss_type, idx_cell = None, include_vo
             faces_all.append(_modify_faces(faces))
 
     elif zeiss_type == 'zeiss_many':
-        OUT_group = f.get('OUT')
+        OUT_group = f.get('DataOut')
 
-        vertices = f[OUT_group[idx_cell, 0]][3, :]
+        cell_group = f[OUT_group[idx_cell, 0]]
+
+        dataset = cell_group['Surf']
+
+        vertices = dataset[3, :]
         num = vertices.shape[0]
 
+
         for idx2 in range(num):
-            surface_count = f[OUT_group[idx_cell, 0]][0, idx2]
-            surface_index_imaris = f[OUT_group[idx_cell, 0]][0, idx2]
-            frames = f[OUT_group[idx_cell, 0]][2, idx2]
-            vertices = f[OUT_group[idx_cell, 0]][3, idx2]
-            faces = f[OUT_group[idx_cell, 0]][4, idx2]
+            surface_count = dataset[0, idx2]
+            surface_index_imaris = dataset[1, idx2]
+            frames = dataset[2, idx2]
+            vertices = dataset[3, idx2]
+            faces = dataset[4, idx2]
             if include_voxels:
-                voxels = f[OUT_group[idx_cell, 0]][5, idx2]
+                voxels = dataset[5, idx2]
                 voxels_all.append(f[voxels])
             else:
                 voxels_all.append(None)
-            voxel_size = f[OUT_group[idx_cell, 0]][6, idx2]
-            t_res = f[OUT_group[idx_cell, 0]][7, idx2]
+            voxel_size = dataset[6, idx2]
+            #print('voxel_size', np.array(f[voxel_size]))
+
+            t_res = dataset[7, idx2]
+            #print(np.array(f[t_res]))
+
             frames_all.append(int(np.array(f[frames])[0][0]))
             vertices_all.append(np.array(f[vertices]).T)
             faces = np.array(f[faces]) # note: indexing for these starts at 0, so no subtraction of 1 needed
@@ -118,7 +129,7 @@ def get_attribute_from_mat(mat_filename, zeiss_type, idx_cell = None, include_vo
 
 
 def _voxelize(vertices, faces):
-    surf = pv.PolyData(vertices_all[idx], faces_all[idx])
+    surf = pv.PolyData(vertices, faces)
     surf = surf.decimate(0.95)
 
     #surf = pv.voxelize(surf, density=0.5, check_surface=False)
@@ -127,6 +138,9 @@ def _voxelize(vertices, faces):
     y = np.arange(y_min, y_max, 0.5)
     z = np.arange(z_min, z_max, 0.5)
     xx, yy, zz = np.meshgrid(x, y, z)
+    xx = np.moveaxis(xx, 0, 1)
+    yy = np.moveaxis(yy, 0, 1)
+    zz = np.moveaxis(zz, 0, 1)
 
     # Create unstructured grid from the structured grid
     grid = pv.StructuredGrid(xx, yy, zz)
@@ -146,32 +160,81 @@ def _voxelize(vertices, faces):
 
 
 
-def write_all_zoomed_niigz(mat_filename, save_format, voxelize = False, zoom_factor = 0.2, zeiss_type = False, idx_cell = None):
+def check_voxels(voxels):
+    lw, num = measurements.label(voxels)
+    area = measurements.sum(voxels, lw, index=np.arange(lw.max() + 1))
+    area = list(area)
+    if num != 1:
+        print('normal')
+        print('num: {}'.format(num), 'area: {}'.format(area))
+        print('---')
+
+    voxels = 1 - voxels
+
+    lw, num = measurements.label(voxels)
+    area = measurements.sum(voxels, lw, index=np.arange(lw.max() + 1))
+    area = list(area)
+    if num != 1:
+        print('inverted')
+        print('num: {}'.format(num), 'area: {}'.format(area))
+        print('---')
+
+
+def write_all_zoomed_niigz(mat_filename, save_format, voxelize = False, zoom_factor = 0.2, zeiss_type = False, idx_cell = None, xyz_res = None):
     frames_all, voxels_all, vertices_all, faces_all = get_attribute_from_mat(mat_filename=mat_filename, zeiss_type=zeiss_type, idx_cell=idx_cell, include_voxels = True)
+
     for idx in range(len(frames_all)):
-        print(idx)
-        if voxelize:
-            a = _voxelize(vertices_all[idx], faces_all[idx])
 
-        else:
-            voxels = np.array(voxels_all[idx])
-            lw, num = measurements.label(voxels)
-            area = measurements.sum(voxels, lw, index=np.arange(lw.max() + 1))
-            area = list(area)
+        if not os.path.exists(save_format.format(int(frames_all[idx]))):
 
-            voxels_cleaned = np.zeros_like(voxels)
+            print(idx)
 
-            voxels_cleaned[lw == area.index(max(area))] = 1
-            voxels_cleaned = binary_fill_holes(voxels_cleaned).astype(int)
+            if voxelize:
+                voxels_cleaned = _voxelize(vertices_all[idx], faces_all[idx])
 
-            #lw, num = measurements.label(voxels_cleaned)
-            #area = measurements.sum(voxels_cleaned, lw, index=np.arange(lw.max() + 1))
+                check_voxels(voxels_cleaned)
 
-            voxels_cleaned = zoom(voxels_cleaned, (zoom_factor, zoom_factor, zoom_factor), order = 0) # order 0 means not interpolation
 
-        #print(save_format.format(int(frames_all[idx])))
-        new_image = nib.Nifti1Image(voxels_cleaned, affine=np.eye(4))
-        nib.save(new_image, save_format.format(int(frames_all[idx])))
+                """
+                xyz_res = np.array([0.5, 0.5, 0.5])
+                coordinates = np.argwhere(voxels_cleaned == 1)*xyz_res
+
+                point_cloud = pv.PolyData(coordinates)
+                plotter = pv.Plotter()
+                plotter.add_mesh(point_cloud)
+                vertices = vertices_all[idx]
+                vertices -= np.min(vertices, axis = 0)
+                surf = pv.PolyData(vertices, faces_all[idx])
+                plotter.add_mesh(surf, color = (1, 0, 1), opacity = 0.5)
+                plotter.add_lines(np.array([[-10, 0, 0], [10, 0, 0]]), color = (0, 0, 0))
+                plotter.add_lines(np.array([[0, -10, 0], [0, 10, 0]]), color = (0, 0, 0))
+                plotter.add_lines(np.array([[0, 0, -10], [0, 0, 10]]), color = (0, 0, 0))
+                plotter.show()
+                sys.exit()
+                """
+
+
+            else:
+                voxels = np.array(voxels_all[idx])
+                lw, num = measurements.label(voxels)
+                area = measurements.sum(voxels, lw, index=np.arange(lw.max() + 1))
+                area = list(area)
+
+                voxels_cleaned = np.zeros_like(voxels)
+
+                voxels_cleaned[lw == area.index(max(area))] = 1
+                voxels_cleaned = binary_fill_holes(voxels_cleaned).astype(int)
+
+                #lw, num = measurements.label(voxels_cleaned)
+                #area = measurements.sum(voxels_cleaned, lw, index=np.arange(lw.max() + 1))
+
+                voxels_cleaned = zoom(voxels_cleaned, (zoom_factor, zoom_factor, zoom_factor), order = 0) # order 0 means not interpolation
+
+            #print(save_format.format(int(frames_all[idx])))
+            new_image = nib.Nifti1Image(voxels_cleaned, affine=np.eye(4))
+            nib.save(new_image, save_format.format(int(frames_all[idx])))
+
+
 
 def copy_voxels_notDone(doneDir, toCopyDir):
     """
@@ -272,23 +335,20 @@ if __name__ == "__main__":
 
 
 
-    inDir = '/Users/harry/Desktop/RUNNING/out/Step3_ParaToSPHARMMesh/'
-    outDir =  '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/many/cell_{}/coeffs/'
+    #inDir = '/Users/harry/Desktop/RUNNING/out/Step3_ParaToSPHARMMesh/'
+    #outDir =  '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_2/cell_3/coeffs/'
 
-    for idx_cell in [1]:
-        pass
-        print(idx_cell)
-        #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210428/'
-        #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/many/20210828_ot1gfp in collagen-01_clean.mat'
-        #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/single/20210828_ot1gfp in collagen-02-lattice lightsheet-02_Export_Surf.mat'
-        #save_format = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/many/cell_{}/zoomedVoxels_0.2/{}_{{}}.nii.gz'.format(idx_cell, idx_cell)
+
+    #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210428/'
+    #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/many/20210828_ot1gfp in collagen-01_clean.mat'
+    for idx_cell in range(3):
+        mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_3/20210828_ot1gfp in collagen-03-deskew-01_Export_Multi_Surf.mat'
+        save_format = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_3/cell_{}/zoomedVoxels_dist0.5/{}_{{}}.nii.gz'.format(idx_cell, idx_cell)
         #save_format = 'none'
+        write_all_zoomed_niigz(mat_filename = mat_filename, save_format = save_format, zoom_factor = None, voxelize = True, zeiss_type = 'zeiss_many', idx_cell = idx_cell, xyz_res = [0.5, 0.5, 0.5])
 
 
-        #write_all_zoomed_niigz(mat_filename = mat_filename, save_format = save_format, zoom_factor = 0.15, voxelize = False, zeiss_type = 'zeiss_many', idx_cell = idx_cell)
-
-
-        copy_coefs_into_dir(outDir = outDir.format(idx_cell), idx_cell=idx_cell)
+        #copy_coefs_into_dir(outDir = outDir, idx_cell=3)
 
 
 

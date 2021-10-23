@@ -19,6 +19,7 @@ import glob
 import pickle
 import random
 from pykdtree.kdtree import KDTree
+import pandas as pd
 
 from lymphocytes.cells.pca_methods import PCA_Methods
 from lymphocytes.cells.single_cell_methods import Single_Cell_Methods
@@ -65,26 +66,22 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                     frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_single')
                 elif idx_cell[:2] == 'zm':
                     frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_many', idx_cell = int(idx_cell[-1]), include_voxels = True)
-                    calibrations = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/calibrations/cell_{}.pickle'.format(idx_cell), "rb"))
+                    #calibrations = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/calibrations/cell_{}.pickle'.format(idx_cell), "rb"))
                 else:
                     frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='not_zeiss', include_voxels = True)
 
                 for idx in range(len(frames_all)):
 
-
                     if os.path.isfile(coeffPathFormat.format(int(frames_all[idx]))): # if it's within arena and SPHARM-PDM worked
+                        snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
 
-                        if idx_cell[:2] == 'zm':
-                            snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), calibration = np.array(calibrations[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
-                        else:
-                            snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), calibration = None, vertices = vertices_all[idx], faces = faces_all[idx])
-
-
-                        #snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = None, calibration = None, vertices = vertices_all[idx], faces = faces_all[idx])
+                        #snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod  = None, calibration = None, vertices = vertices_all[idx], faces = faces_all[idx])
 
                         snap.color = color
                         snap.t_res = t_res
                         lymph_series.append(snap)
+
+
                 self.cells[idx_cell] = lymph_series
                 print('max_frame: {}'.format(max(frames_all)))
 
@@ -138,7 +135,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                 for lymphs in lymphsNested:
                     frame_list = [lymph.frame for lymph in lymphs if getattr(lymph, attribute) is not None]
                     attribute_list = [getattr(lymph, attribute) for lymph in lymphs if getattr(lymph, attribute)  is not None]
-                    axes_line[idx_attribute].plot([lymphs[0].t_res*i for i in frame_list], attribute_list, color = lymphs[0].color, label = lymphs[0].idx_cell, marker = 'o')
+                    axes_line[idx_attribute].plot([lymphs[0].t_res*i for i in frame_list], attribute_list, color = lymphs[0].color, label = lymphs[0].idx_cell)
                     all_attributes[idx_attribute] += attribute_list
                     if idx_attribute != len(attributes)-1:
                         axes_line[idx_attribute].set_xticks([])
@@ -154,6 +151,8 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         for fig in [fig_lines, fig_hists]:
             fig.tight_layout()
             fig.subplots_adjust(hspace = 0)
+            for ax in fig.axes:
+                ax.set_ylim(bottom=0)
         plt.show()
 
 
@@ -297,25 +296,28 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
 
-    def correlation(self, independents, dependents):
+    def correlation(self,  attributes):
         """
         Get pearson correlation coefficient between independent and dependent variable
         """
         fig_scatt, fig_r, fig_p = plt.figure(figsize = (5, 6)), plt.figure(), plt.figure()
-        r_values = np.empty((len(dependents), len(independents)))
-        p_values = np.empty((len(dependents), len(independents)))
+        r_values = np.empty((len(attributes), len(attributes)))
+        p_values = np.empty((len(attributes), len(attributes)))
         r_values[:], p_values[:] = np.nan, np.nan
-        for idx_row, dependent in enumerate(dependents):
-            for idx_col, independent in enumerate(independents):
-                if dependent != independent and idx_row+4 > idx_col:
-                    print(independent, dependent, len(dependents), len(independents), idx_row*len(independents)+idx_col+1)
-                    ax = fig_scatt.add_subplot(len(dependents), len(independents), idx_row*len(independents)+idx_col+1)
+        for idx_row, dependent in enumerate(attributes):
+            for idx_col, independent in enumerate(attributes):
+                if dependent != independent and dependent[:3] != 'pca':
+                    ax = fig_scatt.add_subplot(len(attributes), len(attributes), idx_row*len(attributes)+idx_col+1)
+                    ax.set_xlabel(independent)
+                    ax.set_ylabel(dependent)
                     if independent[:3] == 'pca' or dependent[:3] == 'pca' :
                         self._set_pca(n_components=3)
                     if independent == 'delta_centroid'or dependent == 'delta_centroid':
                         self._set_centroid_attributes('delta_centroid')
                     if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
                         self._set_centroid_attributes('delta_sensing_direction')
+                    if independent == 'run' or dependent == 'run':
+                        self._set_centroid_attributes('run')
                     if independent == 'morph_deriv' or dependent == 'morph_deriv':
                         self._set_morph_derivs()
 
@@ -329,7 +331,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                     model_xs = np.linspace(min(list(xs)), max(list(xs)), 50)
                     ax.plot(model_xs, [result.slope*i+result.intercept for i in model_xs], c = 'red')
                     ax.tick_params(axis="both",direction="in")
-                    if idx_row != len(dependents)-1:
+                    if idx_row != len(attributes)-1:
                         ax.set_xticks([])
                     if idx_col != 0:
                         ax.set_yticks([])
@@ -428,6 +430,13 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         self._set_pca(n_components=3)
         self._set_centroid_attributes('delta_centroid', num_either_side = 2)
         self._set_centroid_attributes('delta_sensing_direction', num_either_side = 2)
+        self._set_centroid_attributes('run', num_either_side = 2, run_running_mean = True)
+
+        """
+        for lymph in utils_general.list_all_lymphs(self):
+            lymph.pca = lymph.RI_vector
+        """
+
 
         all_consecutive_frames = []
 
@@ -436,20 +445,35 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         for idx_cell, lymph_series in self.cells.items():
 
             count = 0
-            consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res = lymph_series[0].t_res)
-            prev_values = [None, None, None, None]
+            consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
+            prev_values = [None, None, None, None, None, None]
             for idx_lymph, lymph in enumerate(lymph_series):
                 if idx_lymph == 0 or lymph.frame-prev_values[0] == 1:
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2])
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run)
                 elif lymph.frame-prev_values[0] == 2: #linear interpolation if only 1 frame missing
-                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2)
+                    if consecutive_frames.delta_centroid_list[-1] is None or lymph.delta_centroid is None:
+                        delta_centroid_staged = None
+                    else:
+                        delta_centroid_staged = (consecutive_frames.delta_centroid_list[-1]+lymph.delta_centroid)/2
+                    if consecutive_frames.delta_sensing_direction_list[-1] is None or lymph.delta_sensing_direction is None:
+                        delta_sensing_direction_staged = None
+                    else:
+                        delta_sensing_direction_staged = (consecutive_frames.delta_sensing_direction_list[-1]+lymph.delta_sensing_direction)/2
+                    if consecutive_frames.run_list[-1] is None or lymph.run is None:
+                        run_staged = None
+                    else:
+                        run_staged = (consecutive_frames.run_list[-1]+lymph.run)/2
+
+                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2, delta_centroid_staged, delta_sensing_direction_staged, run_staged)
                 else:
+                    consecutive_frames.interpolate()
                     all_consecutive_frames.append(consecutive_frames)
                     count += 1
-                    consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res = lymph_series[0].t_res)
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2])
-                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2]]
+                    consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run)
+                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run]
 
+            consecutive_frames.interpolate()
             all_consecutive_frames.append(consecutive_frames)
 
         pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series.pickle','wb')

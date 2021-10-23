@@ -26,7 +26,7 @@ class Cell_Frame(Raw_Methods, SH_Methods):
     - SH_Methods: methods with spherical harmonics
     """
 
-    def __init__(self, frame, mat_filename, coeffPathFormat, voxels, xyz_res, zoom_factor, idx_cell, max_l, uropod, calibration, vertices, faces):
+    def __init__(self, frame, mat_filename, coeffPathFormat, voxels, xyz_res, zoom_factor, idx_cell, max_l, uropod, vertices, faces):
         """
         Args:
         - frame: frame number (beware of gaps in these as cells can exit the arenas)
@@ -48,12 +48,16 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.t_res = None
         self.max_l = max_l
         self.uropod = uropod
-        self.calibration = calibration
 
-        self.vertices = vertices
-        self.faces = faces
 
-        surf = pv.PolyData(self.vertices, self.faces)
+
+        surf = pv.PolyData(vertices, faces)
+        surf = surf.connectivity(largest=True)
+
+        self.vertices = surf.points
+        self.faces = surf.faces
+
+
         self.centroid = surf.center_of_mass()
         self.volume = surf.volume
 
@@ -69,11 +73,15 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self._set_spharm_coeffs(coeffPathFormat.format(int(frame)))
         self._set_vector()
         self._set_RIvector()
-        
+
+
+
+
 
 
 
         self.morph_deriv = None
+        self.run = None
 
         # running means
         self.mean_uropod = None

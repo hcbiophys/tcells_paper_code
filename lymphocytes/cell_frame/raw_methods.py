@@ -4,6 +4,7 @@ import nibabel as nib
 from scipy.ndimage import zoom
 import os
 import pyvista as pv
+import time
 import pickle
 from scipy.spatial.transform import Rotation
 from scipy.ndimage import measurements
@@ -18,7 +19,7 @@ class Raw_Methods:
     Contains methods without spherical harmonics.
     """
 
-    def surface_plot(self, plotter=None, uropod_align=False, color = (1, 1, 1),  opacity = 1, scalars = None):
+    def surface_plot(self, plotter=None, uropod_align=False, color = (1, 1, 1),  opacity = 1, scalars = None, box = None):
         """
         Plot the original cell mesh
         - plotter: plotter object to plot onto
@@ -31,8 +32,12 @@ class Raw_Methods:
             plotter.add_mesh(pv.Sphere(radius=1, center=uropod), color = (1, 0, 0))
             surf = pv.PolyData(vertices, self.faces)
         else:
-            #plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
+            if self.uropod is not None:
+                plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
+
             surf = pv.PolyData(self.vertices, self.faces)
+
+
 
 
         if scalars is None:
@@ -40,11 +45,16 @@ class Raw_Methods:
         else:
             plotter.add_mesh(surf, color = color, scalars = scalars, opacity = opacity)
 
+        if box is not None:
+            plotter.add_mesh(box, style='wireframe')
+
+
         """
         plotter.add_lines(np.array([[-100, 0, 0], [100, 0, 0]]), color = (0, 0, 0))
         plotter.add_lines(np.array([[0, -100, 0], [0, 100, 0]]), color = (0, 0, 0))
         plotter.add_lines(np.array([[0, 0, -100], [0, 0, 100]]), color = (0, 0, 0))
         """
+
 
     def voxel_point_cloud(self, plotter):
 
@@ -89,7 +99,7 @@ class Raw_Methods:
             voxels_sub = np.zeros_like(lw)
             voxels_sub[lw == j] = 1
 
-            coordinates = np.argwhere(voxels_sub == 1)*np.array(self.xyz_res) + 0.5*np.array(self.xyz_res)
+            #coordinates = np.argwhere(voxels_sub == 1)*np.array(self.xyz_res) + 0.5*np.array(self.xyz_res)
             point_cloud = pv.PolyData(coordinates)
             color = np.random.rand(3)
             plotter.add_mesh(point_cloud, color = color, opacity = 0.3)

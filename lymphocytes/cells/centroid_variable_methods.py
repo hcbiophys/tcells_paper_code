@@ -18,7 +18,7 @@ class Centroid_Variable_Methods:
         return dict
 
 
-    def _set_centroid_attributes(self, attribute, num_either_side = 2):
+    def _set_centroid_attributes(self, attribute, num_either_side = 2, run_running_mean = True):
         """
         Set delta_centroid or delta_sensing_direction
         - attribute: which to set
@@ -29,6 +29,8 @@ class Centroid_Variable_Methods:
             self._set_delta_centroid()
         elif attribute == 'delta_sensing_direction':
             self._set_delta_sensing_directions()
+        elif attribute == 'run':
+            self._set_run(run_running_mean)
 
 
     def _set_mean_uropod_and_centroid(self, num_either_side):
@@ -101,6 +103,44 @@ class Centroid_Variable_Methods:
                         angle = np.arccos(np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2)))
                         lymph.delta_sensing_direction = angle
                         lymph.delta_sensing_direction /= lymph.t_res
+
+    def _set_run(self, run_running_mean = True):
+
+        for lymph_series in self.cells.values():
+            dict = self._get_frame_dict(lymph_series)
+            frames = list(dict.keys())
+
+            # set delta_sensing_direction
+            for lymph in lymph_series:
+                if lymph.mean_uropod is not None:
+                    frame = lymph.frame
+                    if frame-1 in frames and dict[frame-1].mean_centroid is not None:
+                        uropod_vec = lymph.mean_uropod-dict[frame-1].mean_uropod
+                    elif frame+1 in frames and dict[frame+1].mean_uropod is not None:
+                        uropod_vec = dict[frame+1].mean_uropod-lymph.mean_uropod
+                    vec2 = lymph.mean_centroid - lymph.mean_uropod
+                    cos_angle = np.dot(uropod_vec, vec2)/(np.linalg.norm(uropod_vec)*np.linalg.norm(vec2))
+
+                    lymph.run = np.linalg.norm(uropod_vec*cos_angle)
+                    lymph.run /= np.cbrt(lymph.volume)
+                    lymph.run /= lymph.t_res
+
+            if run_running_mean:
+                frames_to_make_none = []
+                for lymph in lymph_series:
+                    frame = lymph.frame
+
+                    if frame-1 in frames and frame + 1 in frames and lymph.run is not None and dict[frame-1].run is not None and dict[frame+1].run is not None:
+                        lymph.run = (lymph.run + dict[frame-1].run + dict[frame+1].run)/3
+                    else:
+                        frames_to_make_none.append(frame) # could change this so retains original value..?
+                for frame in frames_to_make_none:
+                    dict[frame].run = None
+
+
+
+
+
 
 
 

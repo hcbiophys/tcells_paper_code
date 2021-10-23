@@ -44,6 +44,7 @@ class Single_Cell_Methods:
                 if idx_lymph == 0:
                     lymph.surface_plot(plotter=plotter, uropod_align=False, opacity = 0.1, scalars = None)
                 else: # color face closest to prev uropod (adding point at that location makes point selection snap to that point)
+                    print(self.uropod_dict[frames_done[-1]])
                     dists = [np.linalg.norm(self.uropod_dict[frames_done[-1]]-lymph.vertices[i, :]) for i in range(lymph.vertices.shape[0])]
                     idx_closest = dists.index(min(dists))
                     scalars = []
@@ -74,6 +75,47 @@ class Single_Cell_Methods:
 
 
 
+    def select_uropods_add_frames(self, idx_cell):
+        """
+        Select the uropods if only a few frames are missing (e.g. from getting new data)
+        """
+
+        self.uropod_dict = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
+        lymphs = self.cells[idx_cell]
+        """
+        for frame in range(116, 156):
+            del self.uropod_dict[frame]
+        """
+        frames_done = list(self.uropod_dict.keys())
+
+        for lymph in lymphs:
+            if lymph.frame not in frames_done:
+                plotter = pv.Plotter()
+                frames_done_now = list(self.uropod_dict.keys())
+                frame_dists = [abs(i - lymph.frame) for i in frames_done_now]
+                closest_frame = frames_done_now[frame_dists.index(min(frame_dists))]
+                print('closest_frame', closest_frame)
+                print('self.uropod_dict[closest_frame]', self.uropod_dict[closest_frame])
+                dists = [np.linalg.norm(self.uropod_dict[closest_frame]-lymph.vertices[i, :]) for i in range(lymph.vertices.shape[0])]
+                idx_closest = dists.index(min(dists))
+                print('idx', idx_closest)
+                scalars = []
+                for idx in range(int(lymph.faces.shape[0]/4)):
+                    if idx_closest in lymph.faces[idx*4:(idx+1)*4]:
+                        scalars.append(0.5)
+                    else:
+                        scalars.append(0)
+                lymph.surface_plot(plotter=plotter, uropod_align=False, scalars = scalars, opacity = 0.5)
+
+                self.frame_now =  lymph.frame
+                plotter.enable_point_picking(callback = self._uropod_callback, show_message=True,
+                           color='pink', point_size=10,
+                           use_mesh=True, show_point=True)
+                #plotter.enable_cell_picking(through=False, callback = self._uropod_callback)
+                plotter.show(cpos=[0, 1, 0])
+
+        pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}_updated.pickle'.format(idx_cell),'wb')
+        pickle.dump(self.uropod_dict, pickle_out)
 
 
 
@@ -100,9 +142,7 @@ class Single_Cell_Methods:
             elif color_by == 'morph_deriv':
                 self._set_morph_derivs()
             vmin, vmax = utils_general.get_color_lims(self, color_by)
-        print('here')
         for idx_plot, lymph in enumerate(lymphs_plot):
-            print(lymph.frame)
             if not flat:
                 plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
             else:
@@ -115,9 +155,13 @@ class Single_Cell_Methods:
             if color_by is not None:
                 if getattr(lymph, color_by) is not None:
                     color = (1-(getattr(lymph, color_by)-vmin)/(vmax-vmin), 1, 1)
-            lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color)
 
-        plotter.show(cpos=[0, 1, 0])
+            mins, maxs = np.min(self.cells[idx_cell][0].vertices, axis = 0), np.max(self.cells[idx_cell][0].vertices, axis = 0)
+            box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
+            lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box)
+
+        #plotter.show(cpos=[0, 1, 0])
+        plotter.show(cpos=[1, 0, 0])
         print('------')
 
     def plot_voxels_series(self, idx_cell, plot_every):
@@ -131,7 +175,7 @@ class Single_Cell_Methods:
 
             voxels = np.array(lymph.voxels)
             voxels = np.moveaxis(np.moveaxis(voxels, 0, -1), 0, 1)
-            coordinates = np.argwhere(voxels == 1)*np.array(lymph.xyz_res) + 0.5*np.array(lymph.xyz_res)
+            #coordinates = np.argwhere(voxels == 1)*np.array(lymph.xyz_res) + 0.5*np.array(lymph.xyz_res)
             point_cloud = pv.PolyData(coordinates)
             plotter.add_mesh(point_cloud)
 
@@ -140,15 +184,57 @@ class Single_Cell_Methods:
 
     def plot_uropod_centroid_line(self, idx_cell, plot_every):
 
+        self._set_centroid_attributes('delta_sensing_direction')
+        self._set_centroid_attributes('delta_centroid')
+
         lymphs_plot = self.cells[idx_cell][::plot_every]
         plotter = pv.Plotter()
+
+        fig = plt.figure()
+        ax_centroid  = fig.add_subplot(411)
+        ax_uropod = fig.add_subplot(412)
+        ax_deltas = fig.add_subplot(413)
+        ax_actual_uropods = fig.add_subplot(414)
+
+        frames = []
+        mean_centroids = []
+        mean_uropods = []
+        actual_uropods = []
+        delta_centroids = []
+        delta_sensing_directions = []
 
         for idx_plot, lymph in enumerate(lymphs_plot):
             lymph.uropod_centroid_line_plot(plotter=plotter, color = (1, idx_plot/(len(lymphs_plot)-1), 1))
 
             plotter.add_mesh(pv.Sphere(radius=0.1, center=lymph.uropod), color = (1, 0, 0))
             plotter.add_mesh(pv.Sphere(radius=0.1, center=lymph.centroid), color = (0, 1, 0))
+
+            frames.append(lymph.frame)
+            actual_uropods.append(lymph.uropod)
+            mean_centroids.append(lymph.mean_centroid)
+            mean_uropods.append(lymph.mean_uropod)
+            delta_centroids.append(lymph.delta_centroid)
+            delta_sensing_directions.append(lymph.delta_sensing_direction)
+
+        mean_centroids = [i if i is not None else np.array([np.nan, np.nan, np.nan]) for i in mean_centroids]
+        mean_uropods = [i  if i is not None else np.array([np.nan, np.nan, np.nan]) for i in mean_uropods]
+        actual_uropods -=  np.nanmean(np.array(actual_uropods), axis = 0)
+        mean_centroids -= np.nanmean(np.array(mean_centroids), axis = 0)
+        mean_uropods -=  np.nanmean(np.array(mean_uropods), axis = 0)
+
+        for i in range(3):
+            ax_centroid.plot(frames, [j[i] for j in mean_centroids])
+        for i in range(3):
+            ax_uropod.plot(frames, [j[i] for j in mean_uropods])
+
+        ax_deltas.plot(frames, delta_centroids, color = 'red')
+        ax_deltas.plot(frames, delta_sensing_directions, color = 'blue')
+        ax_actual_uropods.plot(frames, actual_uropods)
+        plt.show()
+
         plotter.show(cpos=[0, 1, 0])
+
+
 
 
 
@@ -161,17 +247,46 @@ class Single_Cell_Methods:
         ax.plot([i[0] for i in uropods], [i[1] for i in uropods], [i[2] for i in uropods])
 
 
-    def plot_migratingCell(self, idx_cell,  plot_every = 15):
+    def plot_migratingCell(self, idx_cell,  color_by = 'time', plot_every = 15):
         """
         Plot all meshes of a cell in one window
         """
 
+
+
         lymphs = self.cells[idx_cell][::plot_every]
         plotter = pv.Plotter()
 
+        if color_by != 'time':
+            if color_by[:3] == 'pca':
+                self._set_pca(n_components=3)
+            elif color_by == 'delta_centroid' or color_by == 'delta_sensing_direction' or color_by == 'run':
+                self._set_centroid_attributes(color_by, num_either_side = 2)
+            elif color_by == 'morph_deriv':
+                self._set_morph_derivs()
+
+            vmin, vmax = utils_general.get_color_lims(self, color_by)
+
+        self._set_centroid_attributes('run', num_either_side = 2, run_running_mean = True)
+        plt.plot([lymph.run for lymph in self.cells[idx_cell]])
+        plt.ylim([0, 0.04])
+        plt.show()
+
+
         for idx_lymph, lymph in enumerate(lymphs):
             surf = pv.PolyData(lymph.vertices, lymph.faces)
-            plotter.add_mesh(surf, color = (1, idx_lymph/(len(lymphs)-1), 1), opacity =  0.5)
+
+            color = (1, idx_lymph/(len(lymphs)-1), 1)
+
+            if color_by != 'time':
+                if getattr(lymph, color_by) is not None:
+                    color = (1-(getattr(lymph, color_by)-vmin)/(vmax-vmin), 1, 1)
+
+            if len(lymphs) == 1:
+                plotter.add_mesh(surf, color = (1, 1, 1), opacity =  0.5)
+            else:
+                plotter.add_mesh(surf, color = color, opacity =  0.5)
+            plotter.add_mesh(pv.Sphere(radius=1, center=lymph.uropod), color = (1, 0, 0))
         #box = pv.Box(bounds=(0, 92.7, 0, 52.7, 0, 26.4))
         #box = pv.Box(bounds=(0, 92.7, 0, 82.4, 0, 26.4))
         #plotter.add_mesh(box, style='wireframe')

@@ -8,7 +8,7 @@ import copy
 import pyvista as pv
 import random
 import lymphocytes.utils.general as utils_general
-
+np.set_printoptions(threshold=sys.maxsize)
 
 
 class PCA_Methods:
@@ -31,7 +31,6 @@ class PCA_Methods:
         if not self.pca_set:
             lymphs = utils_general.list_all_lymphs(self)
             RI_vectors = np.array([lymph.RI_vector for lymph in lymphs])
-
             pca_obj = PCA(n_components = n_components)
             pca_obj.fit_transform(RI_vectors)
             print('EXPLAINED VARIANCE RATIO: ', pca_obj.explained_variance_ratio_)
@@ -196,7 +195,7 @@ class PCA_Methods:
         for lymph in lymphs:
             #if random.randint(0, 50) == 0:
             if len([i for i in coords_plotted if np.linalg.norm(lymph.pca_normalized-i) < 0.75]) == 0:
-                vertices, faces, uropod = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = 3, uropod_align = True, horizontal_align = True)
+                vertices, faces, uropod = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = 3, uropod_align = True, horizontal_align = False)
                 if plot_original:
                     #uropod, centroid, vertices = lymph._uropod_align(axis = np.array([0, 0, -1]))
                     uropod, centroid, vertices = lymph._uropod_and_horizontal_align()
@@ -222,9 +221,9 @@ class PCA_Methods:
                 plotter.add_lines(np.array([[0, -3, 0], [0, 3, 0]]), color = (0, 0, 0))
                 plotter.add_lines(np.array([[0, 0, -3], [0, 0, 3]]), color = (0, 0, 0))
 
-                #poly = pv.PolyData(np.array([[3, 0, 0], [0, 3, 0], [0, 0, 3]]))
-                #poly["My Labels"] = ['PC 1', 'PC 2', 'PC 3']
-                #plotter.add_point_labels(poly, "My Labels", point_size=2, font_size=25)
+                poly = pv.PolyData(np.array([[3, 0, 0], [0, 3, 0], [0, 0, 3]]))
+                poly["My Labels"] = ['PC 1', 'PC 2', 'PC 3']
+                plotter.add_point_labels(poly, "My Labels", point_size=2, font_size=25)
 
                 coords_plotted.append(lymph.pca_normalized)
 
