@@ -380,7 +380,7 @@ class CWT():
 
         fig_kde = plt.figure()
         ax = fig_kde.add_subplot(111)
-        ax.imshow(pdf_array[::-1, :], vmin = 0, vmax = 0.00024)
+        ax.imshow(pdf_array[::-1, :], vmin = 0, vmax = 0.0003)
         ax.set_title('min:{:.2g}, max:{:.2g}'.format(np.min(pdf_array), np.max(pdf_array)))
         #plt.show()
         return pdf_array
@@ -511,9 +511,9 @@ cwt.set_spectograms()
 #cwt.plot_wavelet_series_spectogram(name = 'all')
 
 cwt.set_tsne_embeddings()
-cwt.plot_embeddings(load_or_save = 'load', file_name = 'both', path_of = None)
+cwt.plot_embeddings(load_or_save = 'save', file_name = 'both', path_of = None)
 
 
-cwt.kde(load_or_save = 'load', file_name = 'both')
+cwt.kde(load_or_save = 'save', file_name = 'both')
 
 plt.show()
