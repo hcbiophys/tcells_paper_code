@@ -17,6 +17,7 @@ class Consecutive_Frames():
         self.delta_centroid_list = []
         self.delta_sensing_direction_list = []
         self.run_list = []
+        self.searching_list = []
 
         self.spectrogram = None
         self.embeddings = None
@@ -25,7 +26,7 @@ class Consecutive_Frames():
         self.closest_frames = []
 
 
-    def add(self, frame, pca0, pca1, pca2, delta_centroid, delta_sensing_direction, run):
+    def add(self, frame, pca0, pca1, pca2, delta_centroid, delta_sensing_direction, run, searching):
         self.orig_frame_list.append(frame)
         self.pca0_list.append(pca0)
         self.pca1_list.append(pca1)
@@ -33,6 +34,7 @@ class Consecutive_Frames():
         self.delta_centroid_list.append(delta_centroid)
         self.delta_sensing_direction_list.append(delta_sensing_direction)
         self.run_list.append(run)
+        self.searching_list.append(searching)
 
     def interpolate(self):
 
@@ -49,7 +51,7 @@ class Consecutive_Frames():
             closest_frame = self.orig_frame_list[dists.index(min(dists))]
             self.closest_frames.append(closest_frame)
 
-        for attribute in ['pca0_list', 'pca1_list', 'pca2_list', 'delta_centroid_list', 'delta_sensing_direction_list', 'run_list']:
+        for attribute in ['pca0_list', 'pca1_list', 'pca2_list', 'delta_centroid_list', 'delta_sensing_direction_list', 'run_list', 'searching_list']:
 
             f = interpolate.interp1d(frame_times, getattr(self, attribute))
             y_new = f(new_frame_times)

@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import pyvista as pv
 import pickle
+from scipy.interpolate import UnivariateSpline
 
 import lymphocytes.utils.general as utils_general
 
@@ -122,31 +123,31 @@ class Single_Cell_Methods:
 
 
 
-    def plot_orig_series(self, idx_cell, uropod_align, color_by = None, plot_every = 1, flat = False):
+    def plot_orig_series(self, idx_cell, uropod_align, color_by = None, plot_every = 1):
         """
         Plot original mesh series, with point at the uropods
         """
 
+        self._set_centroid_attributes('searching', time_either_side = 50)
+
         lymphs_plot = self.cells[idx_cell][::plot_every]
         num_cols=int(len(lymphs_plot)/3)+1
         plotter = pv.Plotter(shape=(3, num_cols), border=False)
-        if flat:
-            plotter = pv.Plotter(shape=(1, len(lymphs_plot)), border=False)
+
 
 
         if color_by is not None:
             if color_by[:3] == 'pca':
                 self._set_pca(n_components=3)
             elif color_by == 'delta_centroid' or color_by == 'delta_sensing_direction':
-                self._set_centroid_attributes(color_by, num_either_side = 2)
+                self._set_centroid_attributes(color_by)
             elif color_by == 'morph_deriv':
                 self._set_morph_derivs()
             vmin, vmax = utils_general.get_color_lims(self, color_by)
+
         for idx_plot, lymph in enumerate(lymphs_plot):
-            if not flat:
-                plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
-            else:
-                plotter.subplot(0, idx_plot)
+            plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
+
 
             plotter.add_text("{}".format(lymph.frame), font_size=10)
             #plotter.subplot(idx_plot, 0)
@@ -160,8 +161,14 @@ class Single_Cell_Methods:
             box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
             lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box)
 
-        #plotter.show(cpos=[0, 1, 0])
-        plotter.show(cpos=[1, 0, 0])
+            if lymph.spin_vec is not None:
+                plotter.add_lines(np.array([lymph.centroid, lymph.centroid+lymph.spin_vec*1000]), color = (0, 0, 0))
+            print(lymph.spin_vec)
+
+
+
+        plotter.show(cpos=[0, 1, 0])
+        #plotter.show(cpos=[0, 0, 1])
         print('------')
 
     def plot_voxels_series(self, idx_cell, plot_every):
@@ -250,7 +257,6 @@ class Single_Cell_Methods:
     def plot_migratingCell(self, idx_cell,  color_by = 'time', plot_every = 15):
         """
         Plot all meshes of a cell in one window
-        """
 
 
 
@@ -261,18 +267,71 @@ class Single_Cell_Methods:
             if color_by[:3] == 'pca':
                 self._set_pca(n_components=3)
             elif color_by == 'delta_centroid' or color_by == 'delta_sensing_direction' or color_by == 'run':
-                self._set_centroid_attributes(color_by, num_either_side = 2)
+                self._set_centroid_attributes(color_by, time_either_side = 2)
             elif color_by == 'morph_deriv':
                 self._set_morph_derivs()
 
             vmin, vmax = utils_general.get_color_lims(self, color_by)
+        """
 
-        self._set_centroid_attributes('run', num_either_side = 2, run_running_mean = True)
-        plt.plot([lymph.run for lymph in self.cells[idx_cell]])
-        plt.ylim([0, 0.04])
+        frames = [lymph.frame for lymph in self.cells[idx_cell]]
+
+
+        fig = plt.figure()
+        for idx, time_either_side in enumerate([5, 30, 55]):
+            self._set_centroid_attributes('run', time_either_side = time_either_side)
+            self._set_centroid_attributes('searching', time_either_side = time_either_side)
+
+            ax = fig.add_subplot(2, 3, idx+1)
+            runs = [lymph.run for lymph in self.cells[idx_cell]]
+            ax.plot(frames, runs, c = 'blue')
+            ax.plot(frames, [0 for _ in runs], c = 'black')
+            ax.set_ylim([0, 0.02])
+
+            searchings = [lymph.searching for lymph in self.cells[idx_cell]]
+            ax.plot(frames, [i*10 if i is not None else None for i in searchings], c = 'red')
+            ax.plot(frames, [0 for _ in searchings], c = 'black')
+
+            ax = fig.add_subplot(2, 3, 3 + idx+1)
+            ax.scatter(searchings, runs)
+
         plt.show()
+        """
+        # SEARCHING
+        self._set_centroid_attributes('searching', time_either_side = 2, run_running_mean = True)
+        plotter = pv.Plotter()
+        dists =  [lymph.searching for lymph in self.cells[idx_cell]]
+        dists = [dist if dist is not None else np.nan for dist in dists]
+        plt.plot(frames, dists, c = 'blue')
+
+        dists = np.convolve(dists, np.ones(5)/5, mode='valid')
+        dists = [np.nan]*2 + list(dists) + [np.nan]*2
+        plt.plot(frames, dists, c = 'red')
+        #plt.ylim([0, 0.1])
+        plt.show()
+        """
 
 
+        """
+        spin_vecs =  [lymph.spin_vec for lymph in self.cells[idx_cell]]
+        spin_vecs =  [spin_vec if spin_vec is not None else np.array([np.nan]*3) for spin_vec in spin_vecs]
+
+        for idx, vec in enumerate(spin_vecs):
+            if not np.isnan(vec[0]):
+                color = (idx/(len(spin_vecs)-1), 0, 0)
+                plotter.add_lines(np.array([[0, 0, 0], vec]), color = color)
+                poly = pv.PolyData(vec)
+                poly["My Labels"] = [str(idx)]
+                plotter.add_point_labels(poly, "My Labels", point_size=20, font_size=36)
+        plotter.show()
+        """
+
+
+
+
+
+
+        """
         for idx_lymph, lymph in enumerate(lymphs):
             surf = pv.PolyData(lymph.vertices, lymph.faces)
 
@@ -293,6 +352,7 @@ class Single_Cell_Methods:
 
         plotter.add_axes()
         plotter.show(cpos=[0, 1, 0.5])
+        """
 
     def plot_attribute(self, idx_cell, attribute):
 
@@ -333,11 +393,13 @@ class Single_Cell_Methods:
         Plot reconstructed mesh series
         """
 
+        self._set_centroid_attributes('searching', time_either_side = 50)
+
         if color_by is not None:
             if color_by[:3] == 'pca':
                 self._set_pca(n_components=3)
             else:
-                self._set_centroid_attributes(color_by, num_either_side = 2)
+                self._set_centroid_attributes(color_by)
             vmin, vmax = utils_general.get_color_lims(self, color_by)
 
         lymphs_plot = self.cells[idx_cell][::plot_every]
@@ -350,7 +412,12 @@ class Single_Cell_Methods:
                     color = (1-(getattr(lymph, color_by)-vmin)/(vmax-vmin), 1, 1)
             plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
             lymph.plotRecon_singleDeg(plotter, max_l = max_l, color = color)
-        plotter.show(cpos=[0, 1, 0])
+
+            if lymph.spin_vec is not None:
+                plotter.add_lines(np.array([lymph.centroid, lymph.centroid+lymph.spin_vec*1000]), color = (0, 0, 0))
+
+
+        plotter.show(cpos=[0,0, 1])
 
     def plot_l_truncations(self, idx_cell):
         plotter = pv.Plotter(shape=(2, 4), border=False)

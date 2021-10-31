@@ -1,5 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pyvista as pv
+import pickle
+import sys
+
 import lymphocytes.utils.plotting as utils_plotting
 import lymphocytes.utils.general as utils_general
 
@@ -18,22 +22,29 @@ class Centroid_Variable_Methods:
         return dict
 
 
-    def _set_centroid_attributes(self, attribute, num_either_side = 2, run_running_mean = True):
+    def _set_centroid_attributes(self, attribute, time_either_side = None):
         """
         Set delta_centroid or delta_sensing_direction
         - attribute: which to set
-        - num_either_side: sets the running mean window size
+        - time_either_side: sets the running mean window size
         """
-        self._set_mean_uropod_and_centroid(num_either_side)
-        if attribute == 'delta_centroid':
-            self._set_delta_centroid()
-        elif attribute == 'delta_sensing_direction':
-            self._set_delta_sensing_directions()
-        elif attribute == 'run':
-            self._set_run(run_running_mean)
+
+        if attribute not in self.attributes_set:
+
+            self._set_mean_uropod_and_centroid(time_either_side = 12)
+            if attribute == 'delta_centroid':
+                self._set_delta_centroid()
+            elif attribute == 'delta_sensing_direction':
+                self._set_delta_sensing_directions()
+            elif attribute == 'run':
+                self._set_run(time_either_side)
+            elif attribute == 'searching':
+                 self._set_searching(time_either_side)
+
+            self.attributes_set.append(attribute)
 
 
-    def _set_mean_uropod_and_centroid(self, num_either_side):
+    def _set_mean_uropod_and_centroid(self, time_either_side):
         """
         If there are enough surrounding frames, set lymph.mean_uropod & lymph.mean_centroid
         """
@@ -42,14 +53,14 @@ class Centroid_Variable_Methods:
             frames = list(dict.keys())
             for lymph in lymph_series:
                 frame = lymph.frame
-                fs = [frame-i for i in range(1, num_either_side+1)] + [frame] + [frame+i for i in range(1, num_either_side+1)]
+                fs = [frame-i for i in reversed(range(1, int(time_either_side//lymph.t_res)+1))] + [frame] + [frame+i for i in range(1, int(time_either_side//lymph.t_res)+1)]
                 uropods = []
                 centroids = []
                 for f in fs:
                     if f in frames:
                         uropods.append(dict[f].uropod)
                         centroids.append(dict[f].centroid)
-                if len(uropods) == 2*num_either_side + 1:
+                if len(uropods) == len(fs):
                     lymph.mean_uropod = np.mean(np.array(uropods), axis = 0)
                     lymph.mean_centroid = np.mean(np.array(centroids), axis = 0)
 
@@ -104,7 +115,30 @@ class Centroid_Variable_Methods:
                         lymph.delta_sensing_direction = angle
                         lymph.delta_sensing_direction /= lymph.t_res
 
-    def _set_run(self, run_running_mean = True):
+
+    def _set_searching(self, time_either_side):
+        """
+        Set lymph.delta_sensing_direction
+        """
+
+
+        for lymph_series in self.cells.values():
+            """
+            ellipsoid_centroids_dict = {}
+            for lymph in lymph_series:
+                vertices, faces, uropod = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = 1, uropod_align = False)
+                surf = pv.PolyData(vertices, faces)
+                ellipsoid_centroids_dict[lymph.frame] = surf.center_of_mass()
+            pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/ellipsoid_centroids/cell_{}.pickle'.format(lymph_series[0].idx_cell),'wb')
+            pickle.dump(ellipsoid_centroids_dict, pickle_out)
+            """
+
+            ellipsoid_centroids_dict =   pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/ellipsoid_centroids/cell_{}.pickle'.format(lymph_series[0].idx_cell), "rb"))
+            for lymph in lymph_series:
+                lymph.centroid_chosen = ellipsoid_centroids_dict[lymph.frame]
+
+
+
 
         for lymph_series in self.cells.values():
             dict = self._get_frame_dict(lymph_series)
@@ -112,30 +146,117 @@ class Centroid_Variable_Methods:
 
             # set delta_sensing_direction
             for lymph in lymph_series:
+                lymph.searching = None
+                lymph.spin_vec = None
+                if lymph.centroid_chosen is not None and lymph.mean_uropod is not None:
+                    frame = lymph.frame
+                    """
+                    vec1 = lymph.centroid_chosen - lymph.mean_uropod
+
+                    if frame-1 in frames and dict[frame-1].centroid_chosen is not None and dict[frame-1].mean_uropod is not None and frame+1 in frames and dict[frame-+1].centroid_chosen is not None and dict[frame+1].mean_uropod is not None:
+                        vec2 = dict[frame-1].centroid_chosen - dict[frame-1].mean_uropod
+                        cross_norm = np.linalg.norm(np.cross(vec2, vec1))
+                        angle = np.arcsin(cross_norm/(np.linalg.norm(vec1)*np.linalg.norm(vec2)))
+                        spin_1 = angle*np.cross(vec2, vec1) /cross_norm
+
+                        vec2 = dict[frame+1].centroid_chosen - dict[frame+1].mean_uropod
+                        cross_norm = np.linalg.norm(np.cross(vec1, vec2))
+                        angle = np.arcsin(cross_norm/(np.linalg.norm(vec1)*np.linalg.norm(vec2)))
+                        spin_2 = angle*np.cross(vec1, vec2) /cross_norm
+                        lymph.searching = np.linalg.norm(spin_2-spin_1)
+                        lymph.spin_vec = spin_1
+                    """
+                    fs = [frame-i for i in reversed(range(1, int(time_either_side//lymph.t_res)+1))] + [frame] + [frame+i for i in range(1, int(time_either_side//lymph.t_res)+1)]
+                    spin_vecs = []
+                    for idx_f in range(len(fs)-1):
+
+                        if fs[idx_f] in frames and fs[idx_f+1] in frames:
+                            if dict[fs[idx_f]].mean_uropod is not None and dict[fs[idx_f+1]].mean_uropod is not None:
+
+                                vec1 = dict[fs[idx_f]].centroid_chosen - dict[fs[idx_f]].mean_uropod
+                                vec2 = dict[fs[idx_f+1]].centroid_chosen - dict[fs[idx_f+1]].mean_uropod
+                                cross_norm = np.linalg.norm(np.cross(vec2, vec1))
+                                angle = np.arcsin(cross_norm/(np.linalg.norm(vec1)*np.linalg.norm(vec2)))
+                                angle /= dict[fs[idx_f]].t_res
+                                spin_vec = angle*np.cross(vec2, vec1) /cross_norm
+                                spin_vecs.append(spin_vec)
+                                dict[fs[idx_f]].spin_vec = spin_vec
+                    if len(spin_vecs) >= int(0.75*len(fs)):
+                        lymph.searching = np.sum(np.std(np.array(spin_vecs), axis = 0))
+                        print(lymph.searching)
+
+
+
+
+
+
+
+    def _set_run(self, time_either_side):
+
+        for lymph in utils_general.list_all_lymphs(self):
+            lymph.centroid_chosen = lymph.mean_centroid
+            lymph.run_initial = None
+            #vertices, faces, uropod = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = 1, uropod_align = False)
+            #surf = pv.PolyData(vertices, faces)
+            #lymph.centroid_chosen = surf.center_of_mass()
+
+
+        for lymph_series in self.cells.values():
+            dict = self._get_frame_dict(lymph_series)
+            frames = list(dict.keys())
+
+            """
+            for lymph in lymph_series:
                 if lymph.mean_uropod is not None:
                     frame = lymph.frame
                     if frame-1 in frames and dict[frame-1].mean_centroid is not None:
                         uropod_vec = lymph.mean_uropod-dict[frame-1].mean_uropod
-                    elif frame+1 in frames and dict[frame+1].mean_uropod is not None:
-                        uropod_vec = dict[frame+1].mean_uropod-lymph.mean_uropod
-                    vec2 = lymph.mean_centroid - lymph.mean_uropod
-                    cos_angle = np.dot(uropod_vec, vec2)/(np.linalg.norm(uropod_vec)*np.linalg.norm(vec2))
+                    #elif frame+1 in frames and dict[frame+1].mean_uropod is not None:
+                    #    uropod_vec = dict[frame+1].mean_uropod-lymph.mean_uropod
+                        vec2 = lymph.mean_centroid - lymph.mean_uropod
+                        cos_angle = np.dot(uropod_vec, vec2)/(np.linalg.norm(uropod_vec)*np.linalg.norm(vec2))
 
-                    lymph.run = np.linalg.norm(uropod_vec*cos_angle)
-                    lymph.run /= np.cbrt(lymph.volume)
-                    lymph.run /= lymph.t_res
+                        run = np.linalg.norm(uropod_vec*cos_angle)
+                        run /= np.cbrt(lymph.volume)
+                        run /= lymph.t_res
+                        run *= np.sign(cos_angle)
 
-            if run_running_mean:
-                frames_to_make_none = []
-                for lymph in lymph_series:
+                        lymph.run = run
+                        lymph.run_initial = run
+
+
+            """
+
+
+            # set delta_sensing_direction
+            for lymph in lymph_series:
+
+                lymph.run = None
+                if lymph.centroid_chosen is not None and lymph.mean_uropod is not None:
                     frame = lymph.frame
 
-                    if frame-1 in frames and frame + 1 in frames and lymph.run is not None and dict[frame-1].run is not None and dict[frame+1].run is not None:
-                        lymph.run = (lymph.run + dict[frame-1].run + dict[frame+1].run)/3
-                    else:
-                        frames_to_make_none.append(frame) # could change this so retains original value..?
-                for frame in frames_to_make_none:
-                    dict[frame].run = None
+                    fs = [frame-i for i in reversed(range(1, int(time_either_side//lymph.t_res)+1))] + [frame] + [frame+i for i in range(1, int(time_either_side//lymph.t_res)+1)]
+                    runs = []
+
+                    for idx_f in range(len(fs)-1):
+
+                        if fs[idx_f] in frames and fs[idx_f+1] in frames:
+                            if dict[fs[idx_f]].mean_uropod is not None and dict[fs[idx_f+1]].mean_uropod is not None:
+
+                                uropod_vec = dict[fs[idx_f+1]].mean_uropod-dict[fs[idx_f]].mean_uropod
+                                vec2 = dict[fs[idx_f]].centroid_chosen - dict[fs[idx_f]].mean_uropod
+
+                                cos_angle = np.dot(uropod_vec, vec2)/(np.linalg.norm(uropod_vec)*np.linalg.norm(vec2))
+
+                                run = np.linalg.norm(uropod_vec*cos_angle)
+                                run /= np.cbrt(dict[fs[idx_f]].volume)
+                                run /= dict[fs[idx_f]].t_res
+                                run *= np.sign(cos_angle)
+                                runs.append(run)
+
+
+                    if len(runs) >= int(0.75*len(fs)):
+                        lymph.run = np.mean(runs)
 
 
 
@@ -144,7 +265,8 @@ class Centroid_Variable_Methods:
 
 
 
-    def _set_morph_derivs(self, num_either_side = 2):
+
+    def _set_morph_derivs(self, time_either_side = 12):
         """
         Set lymph.morph_deriv attribute
         this is the mean derivative of RI_vector, showing how much the morphology is changing (ignoring e.g. rotations)
@@ -155,7 +277,7 @@ class Centroid_Variable_Methods:
             frames = list(dict.keys())
             for lymph in lymph_series:
                 frame = lymph.frame
-                fs = [frame-i for i in range(1, num_either_side+1)] + [frame] + [frame+i for i in range(1, num_either_side+1)]
+                fs = [frame-i for i in reversed(range(1, int(time_either_side//lymph.t_res)+1))] + [frame] + [frame+i for i in range(1, int(time_either_side//lymph.t_res)+1)]
                 morphs = []
                 for f in fs:
                     if f in frames:
@@ -163,6 +285,6 @@ class Centroid_Variable_Methods:
                 morph_derivs = []
                 for idx in range(1, len(morphs)):
                     morph_derivs.append(np.linalg.norm(morphs[idx]-morphs[idx-1]))
-                if len(morph_derivs) == 2*num_either_side: # since derivative chops of 1 element
+                if len(morph_derivs) == len(fs)-1: # since derivative chops of 1 element
                     lymph.morph_deriv = np.mean(np.array(morph_derivs), axis = 0)
                     lymph.morph_deriv /= lymph.t_res

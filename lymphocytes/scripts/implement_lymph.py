@@ -28,7 +28,10 @@ import lymphocytes.utils.general as utils_general
 
 if __name__ == '__main__':
     idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_1_{}'.format(i) for i in range(6)] + ['zm_3_3_{}'.format(i) for i in range(8)]
-    random.shuffle(idx_cells)
+    #random.shuffle(idx_cells)
+    #for idx_cell in idx_cells:
+
+
 
 
     cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = idx_cells, max_l = 15)
@@ -55,9 +58,9 @@ if __name__ == '__main__':
 
 
     ### single cell methods ###
-    #cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 1)
-    #cells.plot_migratingCell(idx_cell=idx_cell, color_by = 'time', plot_every = 5)
 
+    #cells.plot_migratingCell(idx_cell=idx_cell, color_by = 'time', plot_every = 5)
+    #cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 4)
     #cells.plot_voxels_series(idx_cell=idx_cell, plot_every = 10)
     #cells.select_uropods(idx_cell=idx_cell)
     #cells.select_uropods_add_frames(idx_cell = idx_cell)
@@ -67,8 +70,8 @@ if __name__ == '__main__':
     #cells.plot_attribute(idx_cell, attribute = 'RI_vector0')
     #cells.plot_series_PCs(idx_cell=idx_cell, plot_every=15)
     #cells.plot_series_voxels(plot_every)
-    #cells.plot_recon_series(idx_cell = idx_cell, max_l = 7, color_by = None, plot_every=12)
-    #cells.gather_time_series()
+    #cells.plot_recon_series(idx_cell = idx_cell, max_l = 1, color_by = None, plot_every=1)
+    cells.gather_time_series()
 
 
 
@@ -83,8 +86,9 @@ if __name__ == '__main__':
     #cells.plot_component_lymphs(grid_size=7, pca=True, plot_original = True)
     #cells.line_plot_3D(centroid_uropod_pca = 'pca', color_by = None)
     #cells.plot_2D_embeddings(pca = True, components = (0, 1))
-    #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction', 'run'])
-    cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction', 'run'])
+    #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction', 'run_pos', 'run_neg'])
+    #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'searching', 'run_pos', 'run_neg'])
+    #cells.correlation_annotate( 'searching', 'run')
     #cells.rigid_motions()
     #cells.plot_PC_space(plot_original = False)
     #cells.plot_PC_space(plot_original = True)
@@ -94,4 +98,4 @@ if __name__ == '__main__':
     #cells.set_angles()
     #cells.correlate_shape_with_delta_centroidAngle(max_l, n_components, pca = False)
     #cells.gather_time_series()
-    #plt.show()
+    plt.show()

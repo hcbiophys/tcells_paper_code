@@ -214,7 +214,7 @@ class SH_Methods:
 
         vertices, faces, uropod = self._get_vertices_faces_plotRecon_singleDeg(max_l = max_l, uropod_align = uropod_align)
 
-        #plotter.add_mesh(pv.Sphere(radius=1, center=uropod), color = (1, 0, 0))
+        plotter.add_mesh(pv.Sphere(radius=1, center=uropod), color = (1, 0, 0))
 
         surf = pv.PolyData(vertices, faces)
         plotter.add_mesh(surf, color = color, opacity = opacity)

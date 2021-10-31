@@ -38,6 +38,7 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         - uropod: uropod coordinates
         """
 
+
         self.mat_filename = mat_filename
         self.frame = frame
         self.idx_cell = idx_cell

@@ -72,6 +72,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
                 for idx in range(len(frames_all)):
 
+
                     if os.path.isfile(coeffPathFormat.format(int(frames_all[idx]))): # if it's within arena and SPHARM-PDM worked
                         snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
 
@@ -86,6 +87,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                 print('max_frame: {}'.format(max(frames_all)))
 
         self.pca_set = False
+        self.attributes_set = []
 
 
     """
@@ -164,7 +166,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         lymphs = utils_general.list_all_lymphs(self)
         vectors = np.array([lymph.RI_vector for lymph in lymphs])
 
-        means = np.mean(vectors, axis = 0)
+
         vars = np.std(vectors, axis = 0)
 
         fig = plt.figure()
@@ -297,6 +299,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
     def correlation(self,  attributes):
+        time_either_side = 7
         """
         Get pearson correlation coefficient between independent and dependent variable
         """
@@ -306,53 +309,161 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         r_values[:], p_values[:] = np.nan, np.nan
         for idx_row, dependent in enumerate(attributes):
             for idx_col, independent in enumerate(attributes):
-                if dependent != independent and dependent[:3] != 'pca':
-                    ax = fig_scatt.add_subplot(len(attributes), len(attributes), idx_row*len(attributes)+idx_col+1)
-                    ax.set_xlabel(independent)
-                    ax.set_ylabel(dependent)
-                    if independent[:3] == 'pca' or dependent[:3] == 'pca' :
-                        self._set_pca(n_components=3)
-                    if independent == 'delta_centroid'or dependent == 'delta_centroid':
-                        self._set_centroid_attributes('delta_centroid')
-                    if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
-                        self._set_centroid_attributes('delta_sensing_direction')
-                    if independent == 'run' or dependent == 'run':
-                        self._set_centroid_attributes('run')
-                    if independent == 'morph_deriv' or dependent == 'morph_deriv':
-                        self._set_morph_derivs()
+                if dependent != independent and dependent[:3] != 'pca' and idx_col < idx_row:
+                    if independent[:3] != 'run' or dependent[:3] != 'run':
 
-                    plot_lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if getattr(lymph, independent) is not None and  getattr(lymph, dependent) is not None]
-                    xs = [getattr(lymph, independent) for lymph in plot_lymphs]
-                    ys = [getattr(lymph, dependent)  for lymph in plot_lymphs]
-                    colors = [lymph.color  for lymph in plot_lymphs]
-                    result = scipy.stats.linregress(np.array(xs), np.array(ys))
-                    ax.scatter(xs, ys, s=0.1, c = colors)
+                        print(independent, dependent)
 
-                    model_xs = np.linspace(min(list(xs)), max(list(xs)), 50)
-                    ax.plot(model_xs, [result.slope*i+result.intercept for i in model_xs], c = 'red')
-                    ax.tick_params(axis="both",direction="in")
-                    if idx_row != len(attributes)-1:
-                        ax.set_xticks([])
-                    if idx_col != 0:
-                        ax.set_yticks([])
+                        ax = fig_scatt.add_subplot(len(attributes), len(attributes), idx_row*len(attributes)+idx_col+1)
+                        ax.set_xlabel(independent)
+                        ax.set_ylabel(dependent)
+                        if independent[:3] == 'pca' or dependent[:3] == 'pca' :
+                            self._set_pca(n_components=3)
+                        if independent == 'delta_centroid'or dependent == 'delta_centroid':
+                            self._set_centroid_attributes('delta_centroid')
+                        if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
+                            self._set_centroid_attributes('delta_sensing_direction')
+                        if independent == 'searching' or dependent == 'searching':
+                            self._set_centroid_attributes('searching', time_either_side = time_either_side)
+                        if independent[:3] == 'run' or dependent[:3] == 'run':
+                            self._set_centroid_attributes('run', time_either_side = time_either_side)
+                            lymphs = utils_general.list_all_lymphs(self)
+                            for lymph in lymphs:
+                                if lymph.run is not None and lymph.run > 0:
+                                    lymph.run_pos = abs(lymph.run)
+                                else:
+                                    lymph.run_pos = None
+                                if lymph.run is not None and lymph.run < 0:
+                                    lymph.run_neg = abs(lymph.run)
+                                else:
+                                    lymph.run_neg = None
 
-                    r_values[idx_row, idx_col] = result.rvalue
-                    p_values[idx_row, idx_col] = result.pvalue
+
+                        if independent == 'morph_deriv' or dependent == 'morph_deriv':
+                            self._set_morph_derivs()
+
+                        plot_lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if getattr(lymph, independent) is not None and  getattr(lymph, dependent) is not None]
+                        xs = [getattr(lymph, independent) for lymph in plot_lymphs]
+                        ys = [getattr(lymph, dependent)  for lymph in plot_lymphs]
+                        colors = [lymph.color  for lymph in plot_lymphs]
+                        result = scipy.stats.linregress(np.array(xs), np.array(ys))
+                        ax.scatter(xs, ys, s=0.1, c = colors)
+
+                        model_xs = np.linspace(min(list(xs)), max(list(xs)), 50)
+                        ax.plot(model_xs, [result.slope*i+result.intercept for i in model_xs], c = 'red')
+                        ax.tick_params(axis="both",direction="in")
+                        if idx_row != len(attributes)-1:
+                            ax.set_xticks([])
+                        if idx_col != 0:
+                            ax.set_yticks([])
+
+                        r_values[idx_row, idx_col] = result.rvalue
+                        p_values[idx_row, idx_col] = result.pvalue
         fig_scatt.subplots_adjust(hspace=0, wspace=0)
         ax = fig_r.add_subplot(111)
         r = ax.imshow(r_values, cmap = 'Blues')
         matplotlib.cm.Blues.set_bad(color='white')
         ax.axis('off')
-        ax.set_title('r_values')
         fig_r.colorbar(r, ax=ax, orientation='horizontal')
         ax = fig_p.add_subplot(111)
         p = ax.imshow(p_values, cmap = 'Reds')
         matplotlib.cm.Reds.set_bad(color='white')
-        ax.set_title('p_values')
         fig_p.colorbar(p, ax=ax, orientation='horizontal')
         ax.axis('off')
 
-        plt.show()
+
+
+        #plt.show()
+
+
+    def correlation_annotate(self,  independent, dependent):
+        print('about to do correlation function')
+
+        fig = plt.figure()
+        for idx_run, run_width in enumerate([7, 50, 100]):
+            for idx_searching, searching_width in enumerate([7, 25, 50]):
+                self.attributes_set = []
+
+                ax = fig.add_subplot(3, 3, idx_run*3 + idx_searching+1)
+
+
+                if independent[:3] == 'pca' or dependent[:3] == 'pca' :
+                    self._set_pca(n_components=3)
+                if independent == 'delta_centroid'or dependent == 'delta_centroid':
+                    self._set_centroid_attributes('delta_centroid')
+                if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
+                    self._set_centroid_attributes('delta_sensing_direction')
+                if independent == 'searching' or dependent == 'searching':
+                    print('searching_width', searching_width)
+                    self._set_centroid_attributes('searching', time_either_side = searching_width)
+                if independent[:3] == 'run' or dependent[:3] == 'run':
+                    print('run_width', run_width)
+                    self._set_centroid_attributes('run', time_either_side = run_width)
+                    lymphs = utils_general.list_all_lymphs(self)
+                    for lymph in lymphs:
+                        if lymph.run is not None and lymph.run > 0:
+                            lymph.run_pos = abs(lymph.run)
+                        else:
+                            lymph.run_pos = None
+                        if lymph.run is not None and lymph.run < 0:
+                            lymph.run_neg = abs(lymph.run)
+                        else:
+                            lymph.run_neg = None
+
+
+
+                if independent == 'morph_deriv' or dependent == 'morph_deriv':
+                    self._set_morph_derivs()
+
+
+
+
+                plot_lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if getattr(lymph, independent) is not None and  getattr(lymph, dependent) is not None]
+                xs = [getattr(lymph, independent) for lymph in plot_lymphs]
+                ys = [getattr(lymph, dependent)  for lymph in plot_lymphs]
+                colors = [lymph.color  for lymph in plot_lymphs]
+
+                names = [lymph.idx_cell + '-{}'.format(lymph.frame) for lymph in plot_lymphs]
+
+                """
+                fig = plt.figure()
+                ax = fig.add_subplot(111)
+                sc = ax.scatter(xs, ys, s = 0.5, c = colors)
+                ax.set_xlabel(independent)
+                ax.set_ylabel(dependent)
+                """
+
+                sc = ax.scatter(xs, ys, s = 0.5, c = colors)
+
+
+                annot = ax.annotate("", xy=(0,0), xytext=(20,20),textcoords="offset points",
+                            bbox=dict(boxstyle="round", fc="w"),
+                            arrowprops=dict(arrowstyle="->"))
+                annot.set_visible(False)
+
+                def update_annot(ind):
+                    pos = sc.get_offsets()[ind["ind"][0]]
+                    annot.xy = pos
+                    text = "{}".format(" ".join([names[n] for n in ind["ind"]]))
+                    annot.set_text(text)
+                    #annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
+                    annot.get_bbox_patch().set_alpha(0.4)
+                def hover(event):
+                    vis = annot.get_visible()
+                    if event.inaxes == ax:
+                        cont, ind = sc.contains(event)
+                        if cont:
+                            update_annot(ind)
+                            annot.set_visible(True)
+                            fig.canvas.draw_idle()
+                        else:
+                            if vis:
+                                annot.set_visible(False)
+                                fig.canvas.draw_idle()
+
+                fig.canvas.mpl_connect("motion_notify_event", hover)
+
+                #plt.show()
 
 
     def rigid_motions(self):
@@ -428,9 +539,10 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
         self._set_pca(n_components=3)
-        self._set_centroid_attributes('delta_centroid', num_either_side = 2)
-        self._set_centroid_attributes('delta_sensing_direction', num_either_side = 2)
-        self._set_centroid_attributes('run', num_either_side = 2, run_running_mean = True)
+        self._set_centroid_attributes('delta_centroid')
+        self._set_centroid_attributes('delta_sensing_direction')
+        self._set_centroid_attributes('run', time_either_side = 100)
+        self._set_centroid_attributes('searching', time_either_side = 7)
 
         """
         for lymph in utils_general.list_all_lymphs(self):
@@ -446,10 +558,10 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
             count = 0
             consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
-            prev_values = [None, None, None, None, None, None]
+            prev_values = [None, None, None, None, None, None, None, None]
             for idx_lymph, lymph in enumerate(lymph_series):
                 if idx_lymph == 0 or lymph.frame-prev_values[0] == 1:
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run)
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.searching)
                 elif lymph.frame-prev_values[0] == 2: #linear interpolation if only 1 frame missing
                     if consecutive_frames.delta_centroid_list[-1] is None or lymph.delta_centroid is None:
                         delta_centroid_staged = None
@@ -463,15 +575,19 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                         run_staged = None
                     else:
                         run_staged = (consecutive_frames.run_list[-1]+lymph.run)/2
+                    if consecutive_frames.searching_list[-1] is None or lymph.searching is None:
+                        searching_staged = None
+                    else:
+                        searching_staged = (consecutive_frames.searching_list[-1]+lymph.searching)/2
 
-                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2, delta_centroid_staged, delta_sensing_direction_staged, run_staged)
+                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2, delta_centroid_staged, delta_sensing_direction_staged, run_staged, searching_staged)
                 else:
                     consecutive_frames.interpolate()
                     all_consecutive_frames.append(consecutive_frames)
                     count += 1
                     consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run)
-                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run]
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.searching)
+                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.searching]
 
             consecutive_frames.interpolate()
             all_consecutive_frames.append(consecutive_frames)

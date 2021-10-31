@@ -34,6 +34,7 @@ class Raw_Methods:
         else:
             if self.uropod is not None:
                 plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
+                plotter.add_mesh(pv.Sphere(radius=1, center=self.centroid), color = (0, 0, 0))
 
             surf = pv.PolyData(self.vertices, self.faces)
 
@@ -41,7 +42,7 @@ class Raw_Methods:
 
 
         if scalars is None:
-            plotter.add_mesh(surf, color = color, opacity = opacity)
+            plotter.add_mesh(surf, color = color, opacity = 0.5)
         else:
             plotter.add_mesh(surf, color = color, scalars = scalars, opacity = opacity)
 

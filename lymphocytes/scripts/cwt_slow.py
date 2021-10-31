@@ -9,7 +9,6 @@ from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KernelDensity
 from sympy import *
-
 import pyvista as pv
 pv.set_plot_theme("document")
 import random
@@ -17,83 +16,11 @@ import statsmodels.api as sm
 import matplotlib.gridspec as gridspec
 from statsmodels.tsa.api import VAR
 import copy
-import cv2
 from mpl_toolkits.mplot3d import Axes3D
-from scipy.interpolate import UnivariateSpline
 
 from lymphocytes.data.dataloader_good_segs_2 import stack_attributes_2
 from lymphocytes.data.dataloader_good_segs_3 import stack_attributes_3
 from lymphocytes.cells.cells_class import Cells
-
-
-scale = sys.argv[1]
-load_or_save_or_run = sys.argv[2]
-
-
-if scale == '30':
-    ### FAST ###
-    file_name = '30'
-    mexh_scales = [0.5*2]
-    gaus1_scales = [0.4*2]
-    chop = 5
-    inserts = [1, 3, 5, 7, 9]
-    time_either_side = 15
-    min_length = 15
-
-elif scale == '50':
-    ### MID ###
-    file_name = '50'
-    mexh_scales = [0.5*i for i in range(2, 5)]
-    gaus1_scales = [0.4*i for i in range(2, 9, 2)]
-    chop = 5
-    inserts = [3, 8, 12, 17, 21]
-    time_either_side = 25
-    min_length = 15
-
-
-elif scale == '75':
-    ### 75 ###
-    file_name = '75'
-    mexh_scales = [0.5*i for i in range(2, 7, 2)]
-    gaus1_scales = [0.4*i for i in range(2, 12, 4)]
-    chop = 7
-    inserts = [3, 8, 12, 17, 21]
-    time_either_side = 37.5
-    min_length = 15
-
-elif scale == '100':
-    ### SLOW ###
-    file_name = '100'
-    mexh_scales = [0.5*i for i in range(2, 10, 2)]
-    gaus1_scales = [0.4*i for i in range(2, 18, 4)]
-    chop = 10
-    inserts = [4+5*i for i in range(6)]
-    time_either_side = 50
-    min_length = 15
-
-
-elif scale == '150':
-    ### SLOW ###
-    file_name = '150'
-    mexh_scales = [0.5*i for i in range(2, 14, 2)]
-    gaus1_scales = [0.4*i for i in range(2, 24, 4)]
-    chop = 15
-    inserts = [7+6*i for i in range(6)]
-    print(inserts)
-    time_either_side = 75
-    min_length = 15
-
-elif scale == '250':
-    ### SLOW ###
-    file_name = '250'
-    mexh_scales = [0.5*i for i in range(2, 24, 2)]
-    gaus1_scales = [0.4*i for i in range(2, 44, 4)]
-    print(len(mexh_scales))
-    print(len(gaus1_scales))
-    chop = 25
-    inserts = [12+11*i for i in range(6)]
-    time_either_side = 125
-    min_length = 15
 
 
 
@@ -120,38 +47,8 @@ class CWT():
         for i in self.all_consecutive_frames:
             self.all_consecutive_frames_dict[i.name] = i
 
-
-
-
         if not idx_segment == 'all':
             self.all_consecutive_frames = [i for i in self.all_consecutive_frames if i.name == idx_segment]
-
-        """
-        fig = plt.figure()
-        count = 0
-        for cfs in self.all_consecutive_frames:
-            run_list = [i*75 for i in cfs.run_list]
-            delta_sensing_direction_list = [i*30 for i in cfs.delta_sensing_direction_list]
-
-            if len(cfs.pca0_list) > 50 and count < 7 and cfs.name != '2_1a':
-                ax = fig.add_subplot(7, 1, count+1)
-                ax.plot([i for i,j in enumerate(cfs.pca0_list)], cfs.pca0_list, c = 'red')
-                ax.plot([i for i,j in enumerate(cfs.pca1_list)], cfs.pca1_list, c = 'blue')
-                ax.plot([i for i,j in enumerate(cfs.pca2_list)], cfs.pca2_list, c = 'green')
-                ax.plot([i for i,j in enumerate(run_list)], run_list, c = 'black', linestyle = '--')
-                ax.plot([i for i,j in enumerate(delta_sensing_direction_list)], delta_sensing_direction_list, c = 'grey', linestyle = '--')
-                ax.set_xlim([0, 120])
-                ax.set_ylim([-1, 1])
-                count += 1
-        plt.show()
-        sys.exit()
-        """
-
-
-
-
-
-
 
 
 
@@ -173,7 +70,6 @@ class CWT():
         plt.show()
         sys.exit()
         """
-
 
 
         #DO KDE WITH SMALLER TIME SCALES TO VALIDATE THAT (low number of) MOTIFS STRUCTURE IS AT ~50s
@@ -214,7 +110,7 @@ class CWT():
         ax = fig.add_subplot(2, 1, 1)
         for idx_scale, scale in enumerate(scales):
 
-
+            print('idx_scale', idx_scale)
             t_ = Symbol('t_')
             """
             if self.wavelet[:4] == 'cmor':
@@ -227,16 +123,19 @@ class CWT():
                 func +=  (scale-min(self.scales)) + (scale-min(self.scales))*I
             """
             if wavelet[:4] == 'mexh':
-                func = (1-(((t_)/scale)**2))*exp(-0.5*(((t_)/scale)**2))
+                func = (1-(((t_-5)/scale)**2))*exp(-0.5*(((t_-5)/scale)**2))
             elif wavelet[:4] == 'gaus':
                 func = exp(-(t_**2))
                 for _ in range(int(wavelet[4])):
                     func = func.diff(t_)
-                func = func.subs(t_, (t_)/scale)
+                func = func.subs(t_, (t_-5)/scale)
 
-
-            p_real = plot(re(func), (t_, -40, 40), show = False, xlim = [-40, 40], ylim = [-2, 7])
-            p_im = plot(im(func), (t_, -40, 40), show = False, xlim = [-40, 40], ylim = [-2, 7])
+            if frames_plot == 'all':
+                p_real = plot(re(func), show = False, xlim = [-10, 500], ylim = [-2, 7])
+                p_im = plot(im(func), show = False, xlim = [-10, 500], ylim = [-2, 7])
+            else:
+                p_real = plot(re(func), (t_, -10, len(frames_plot.pca0_list)), show = False, ylim = [-2, 7])
+                p_im = plot(im(func), (t_, -10, len(frames_plot.pca0_list)), show = False, ylim = [-2, 7])
             p_real[0].line_color = 'blue'
             p_im[0].line_color = 'red'
             move_sympyplot_to_axes(p_real, ax)
@@ -264,7 +163,6 @@ class CWT():
 
     def set_spectograms(self):
 
-
         features = ['pca0_list', 'pca1_list', 'pca2_list']
         self.num_features = len(features)
 
@@ -278,6 +176,9 @@ class CWT():
                 spectogram.append(coef)
                 """
 
+                # CHANGED
+                mexh_scales = [0.5*i for i in range(2, 10, 2)]
+                gaus1_scales = [0.4*i for i in range(2, 18, 4)]
                 coef, _ = pywt.cwt(getattr(consecutive_frames, attribute), mexh_scales, 'mexh')
                 spectogram.append(coef)
                 coef, _ = pywt.cwt(getattr(consecutive_frames, attribute), gaus1_scales, 'gaus1')
@@ -307,7 +208,7 @@ class CWT():
         ax.imshow(spectogram, vmin = -0.25, vmax = 0.25)
 
         # CHANGED
-        for ins in inserts:
+        for ins in [3, 8, 12, 17, 21]:
             spectogram = np.insert(spectogram, ins, np.zeros(shape = (spectogram.shape[1],)), 0)
         # CHANGED
         #ax.imshow(spectogram, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
@@ -319,7 +220,8 @@ class CWT():
         for cfs in self.all_consecutive_frames:
             if name == 'all' or cfs.name == name:
                 # CHANGED
-
+                mexh_scales = [0.5*i for i in range(2, 10, 2)]
+                gaus1_scales = [0.4*i for i in range(2, 18, 4)]
                 self._plot_wavelets(frames_plot = cfs, wavelet = 'mexh', scales = mexh_scales)
                 self._plot_wavelets(frames_plot = cfs, wavelet = 'gaus1', scales = gaus1_scales)
                 self._plot_spectogram(spectogram = cfs.spectogram)
@@ -335,50 +237,38 @@ class CWT():
 
 
 
-    def set_tsne_embeddings(self, load_or_save_or_run, file_name):
+    def set_tsne_embeddings(self):
 
-        if load_or_save_or_run == 'load':
+        def set_tsne_embeddings(self, load_or_save, file_name):
+
+            if load_or_save == 'load':
+                data = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(file_name), 'rb'))
+                colors = data['colors']
+                xs = data['xs']
+                ys = data['ys']
+                names = data['names']
+
+                self.all_embeddings = np.array(list(zip(xs, ys)))
+
+            elif load_or_save == 'save':
+                self.all_embeddings = TSNE(n_components=2).fit_transform(np.concatenate([i.spectogram for i in self.all_consecutive_frames], axis = 1).T)
+
+
+            idxs_cells = np.cumsum([0] + [i.spectogram.shape[1] for i in self.all_consecutive_frames])
+            for idx, consecutive_frame in enumerate(self.all_consecutive_frames):
+                consecutive_frame.embeddings = self.all_embeddings[idxs_cells[idx]:idxs_cells[idx+1], :]
+
+    def plot_embeddings(self, load_or_save = 'save', file_name = None, path_of = None):
+
+        if load_or_save == 'load':
             data = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(file_name), 'rb'))
             colors = data['colors']
             xs = data['xs']
             ys = data['ys']
             names = data['names']
-
-            self.all_embeddings = np.array(list(zip(xs, ys)))
-
-        elif load_or_save_or_run == 'save' or load_or_save_or_run == 'run':
-            #self.all_embeddings = TSNE(n_components=3).fit_transform(np.concatenate([i.spectogram for i in self.all_consecutive_frames], axis = 1).T)
-            concat = np.concatenate([i.spectogram for i in self.all_consecutive_frames], axis = 1).T
-
-            print('SHAPE A', concat.shape)
-
-            per_PC = int(concat.shape[1]/3)
-            #concat = concat[:, :per_PC]
-            concat = concat[:, per_PC:2*per_PC]
-            #concat = concat[:, 2*per_PC:]
-
-            print('SHAPE B', concat.shape)
-            self.all_embeddings = TSNE(n_components=2).fit_transform(concat)
-
-
-
-        idxs_cells = np.cumsum([0] + [i.spectogram.shape[1] for i in self.all_consecutive_frames])
-        for idx, consecutive_frame in enumerate(self.all_consecutive_frames):
-            consecutive_frame.embeddings = self.all_embeddings[idxs_cells[idx]:idxs_cells[idx+1], :]
-
-    def plot_embeddings(self, load_or_save_or_run = 'save', file_name = None, path_of = None):
-
-        if load_or_save_or_run == 'load':
-            data = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(file_name), 'rb'))
-            colors = data['colors']
-            xs = data['xs']
-            ys = data['ys']
-            names = data['names']
-
-
-        elif load_or_save_or_run == 'save' or load_or_save_or_run == 'run':
+        elif load_or_save == 'save':
             data = {}
-            xs, ys, zs, colors, names = [], [], [], [], []
+            xs, ys, colors, names = [], [], [], []
             for consecutive_frames in self.all_consecutive_frames:
                 colors += [np.random.rand(3,)]*consecutive_frames.embeddings.shape[0]
                 xs += list(consecutive_frames.embeddings[:, 0])
@@ -388,91 +278,39 @@ class CWT():
             data['xs'] = xs
             data['ys'] = ys
             data['names'] = names
-            if load_or_save_or_run == 'save':
+            if path_of is None: #SAVE THE COORDS AS A DICTIONARY WITH NAMES AS KEYS ETC
                 pickle.dump(data, open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(file_name), 'wb'))
 
 
 
-        #all = np.concatenate([i.spectogram for i in self.all_consecutive_frames], axis = 1)
-        #colors = np.max(abs(all), axis = 0)
-
-
-        colors_pc = []
-        colors_searching = []
-        colors_run = []
-        colors_grad = []
+        pcs = []
+        turning_list = []
+        colors_runs = []
         for i in self.all_consecutive_frames: # '2_7a', '2_0a', 'zm_3_3_6a', '2_1a'
-            #if i.name[:4] != '2_1a':
-
-            x_list = [k for k,j in enumerate(i.run_list)]
-            y_list = [k*100 for k in i.run_list]
-            """
-            x_list2 = np.arange(min(x_list), max(x_list), 0.1)
-            closest_frames_many = np.linspace(min(i.closest_frames), max(i.closest_frames), len(x_list2))
+            if i.name[:4] != '2_1a':
+                colors_runs += list(i.run_list)
+                pcs += list(i.pca0_list)
+                turning_list += list(i.delta_sensing_direction_list)
 
 
-            plt.plot(i.closest_frames, y_list,  c = 'black')
-            spl = UnivariateSpline(x_list, y_list, s = 1)
-            plt.plot(closest_frames_many, spl(x_list2), c = 'red')
-            spl = UnivariateSpline(x_list, y_list, s = 2)
-            plt.plot(closest_frames_many, spl(x_list2), c = 'blue')
-            spl = UnivariateSpline(x_list, y_list, s = 6)
-            plt.plot(closest_frames_many, spl(x_list2), c = 'green')
-            #plt.plot(closest_frames_many, spl(x_list2, 1), c = 'green')
-            plt.show()
-            """
-
-
-
-
-            colors_run += list(i.run_list)
-            #spl = UnivariateSpline(x_list, y_list, s = 2)
-            #colors_grad += list(spl(x_list, 1))
-            colors_pc += list(i.pca0_list)
-            colors_searching += list(i.searching_list)
-
-
-
-            """
             elif i.name[:4] == '2_1a':
                 colors_runs += [np.nan for i in i.run_list]
-                colors_grads += [np.nan for i in i.run_list]
                 pcs += [np.nan for i in i.run_list]
                 turning_list += [np.nan for i in i.run_list]
-            """
 
 
 
-
-        colors_2d = []
-        colors_3d = []
-        for idx_point, (run, searching) in enumerate(zip(colors_run, colors_searching)):
-            if np.isnan(run) or np.isnan(searching):
-                xs[idx_point] = np.nan
-                ys[idx_point] = np.nan
-                color_2d = 'black'
-                color_3d = (0, 0, 0)
-            else:
-                if run > 0.005:
-                    color_2d = 'red'
-                    color_3d = (1, 0, 0)
-                else:
-                    if searching > 0.001:
-                        color_2d = 'blue'
-                        color_3d = (0, 0, 1)
-                    else:
-                        color_2d = 'grey'
-                        color_3d = (0.8, 0.8, 0.8)
-            colors_2d.append(color_2d)
-            colors_3d.append(color_3d)
-
-
-
-
-
-        #print(np.nanmin(np.array(colors)), np.nanmax(np.array(colors)))
 
         """
+        print(np.nanmin(np.array(colors_grads)), np.nanmax(np.array(colors_grads)))
+        plt.scatter([0 for i in colors_grads], colors_grads)
+        plt.show()
+        """
+
+
+
+        colors = colors_runs
+
         colors_2 = []
         for idx in range(len(colors_runs)):
             if colors_runs[idx] != np.nan and colors_runs[idx]>0:
@@ -480,29 +318,24 @@ class CWT():
             else:
                 colors_2.append(np.nan)
         colors = colors_2
-        """
 
-        """
         xs_copy, ys_copy, colors_copy =  copy.deepcopy(xs), copy.deepcopy(ys), copy.deepcopy(colors)
         zipped = list(zip(xs_copy, ys_copy, colors_copy))
-        random.shuffle(zipped)
+        #random.shuffle(zipped)
         xs_copy, ys_copy, colors_copy = list(zip(*zipped))
-        """
 
-
-        """
-        plotter = pv.Plotter()
-        for x, y, z, color in zip(xs, ys, zs, colors_3d):
-            if not np.isnan(x):
-                plotter.add_mesh(pv.Sphere(radius=0.4, center=np.array([x, y, z])), color = color)
-        plotter.show()
-        """
-
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection = '3d')
+        sc = ax.scatter(xs_copy, ys_copy, pcs, c = colors_copy, vmin = -0.01, vmax = 0.01, cmap = 'PiYG', edgecolors='b',  depthshade=False)
+        plt.show()
 
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        sc = ax.scatter(xs, ys, c = colors_2d,   edgecolors='b')
+
+
+        sc = ax.scatter(xs_copy, ys_copy, c = colors_copy, vmin = -0.01, vmax = 0.01, cmap = 'PiYG', edgecolors='b')
+
 
 
 
@@ -520,12 +353,12 @@ class CWT():
                 section_ys = cfs_ys[40*idx_section:40*idx_section+40]
                 section_closest_frames = closest_frames[40*idx_section:40*idx_section+40]
                 num = len(section_xs)
-
-
                 for idx in range(num-1):
                     plt.plot(section_xs[idx:idx+2], section_ys[idx:idx+2], c = [idx/(num-1), 0, 0])
                     if idx %2 == 0:
                         plt.text(section_xs[idx], section_ys[idx], str(section_closest_frames[idx]))
+                plt.show()
+            sys.exit()
 
 
 
@@ -558,30 +391,27 @@ class CWT():
         fig.canvas.mpl_connect("motion_notify_event", hover)
 
 
+    def k_means_clustering(self, plot = False):
 
-
-
-    def k_means_clustering(self, n_clusters, plot = False):
-
-        kmeans = KMeans(n_clusters=n_clusters)
-        self.clusters = kmeans.fit_predict(self.all_embeddings)
+        kmeans = KMeans(n_clusters=3)
+        self.clusters = kmeans.fit_predict(self.embeddings)
 
         if plot:
             fig_kmeans = plt.figure()
             ax = fig_kmeans.add_subplot(111)
             colors = ['red', 'blue', 'green', 'black', 'cyan', 'magenta', 'brown', 'gray', 'orange', 'pink']
             for idx, cluster in enumerate(self.clusters):
-                ax.scatter(self.all_embeddings[idx, 0], self.all_embeddings[idx, 1], color = colors[cluster])
-            plt.show()
+                ax.scatter(self.embeddings[idx, 0], self.embeddings[idx, 1], color = colors[cluster])
+            #plt.show()
 
-    def kde(self, load_or_save_or_run = 'load', file_name = 'mexh_kde.pickle'):
+    def kde(self, load_or_save = 'load', file_name = 'mexh_kde.pickle'):
 
 
-        if load_or_save_or_run == 'load':
+        if load_or_save == 'load':
             pdf_array = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_kde.pickle'.format(file_name), 'rb'))
-        elif load_or_save_or_run == 'save' or load_or_save_or_run == 'run':
-            xs = np.linspace(np.min(self.all_embeddings[:, 0])-10, np.max(self.all_embeddings[:, 0])+10, 50)
-            ys = np.linspace(np.min(self.all_embeddings[:, 1])-10, np.max(self.all_embeddings[:, 1])+10, 50)
+        elif load_or_save == 'save':
+            xs = np.linspace(np.min(self.all_embeddings[:, 0]), np.max(self.all_embeddings[:, 0]), 50)
+            ys = np.linspace(np.min(self.all_embeddings[:, 1]), np.max(self.all_embeddings[:, 1]), 50)
 
             xx, yy = np.meshgrid(xs, ys)
             positions = np.vstack([xx.ravel(), yy.ravel()]).T
@@ -592,103 +422,14 @@ class CWT():
 
             pdf_array = np.exp(kernel.score_samples(positions))
             pdf_array = np.reshape(pdf_array, xx.shape)
-            if load_or_save_or_run == 'save':
-                pickle.dump(pdf_array, open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_kde.pickle'.format(file_name), 'wb'))
-
-        self.pdf_array = pdf_array
-        plt.imshow(self.pdf_array)
-        return pdf_array
-
-
-
-    def border_stereotyped(self):
-
-        pdf = copy.deepcopy(self.pdf_array)
-
-        pdf[self.pdf_array<8e-5] = np.nan
-        """
-        s_list = [ 9, 11, 13, 15, 17, 19]
-        b_list = [11, 12, 13, 14, 15]
-        b_list = [b*(np.max(self.pdf_array)/255) for b in b_list]
+            pickle.dump(pdf_array, open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_kde.pickle'.format(file_name), 'wb'))
 
         fig_kde = plt.figure()
-        for idx_s, s in enumerate(s_list):
-            for idx_b, b in enumerate(b_list):
-
-                ax = fig_kde.add_subplot(6, 5, idx_s*len(b_list) + idx_b + 1)
-                pdf_new = np.zeros_like(pdf)
-
-                for row in range(pdf.shape[0]):
-                    for col in range(pdf.shape[1]):
-                        surrounding = pdf[int(row-(s/2)):int(row+(s/2)), int(col-(s/2)):int(col+(s/2))]
-                        if pdf[row, col] > np.nanmean(surrounding) + b:
-                            pdf_new[row, col] = 1
-                        else:
-                            pdf_new[row, col] = 0
-                ax.imshow(pdf_new)
-        plt.show()
-        sys.exit()
-        """
-
-
-
-        pdf_borders = np.zeros_like(pdf)
-        s = 13
-        b = 15
-        b *= (np.max(self.pdf_array)/255)
-        for row in range(pdf.shape[0]):
-            for col in range(pdf.shape[1]):
-                surrounding = pdf[int(row-(s/2)):int(row+(s/2)), int(col-(s/2)):int(col+(s/2))]
-                if pdf[row, col] > np.nanmean(surrounding) + b:
-                    pdf_borders[row, col] = 255
-                else:
-                    pdf_borders[row, col] = 0
-
-        contours, hierarchy = cv2.findContours(pdf_borders.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        im = np.zeros_like(pdf)
-        #cv2.drawContours(im, [cnt], 0, (255), 3)
-
-        def which_contour(x, y):
-            for idx_contour, contour in enumerate(contours):
-                q = cv2.pointPolygonTest(contour, (x, y), False)
-                if q == 1 or q == 0:
-                    return idx_contour
-            return None
-
-        # DILATE
-        """
-        contours, hierarchy = cv2.findContours(pdf_borders.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        kernel = np.ones((5,5),np.uint8)
-        for contour in contours:
-            new = np.zeros_like(pdf_borders)
-            cv2.drawContours(new, [contour], 0, (255), 3)
-            new = cv2.dilate(new,kernel,iterations = 1)
-            contours, hierarchy = cv2.findContours(new.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            cv2.drawContours(pdf_borders, [contours[0]], 0, (255), 3)
-        """
-
-
-        fig_both = plt.figure()
-        ax = fig_both.add_subplot(111)
-        ax.imshow(pdf_borders)
-        idx_contours = []
-        for (x, y) in self.all_embeddings:
-            min_xs = np.min(self.all_embeddings[:, 0]) - 10
-            max_xs = np.max(self.all_embeddings[:, 0]) + 10
-            x = 50*(x - min_xs)/(max_xs - min_xs)
-            min_ys = np.min(self.all_embeddings[:, 1]) - 10
-            max_ys = np.max(self.all_embeddings[:, 1]) + 10
-            y = 50*(y - min_ys)/(max_ys - min_ys)
-            idx_contour = which_contour(x, y)
-            idx_contours.append(idx_contour)
-            ax.scatter(x,y, s = 3)
-        plt.show()
-
-        plt.plot(idx_contours)
-        plt.show()
-
-
-
+        ax = fig_kde.add_subplot(111)
+        ax.imshow(pdf_array[::-1, :], vmin = 0, vmax = 0.0003)
+        ax.set_title('min:{:.2g}, max:{:.2g}'.format(np.min(pdf_array), np.max(pdf_array)))
+        #plt.show()
+        return pdf_array
 
 
 
@@ -725,7 +466,6 @@ def show_cell_series_clustered(idx_segments, center_frames):
 
         idx_cell, letter_keep = idx_segment[:-1], idx_segment[-1]
         cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = [idx_cell], max_l = 15)
-        cells._set_centroid_attributes('searching', time_either_side = 7)
         for lymph_series in cells.cells.values():
             dict = {}
             prev_frame = None
@@ -737,24 +477,21 @@ def show_cell_series_clustered(idx_segments, center_frames):
                     count +=1
                 letter = alphabet[count]
                 # CHANGED
-                if letter == letter_keep and abs(lymph.frame*lymph.t_res - center_frame*lymph.t_res) < time_either_side:
+                if letter == letter_keep and abs(lymph.frame*lymph.t_res - center_frame*lymph.t_res) < 50:
                     keep.append(lymph)
                     lymph_t_res = lymph.t_res
                 prev_frame = lymph.frame
         cells.cells[idx_cell] = keep
-        cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 1)
-
-
+        cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 1, flat = True)
 
         cfs = [i for i in cwt.all_consecutive_frames if i.name == idx_segment][0]
-
 
 
         fig = plt.figure()
         gs = gridspec.GridSpec(2, 2)
         ax1, ax2, ax3 = fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, :])
         # CHANGED
-        idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs(j*lymph_t_res-center_frame*lymph_t_res) < time_either_side]
+        idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs(j*lymph_t_res-center_frame*lymph_t_res) < 50]
 
         ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], color = 'red')
         ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca1_list) if i in idxs_plot], color = 'blue')
@@ -763,10 +500,9 @@ def show_cell_series_clustered(idx_segments, center_frames):
 
         # show spectogram
         spect = cfs.spectogram[:, idxs_plot]
-
         vert = cfs.spectogram[:, cfs.closest_frames.index(center_frame)][:, None]
         # CHANGED
-        for ins in inserts:
+        for ins in [3, 8, 12, 17, 21]:
             empty = np.empty(shape = (len(idxs_plot),))
             spect = np.insert(spect, ins, empty.fill(np.nan), 0)
             empty = np.empty(shape = (1,))
@@ -797,28 +533,31 @@ scales_lists = [[0.5*i for i in range(2, 5)], [0.4*i for i in range(2, 9, 2)], [
 # f_nyquist = 0.5
 
 
+"""
+show_cell_series_clustered(idx_segments = ['3_1_2b', 'zm_3_3_0a'],
+                            center_frames = [36, 92])
+sys.exit()
+"""
+
 
 
 # CHANGED
-cwt = CWT(idx_segment = 'all', chop = chop)
+cwt = CWT(idx_segment = 'all', chop = 10)
 #cwt.print_freqs()
 
 #cwt.edge_effect_size()
-
-
 
 cwt.set_spectograms()
 
 
 
+
 #cwt.plot_wavelet_series_spectogram(name = 'all')
 
+cwt.set_tsne_embeddings()
+cwt.plot_embeddings(load_or_save = 'load', file_name = 'slow', path_of =  None)
 
-cwt.set_tsne_embeddings(load_or_save_or_run = load_or_save_or_run, file_name = file_name)
 
+cwt.kde(load_or_save = 'load', file_name = 'slow')
 
-cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, file_name = file_name, path_of = None)
-
-#cwt.kde(load_or_save_or_run = load_or_save_or_run, file_name = file_name)
-
-cwt.border_stereotyped()
+plt.show()
