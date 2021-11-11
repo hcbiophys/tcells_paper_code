@@ -26,7 +26,7 @@ class Cell_Frame(Raw_Methods, SH_Methods):
     - SH_Methods: methods with spherical harmonics
     """
 
-    def __init__(self, frame, mat_filename, coeffPathFormat, voxels, xyz_res, zoom_factor, idx_cell, max_l, uropod, vertices, faces):
+    def __init__(self, frame, mat_filename, coeffPathFormat, voxels, xyz_res, idx_cell, max_l, uropod,  vertices, faces):
         """
         Args:
         - frame: frame number (beware of gaps in these as cells can exit the arenas)
@@ -44,11 +44,11 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.idx_cell = idx_cell
         self.voxels = voxels
         self.xyz_res = xyz_res
-        self.zoom_factor = zoom_factor
         self.color = None
         self.t_res = None
         self.max_l = max_l
         self.uropod = uropod
+
 
 
 
@@ -78,13 +78,17 @@ class Cell_Frame(Raw_Methods, SH_Methods):
 
 
 
-
-
-
         self.morph_deriv = None
         self.run = None
+        self.run_mean = None
+        self.spin_vec = None
+        self.spin_vec_magnitude = None
+        self.spin_vec_magnitude_mean = None
+        self.direction = None
+        self.spin_vec_std = None
+        self.direction_std = None
 
-        # running means
+
         self.mean_uropod = None
         self.mean_centroid = None
 
@@ -94,6 +98,7 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.pca0 = None
         self.pca1 = None
         self.pca2 = None
+
 
 
         self.uropod_aligned = False # not yet aligned by uropod-centroid vector

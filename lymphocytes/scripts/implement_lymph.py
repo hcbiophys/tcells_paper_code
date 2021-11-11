@@ -19,6 +19,7 @@ from mkalgo.mk import mk_eab
 import pickle
 import random
 
+
 #from lymphocytes.data.dataloader_good_segs_1 import stack_attributes_1
 from lymphocytes.data.dataloader_good_segs_2 import stack_attributes_2
 from lymphocytes.data.dataloader_good_segs_3 import stack_attributes_3
@@ -27,14 +28,24 @@ import lymphocytes.utils.general as utils_general
 
 
 if __name__ == '__main__':
-    idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_1_{}'.format(i) for i in range(6)] + ['zm_3_3_{}'.format(i) for i in range(8)]
-    #random.shuffle(idx_cells)
-    #for idx_cell in idx_cells:
+    idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_1_{}'.format(i) for i in range(6)] + ['zm_3_3_{}'.format(i) for i in range(8)] + ['zm_3_4_{}'.format(i) for i in range(4)]
+    random.shuffle(idx_cells)
 
-
+    idx_cell = 'zm_3_4_1'
+    idx_cells = [idx_cell]
 
 
     cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = idx_cells, max_l = 15)
+
+    #cells.scatter_run_running_means()
+    #cells.run_power_spectrum(attribute = 'run', time_either_side = 7, high_or_low_run = 'low')
+    #cells.run_power_spectrum(attribute = 'run', time_either_side = 7, high_or_low_run = 'high')
+
+
+
+
+    #cells._set_searching(time_either_side=None, time_either_side_mean=None)
+
     #for attribute in ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction']:
     ### single frame methods ###
     #cells._set_delta_centroids()
@@ -59,8 +70,8 @@ if __name__ == '__main__':
 
     ### single cell methods ###
 
-    #cells.plot_migratingCell(idx_cell=idx_cell, color_by = 'time', plot_every = 5)
-    #cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 4)
+    #cells.plot_migratingCell(idx_cell=idx_cell, color_by = 'time', plot_every = 15)
+    cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = 'run', plot_every = 5)
     #cells.plot_voxels_series(idx_cell=idx_cell, plot_every = 10)
     #cells.select_uropods(idx_cell=idx_cell)
     #cells.select_uropods_add_frames(idx_cell = idx_cell)
@@ -71,7 +82,7 @@ if __name__ == '__main__':
     #cells.plot_series_PCs(idx_cell=idx_cell, plot_every=15)
     #cells.plot_series_voxels(plot_every)
     #cells.plot_recon_series(idx_cell = idx_cell, max_l = 1, color_by = None, plot_every=1)
-    cells.gather_time_series()
+    #cells.gather_time_series()
 
 
 
@@ -86,9 +97,9 @@ if __name__ == '__main__':
     #cells.plot_component_lymphs(grid_size=7, pca=True, plot_original = True)
     #cells.line_plot_3D(centroid_uropod_pca = 'pca', color_by = None)
     #cells.plot_2D_embeddings(pca = True, components = (0, 1))
-    #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'delta_sensing_direction', 'run_pos', 'run_neg'])
-    #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv', 'delta_centroid', 'searching', 'run_pos', 'run_neg'])
-    #cells.correlation_annotate( 'searching', 'run')
+    #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'morph_deriv',  'run', 'searching', 'searching_mean'], searching_widths = [7, 50, 100])
+    #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'run'], run_widths = [ 150, 200])
+    #cells.correlation_annotate( 'pca0', 'run')
     #cells.rigid_motions()
     #cells.plot_PC_space(plot_original = False)
     #cells.plot_PC_space(plot_original = True)

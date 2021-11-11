@@ -94,7 +94,7 @@ class PCA_Methods:
 
                 inverted = pca_obj.inverse_transform(sample)
                 ax = fig_sampling.add_subplot(n_components, 3, 3*idx_PC+idx_sample+1)
-                ax.bar(range(len(inverted)), inverted, color = colors)
+                ax.bar(range(len(inverted[:5])), inverted[:5], color = colors)
                 ax.set_ylim([0, 4.2])
                 ax.set_yticks([0, 4])
                 if idx_sample != 0:

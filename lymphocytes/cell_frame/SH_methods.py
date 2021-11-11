@@ -150,19 +150,14 @@ class SH_Methods:
                         func_value += clm*sph_harm(m, l, p, t)
                 list.append(func_value.real)
 
-        """
+
         if self.idx_cell[:2] == 'zm':
-
-            xs = [x + self.centroid[0] - self.calibration[0] for x in xs] # self.centroid is the mesh centroid
-            ys = [y + self.centroid[1] - self.calibration[1] for y in ys]
-            zs = [z + self.centroid[2] - self.calibration[2] for z in zs]
-
 
 
             xs = [x + np.min(self.vertices[:, 0]) for x in xs]
             ys = [y + np.min(self.vertices[:, 1]) for y in ys]
             zs = [z + np.min(self.vertices[:, 2]) for z in zs]
-        """
+
 
 
         return xs, ys, zs, phis, thetas
@@ -219,8 +214,7 @@ class SH_Methods:
         surf = pv.PolyData(vertices, faces)
         plotter.add_mesh(surf, color = color, opacity = opacity)
 
-        """
-        plotter.add_lines(np.array([[-10, 0, 0], [10, 0, 0]]), color = (0, 0, 0))
-        plotter.add_lines(np.array([[0, -10, 0], [0, 10, 0]]), color = (0, 0, 0))
-        plotter.add_lines(np.array([[0, 0, -10], [0, 0, 10]]), color = (0, 0, 0))
-        """
+
+        #plotter.add_lines(np.array([[-10, 0, 0], [10, 0, 0]]), color = (0, 0, 0))
+        #plotter.add_lines(np.array([[0, -10, 0], [0, 10, 0]]), color = (0, 0, 0))
+        #plotter.add_lines(np.array([[0, 0, -10], [0, 0, 10]]), color = (0, 0, 0))

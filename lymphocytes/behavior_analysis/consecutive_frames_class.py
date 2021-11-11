@@ -17,7 +17,11 @@ class Consecutive_Frames():
         self.delta_centroid_list = []
         self.delta_sensing_direction_list = []
         self.run_list = []
-        self.searching_list = []
+        self.run_mean_list = []
+        self.spin_vec_magnitude_list = []
+        self.spin_vec_magnitude_mean_list = []
+        self.spin_vec_std_list = []
+        self.direction_std_list = []
 
         self.spectrogram = None
         self.embeddings = None
@@ -26,7 +30,7 @@ class Consecutive_Frames():
         self.closest_frames = []
 
 
-    def add(self, frame, pca0, pca1, pca2, delta_centroid, delta_sensing_direction, run, searching):
+    def add(self, frame, pca0, pca1, pca2, delta_centroid, delta_sensing_direction, run, run_mean,  spin_vec_magnitude, spin_vec_magnitude_mean, spin_vec_std, direction_std):
         self.orig_frame_list.append(frame)
         self.pca0_list.append(pca0)
         self.pca1_list.append(pca1)
@@ -34,7 +38,13 @@ class Consecutive_Frames():
         self.delta_centroid_list.append(delta_centroid)
         self.delta_sensing_direction_list.append(delta_sensing_direction)
         self.run_list.append(run)
-        self.searching_list.append(searching)
+        self.run_mean_list.append(run_mean)
+
+        self.spin_vec_magnitude_list.append(spin_vec_magnitude)
+        self.spin_vec_magnitude_mean_list.append(spin_vec_magnitude_mean)
+        self.spin_vec_std_list.append(spin_vec_std)
+        self.direction_std_list.append(direction_std)
+
 
     def interpolate(self):
 
@@ -51,7 +61,7 @@ class Consecutive_Frames():
             closest_frame = self.orig_frame_list[dists.index(min(dists))]
             self.closest_frames.append(closest_frame)
 
-        for attribute in ['pca0_list', 'pca1_list', 'pca2_list', 'delta_centroid_list', 'delta_sensing_direction_list', 'run_list', 'searching_list']:
+        for attribute in ['pca0_list', 'pca1_list', 'pca2_list', 'delta_centroid_list', 'delta_sensing_direction_list', 'run_list', 'run_mean_list', 'spin_vec_magnitude_list', 'spin_vec_magnitude_mean_list', 'spin_vec_std_list', 'direction_std_list']:
 
             f = interpolate.interp1d(frame_times, getattr(self, attribute))
             y_new = f(new_frame_times)

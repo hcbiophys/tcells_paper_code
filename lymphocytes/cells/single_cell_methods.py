@@ -128,11 +128,12 @@ class Single_Cell_Methods:
         Plot original mesh series, with point at the uropods
         """
 
-        self._set_centroid_attributes('searching', time_either_side = 50)
+        self._set_centroid_attributes('searching', time_either_side = 7)
 
         lymphs_plot = self.cells[idx_cell][::plot_every]
         num_cols=int(len(lymphs_plot)/3)+1
         plotter = pv.Plotter(shape=(3, num_cols), border=False)
+        #plotter = pv.Plotter(shape=(1, len(lymphs_plot)), border=False)
 
 
 
@@ -143,14 +144,18 @@ class Single_Cell_Methods:
                 self._set_centroid_attributes(color_by)
             elif color_by == 'morph_deriv':
                 self._set_morph_derivs()
+            elif color_by == 'run':
+                self._set_centroid_attributes('run', time_either_side = 7)
             vmin, vmax = utils_general.get_color_lims(self, color_by)
 
         for idx_plot, lymph in enumerate(lymphs_plot):
             plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
+            #plotter.subplot(0, idx_plot)
 
 
-            plotter.add_text("{}".format(lymph.frame), font_size=10)
-            #plotter.subplot(idx_plot, 0)
+            plotter.add_text("{}".format(int(lymph.frame*lymph.t_res)), font_size=10)
+            plotter.camera.focal_point = lymph.centroid
+
 
             color = (1, 1, 1)
             if color_by is not None:
@@ -160,15 +165,17 @@ class Single_Cell_Methods:
             mins, maxs = np.min(self.cells[idx_cell][0].vertices, axis = 0), np.max(self.cells[idx_cell][0].vertices, axis = 0)
             box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
             lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box)
+            #lymph.surface_plot(plotter=plotter, uropod_align=True, color = color)
+            #lymph.plotRecon_singleDeg(plotter=plotter, max_l = 1)
 
-            if lymph.spin_vec is not None:
-                plotter.add_lines(np.array([lymph.centroid, lymph.centroid+lymph.spin_vec*1000]), color = (0, 0, 0))
-            print(lymph.spin_vec)
+            #if lymph.spin_vec is not None:
+                #plotter.add_lines(np.array([lymph.uropod, lymph.uropod+lymph.direction*25]), color = (0, 0, 0))
 
 
 
-        plotter.show(cpos=[0, 1, 0])
-        #plotter.show(cpos=[0, 0, 1])
+        #plotter.show(cpos=[0, 1, 0])
+
+        plotter.show(cpos=[0, 0, 1])
         print('------')
 
     def plot_voxels_series(self, idx_cell, plot_every):
@@ -255,8 +262,6 @@ class Single_Cell_Methods:
 
 
     def plot_migratingCell(self, idx_cell,  color_by = 'time', plot_every = 15):
-        """
-        Plot all meshes of a cell in one window
 
 
 
@@ -272,31 +277,31 @@ class Single_Cell_Methods:
                 self._set_morph_derivs()
 
             vmin, vmax = utils_general.get_color_lims(self, color_by)
-        """
+
 
         frames = [lymph.frame for lymph in self.cells[idx_cell]]
 
 
-        fig = plt.figure()
-        for idx, time_either_side in enumerate([5, 30, 55]):
-            self._set_centroid_attributes('run', time_either_side = time_either_side)
-            self._set_centroid_attributes('searching', time_either_side = time_either_side)
 
-            ax = fig.add_subplot(2, 3, idx+1)
-            runs = [lymph.run for lymph in self.cells[idx_cell]]
-            ax.plot(frames, runs, c = 'blue')
-            ax.plot(frames, [0 for _ in runs], c = 'black')
-            ax.set_ylim([0, 0.02])
+        self._set_centroid_attributes('run', time_either_side = 7)
 
-            searchings = [lymph.searching for lymph in self.cells[idx_cell]]
-            ax.plot(frames, [i*10 if i is not None else None for i in searchings], c = 'red')
-            ax.plot(frames, [0 for _ in searchings], c = 'black')
 
-            ax = fig.add_subplot(2, 3, 3 + idx+1)
-            ax.scatter(searchings, runs)
+        runs = [lymph.run if lymph.run is not None else None for lymph in self.cells[idx_cell]]
+        plt.plot([i*self.cells[idx_cell][0].t_res for i in frames], runs, c = 'black')
+        plt.plot(frames, [0 for _ in runs], c = 'grey')
+        plt.xlim([0, 250*5])
+        plt.ylim([-0.01, 0.03])
+
+
+        #self._set_centroid_attributes('searching', time_either_side = 32)
+        #plt.plot(frames, [lymph.spin_vec_std for lymph in self.cells[idx_cell]], c = 'red') # highlights changing turning direction
+        #plt.plot(frames, [lymph.spin_vec_magnitude_mean for lymph in self.cells[idx_cell]], c = 'blue') # highlights amount of turning
+        #plt.plot(frames, [lymph.direction_std/20 if lymph.direction_std is not None else None  for lymph in self.cells[idx_cell]], c = 'green') # highlights direction change (e.g. turning could be oscilatory)
 
         plt.show()
+
         """
+
         # SEARCHING
         self._set_centroid_attributes('searching', time_either_side = 2, run_running_mean = True)
         plotter = pv.Plotter()
@@ -326,12 +331,6 @@ class Single_Cell_Methods:
         plotter.show()
         """
 
-
-
-
-
-
-        """
         for idx_lymph, lymph in enumerate(lymphs):
             surf = pv.PolyData(lymph.vertices, lymph.faces)
 
@@ -350,9 +349,9 @@ class Single_Cell_Methods:
         #box = pv.Box(bounds=(0, 92.7, 0, 82.4, 0, 26.4))
         #plotter.add_mesh(box, style='wireframe')
 
-        plotter.add_axes()
+        #plotter.add_axes()
         plotter.show(cpos=[0, 1, 0.5])
-        """
+
 
     def plot_attribute(self, idx_cell, attribute):
 

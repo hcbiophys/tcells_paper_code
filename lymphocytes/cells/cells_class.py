@@ -20,6 +20,7 @@ import pickle
 import random
 from pykdtree.kdtree import KDTree
 import pandas as pd
+from scipy import signal
 
 from lymphocytes.cells.pca_methods import PCA_Methods
 from lymphocytes.cells.single_cell_methods import Single_Cell_Methods
@@ -53,7 +54,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         self.cells = {}
         self.cell_colors = {}
 
-        for (idx_cell, mat_filename, coeffPathFormat, xyz_res, color, t_res, zoom_factor) in stack_attributes:
+        for (idx_cell, mat_filename, coeffPathFormat, xyz_res, color, t_res) in stack_attributes:
 
             if cells_model == 'all' or idx_cell in cells_model:
                 print('idx_cell: {}'.format(idx_cell))
@@ -69,14 +70,14 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                     #calibrations = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/calibrations/cell_{}.pickle'.format(idx_cell), "rb"))
                 else:
                     frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='not_zeiss', include_voxels = True)
+                for frame in range(int(max(frames_all)+1)):
 
-                for idx in range(len(frames_all)):
+                    #if frame > 160:
+                    if os.path.isfile(coeffPathFormat.format(frame)): # if it's within arena and SPHARM-PDM worked
 
-
-                    if os.path.isfile(coeffPathFormat.format(int(frames_all[idx]))): # if it's within arena and SPHARM-PDM worked
-                        snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
-
-                        #snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res, zoom_factor = zoom_factor, idx_cell = idx_cell, max_l = max_l, uropod  = None, calibration = None, vertices = vertices_all[idx], faces = faces_all[idx])
+                        idx = frames_all.index(frame)
+                        snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
+                        #snap = Cell_Frame(mat_filename = mat_filename, frame = frame, coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod  = None,  vertices = vertices_all[idx], faces = faces_all[idx])
 
                         snap.color = color
                         snap.t_res = t_res
@@ -108,6 +109,40 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
             surf = pv.PolyData(lymph.vertices, lymph.faces)
             lymph.curvature = surf.curvature()
     """
+
+    def scatter_run_running_means(self):
+        fig_scat = plt.figure()
+        axes = [fig_scat.add_subplot(5, 1, i+1) for i in range(5)]
+        width_points = [[] for _ in range(5)]
+        for lymph_series in self.cells.values():
+            print(lymph_series[0].idx_cell)
+            color = np.random.rand(3,)
+            for idx_width, width in enumerate([7, 50, 100, 150, 200]):
+
+                self._set_centroid_attributes_to_NONE()
+                self.attributes_set = []
+                self._set_centroid_attributes('run', time_either_side = width, idx_cell = lymph_series[0].idx_cell)
+
+                runs = [lymph.run if lymph.run is not None else np.nan for lymph in lymph_series]
+                print(np.nanmax(runs))
+                times = [lymph.frame*lymph.t_res for lymph in lymph_series]
+                axes[idx_width].scatter(times, runs, s = 5, c = color)
+                width_points[idx_width] += runs
+        fig_hist = plt.figure()
+        for idx, i in enumerate(width_points):
+            i = [j for j in i if not np.isnan(j)]
+            ax = fig_hist.add_subplot(5, 1, idx+1)
+            ax.hist(i, bins = 10, orientation = 'horizontal')
+            #plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+
+
+        plt.show()
+
+
+
+
+
+
 
 
     def plot_attributes(self, attributes):
@@ -298,172 +333,159 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
 
-    def correlation(self,  attributes):
-        time_either_side = 7
+    def correlation(self,  attributes, run_widths):
         """
         Get pearson correlation coefficient between independent and dependent variable
         """
-        fig_scatt, fig_r, fig_p = plt.figure(figsize = (5, 6)), plt.figure(), plt.figure()
-        r_values = np.empty((len(attributes), len(attributes)))
-        p_values = np.empty((len(attributes), len(attributes)))
-        r_values[:], p_values[:] = np.nan, np.nan
-        for idx_row, dependent in enumerate(attributes):
-            for idx_col, independent in enumerate(attributes):
-                if dependent != independent and dependent[:3] != 'pca' and idx_col < idx_row:
-                    if independent[:3] != 'run' or dependent[:3] != 'run':
+        for width in run_widths:
+            self.attributes_set = []
+            self._set_centroid_attributes_to_NONE()
 
-                        print(independent, dependent)
+            fig_scatt, fig_r, fig_p = plt.figure(figsize = (5, 6)), plt.figure(), plt.figure()
+            r_values = np.empty((len(attributes), len(attributes)))
+            p_values = np.empty((len(attributes), len(attributes)))
+            r_values[:], p_values[:] = np.nan, np.nan
+            for idx_row, dependent in enumerate(attributes):
+                for idx_col, independent in enumerate(attributes):
+                    if dependent != independent and dependent[:3] != 'pca' and idx_col < idx_row:
+                        if independent[:3] != 'run' or dependent[:3] != 'run':
 
-                        ax = fig_scatt.add_subplot(len(attributes), len(attributes), idx_row*len(attributes)+idx_col+1)
-                        ax.set_xlabel(independent)
-                        ax.set_ylabel(dependent)
-                        if independent[:3] == 'pca' or dependent[:3] == 'pca' :
-                            self._set_pca(n_components=3)
-                        if independent == 'delta_centroid'or dependent == 'delta_centroid':
-                            self._set_centroid_attributes('delta_centroid')
-                        if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
-                            self._set_centroid_attributes('delta_sensing_direction')
-                        if independent == 'searching' or dependent == 'searching':
-                            self._set_centroid_attributes('searching', time_either_side = time_either_side)
-                        if independent[:3] == 'run' or dependent[:3] == 'run':
-                            self._set_centroid_attributes('run', time_either_side = time_either_side)
-                            lymphs = utils_general.list_all_lymphs(self)
-                            for lymph in lymphs:
-                                if lymph.run is not None and lymph.run > 0:
-                                    lymph.run_pos = abs(lymph.run)
-                                else:
-                                    lymph.run_pos = None
-                                if lymph.run is not None and lymph.run < 0:
-                                    lymph.run_neg = abs(lymph.run)
-                                else:
-                                    lymph.run_neg = None
+                            print(independent, dependent)
 
+                            ax = fig_scatt.add_subplot(len(attributes), len(attributes), idx_row*len(attributes)+idx_col+1)
+                            ax.set_xlabel(independent)
+                            ax.set_ylabel(dependent)
+                            if independent[:3] == 'pca' or dependent[:3] == 'pca' :
+                                self._set_pca(n_components=3)
+                            if independent == 'delta_centroid'or dependent == 'delta_centroid':
+                                self._set_centroid_attributes('delta_centroid')
+                            if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
+                                self._set_centroid_attributes('delta_sensing_direction')
+                            if independent[:9] == 'searching' or dependent[:9] == 'searching':
+                                self._set_centroid_attributes('searching', time_either_side = None)
+                            if independent[:3] == 'run' or dependent[:3] == 'run':
+                                self._set_centroid_attributes('run', time_either_side = width)
+                                lymphs = utils_general.list_all_lymphs(self)
+                        
 
-                        if independent == 'morph_deriv' or dependent == 'morph_deriv':
-                            self._set_morph_derivs()
+                            if independent == 'morph_deriv' or dependent == 'morph_deriv':
+                                self._set_morph_derivs()
 
-                        plot_lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if getattr(lymph, independent) is not None and  getattr(lymph, dependent) is not None]
-                        xs = [getattr(lymph, independent) for lymph in plot_lymphs]
-                        ys = [getattr(lymph, dependent)  for lymph in plot_lymphs]
-                        colors = [lymph.color  for lymph in plot_lymphs]
-                        result = scipy.stats.linregress(np.array(xs), np.array(ys))
-                        ax.scatter(xs, ys, s=0.1, c = colors)
+                            plot_lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if getattr(lymph, independent) is not None and  getattr(lymph, dependent) is not None]
+                            xs = [getattr(lymph, independent) for lymph in plot_lymphs]
+                            ys = [getattr(lymph, dependent)  for lymph in plot_lymphs]
+                            colors = [lymph.color  for lymph in plot_lymphs]
+                            result = scipy.stats.linregress(np.array(xs), np.array(ys))
+                            ax.scatter(xs, ys, s=1, c = colors)
+                            ax.set_title(str(width))
 
-                        model_xs = np.linspace(min(list(xs)), max(list(xs)), 50)
-                        ax.plot(model_xs, [result.slope*i+result.intercept for i in model_xs], c = 'red')
-                        ax.tick_params(axis="both",direction="in")
-                        if idx_row != len(attributes)-1:
-                            ax.set_xticks([])
-                        if idx_col != 0:
-                            ax.set_yticks([])
+                            model_xs = np.linspace(min(list(xs)), max(list(xs)), 50)
+                            #ax.plot(model_xs, [result.slope*i+result.intercept for i in model_xs], c = 'red')
+                            ax.tick_params(axis="both",direction="in")
+                            if idx_row != len(attributes)-1:
+                                ax.set_xticks([])
+                            if idx_col != 0:
+                                ax.set_yticks([])
 
-                        r_values[idx_row, idx_col] = result.rvalue
-                        p_values[idx_row, idx_col] = result.pvalue
-        fig_scatt.subplots_adjust(hspace=0, wspace=0)
-        ax = fig_r.add_subplot(111)
-        r = ax.imshow(r_values, cmap = 'Blues')
-        matplotlib.cm.Blues.set_bad(color='white')
-        ax.axis('off')
-        fig_r.colorbar(r, ax=ax, orientation='horizontal')
-        ax = fig_p.add_subplot(111)
-        p = ax.imshow(p_values, cmap = 'Reds')
-        matplotlib.cm.Reds.set_bad(color='white')
-        fig_p.colorbar(p, ax=ax, orientation='horizontal')
-        ax.axis('off')
+                            r_values[idx_row, idx_col] = result.rvalue
+                            p_values[idx_row, idx_col] = result.pvalue
+            fig_scatt.subplots_adjust(hspace=0, wspace=0)
+            ax = fig_r.add_subplot(111)
+            ax.set_title(str(width))
+            r = ax.imshow(r_values, cmap = 'Blues')
+            matplotlib.cm.Blues.set_bad(color='white')
+            ax.axis('off')
+            fig_r.colorbar(r, ax=ax, orientation='horizontal')
+            ax = fig_p.add_subplot(111)
+            ax.set_title(str(width))
+            p = ax.imshow(p_values, cmap = 'Reds')
+            matplotlib.cm.Reds.set_bad(color='white')
+            fig_p.colorbar(p, ax=ax, orientation='horizontal')
+            ax.axis('off')
 
 
 
-        #plt.show()
+            #plt.show()
 
 
     def correlation_annotate(self,  independent, dependent):
-        print('about to do correlation function')
 
         fig = plt.figure()
-        for idx_run, run_width in enumerate([7, 50, 100]):
-            for idx_searching, searching_width in enumerate([7, 25, 50]):
-                self.attributes_set = []
 
-                ax = fig.add_subplot(3, 3, idx_run*3 + idx_searching+1)
-
-
-                if independent[:3] == 'pca' or dependent[:3] == 'pca' :
-                    self._set_pca(n_components=3)
-                if independent == 'delta_centroid'or dependent == 'delta_centroid':
-                    self._set_centroid_attributes('delta_centroid')
-                if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
-                    self._set_centroid_attributes('delta_sensing_direction')
-                if independent == 'searching' or dependent == 'searching':
-                    print('searching_width', searching_width)
-                    self._set_centroid_attributes('searching', time_either_side = searching_width)
-                if independent[:3] == 'run' or dependent[:3] == 'run':
-                    print('run_width', run_width)
-                    self._set_centroid_attributes('run', time_either_side = run_width)
-                    lymphs = utils_general.list_all_lymphs(self)
-                    for lymph in lymphs:
-                        if lymph.run is not None and lymph.run > 0:
-                            lymph.run_pos = abs(lymph.run)
-                        else:
-                            lymph.run_pos = None
-                        if lymph.run is not None and lymph.run < 0:
-                            lymph.run_neg = abs(lymph.run)
-                        else:
-                            lymph.run_neg = None
+        if independent[:3] == 'pca' or dependent[:3] == 'pca' :
+            self._set_pca(n_components=3)
+        if independent == 'delta_centroid'or dependent == 'delta_centroid':
+            self._set_centroid_attributes('delta_centroid')
+        if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
+            self._set_centroid_attributes('delta_sensing_direction')
+        if independent[:4] == 'spin' or dependent[:4] == 'spin' or  independent[:3] == 'dir' or dependent[:3] == 'dir':
+            self._set_centroid_attributes('searching', time_either_side = None)
+        if independent[:3] == 'run' or dependent[:3] == 'run':
+            self._set_centroid_attributes('run', time_either_side = 200)
+            lymphs = utils_general.list_all_lymphs(self)
 
 
-
-                if independent == 'morph_deriv' or dependent == 'morph_deriv':
-                    self._set_morph_derivs()
+        if independent == 'morph_deriv' or dependent == 'morph_deriv':
+            self._set_morph_derivs()
 
 
 
 
-                plot_lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if getattr(lymph, independent) is not None and  getattr(lymph, dependent) is not None]
-                xs = [getattr(lymph, independent) for lymph in plot_lymphs]
-                ys = [getattr(lymph, dependent)  for lymph in plot_lymphs]
-                colors = [lymph.color  for lymph in plot_lymphs]
+        plot_lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if getattr(lymph, independent) is not None and  getattr(lymph, dependent) is not None]
+        xs = [getattr(lymph, independent) for lymph in plot_lymphs]
+        ys = [getattr(lymph, dependent)  for lymph in plot_lymphs]
+        colors = [lymph.color  for lymph in plot_lymphs]
 
-                names = [lymph.idx_cell + '-{}'.format(lymph.frame) for lymph in plot_lymphs]
+        names = [lymph.idx_cell + '-{}'.format(lymph.frame) for lymph in plot_lymphs]
 
-                """
-                fig = plt.figure()
-                ax = fig.add_subplot(111)
-                sc = ax.scatter(xs, ys, s = 0.5, c = colors)
-                ax.set_xlabel(independent)
-                ax.set_ylabel(dependent)
-                """
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        colors = []
+        for x,y in zip(xs, ys):
+            if y > 0.005:
+                colors.append('red')
+            else:
+                if x > 0.001:
+                    colors.append('blue')
+                else:
+                    colors.append('grey')
+        """
+        ax = fig.add_subplot(111)
+        sc = ax.scatter(xs, ys, s = 0.5, c = colors)
 
-                sc = ax.scatter(xs, ys, s = 0.5, c = colors)
+        ax.set_xlabel(independent)
+        ax.set_ylabel(dependent)
 
 
-                annot = ax.annotate("", xy=(0,0), xytext=(20,20),textcoords="offset points",
-                            bbox=dict(boxstyle="round", fc="w"),
-                            arrowprops=dict(arrowstyle="->"))
-                annot.set_visible(False)
+        annot = ax.annotate("", xy=(0,0), xytext=(20,20),textcoords="offset points",
+                    bbox=dict(boxstyle="round", fc="w"),
+                    arrowprops=dict(arrowstyle="->"))
+        annot.set_visible(False)
 
-                def update_annot(ind):
-                    pos = sc.get_offsets()[ind["ind"][0]]
-                    annot.xy = pos
-                    text = "{}".format(" ".join([names[n] for n in ind["ind"]]))
-                    annot.set_text(text)
-                    #annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
-                    annot.get_bbox_patch().set_alpha(0.4)
-                def hover(event):
-                    vis = annot.get_visible()
-                    if event.inaxes == ax:
-                        cont, ind = sc.contains(event)
-                        if cont:
-                            update_annot(ind)
-                            annot.set_visible(True)
-                            fig.canvas.draw_idle()
-                        else:
-                            if vis:
-                                annot.set_visible(False)
-                                fig.canvas.draw_idle()
+        def update_annot(ind):
+            pos = sc.get_offsets()[ind["ind"][0]]
+            annot.xy = pos
+            text = "{}".format(" ".join([names[n] for n in ind["ind"]]))
+            annot.set_text(text)
+            #annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
+            annot.get_bbox_patch().set_alpha(0.4)
+        def hover(event):
+            vis = annot.get_visible()
+            if event.inaxes == ax:
+                cont, ind = sc.contains(event)
+                if cont:
+                    update_annot(ind)
+                    annot.set_visible(True)
+                    fig.canvas.draw_idle()
+                else:
+                    if vis:
+                        annot.set_visible(False)
+                        fig.canvas.draw_idle()
 
-                fig.canvas.mpl_connect("motion_notify_event", hover)
+        fig.canvas.mpl_connect("motion_notify_event", hover)
 
-                #plt.show()
+        plt.show()
 
 
     def rigid_motions(self):
@@ -541,7 +563,8 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         self._set_pca(n_components=3)
         self._set_centroid_attributes('delta_centroid')
         self._set_centroid_attributes('delta_sensing_direction')
-        self._set_centroid_attributes('run', time_either_side = 100)
+        self._set_centroid_attributes('run', time_either_side = 7)
+        self._set_centroid_attributes('run_mean', time_either_side = 200)
         self._set_centroid_attributes('searching', time_either_side = 7)
 
         """
@@ -558,36 +581,35 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
             count = 0
             consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
-            prev_values = [None, None, None, None, None, None, None, None]
+            prev_values = [None, None, None, None, None, None, None, None, None, None, None, None]
             for idx_lymph, lymph in enumerate(lymph_series):
                 if idx_lymph == 0 or lymph.frame-prev_values[0] == 1:
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.searching)
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.run_mean, lymph.spin_vec_magnitude, lymph.spin_vec_magnitude_mean, lymph.spin_vec_std, lymph.direction_std)
                 elif lymph.frame-prev_values[0] == 2: #linear interpolation if only 1 frame missing
-                    if consecutive_frames.delta_centroid_list[-1] is None or lymph.delta_centroid is None:
-                        delta_centroid_staged = None
-                    else:
-                        delta_centroid_staged = (consecutive_frames.delta_centroid_list[-1]+lymph.delta_centroid)/2
-                    if consecutive_frames.delta_sensing_direction_list[-1] is None or lymph.delta_sensing_direction is None:
-                        delta_sensing_direction_staged = None
-                    else:
-                        delta_sensing_direction_staged = (consecutive_frames.delta_sensing_direction_list[-1]+lymph.delta_sensing_direction)/2
-                    if consecutive_frames.run_list[-1] is None or lymph.run is None:
-                        run_staged = None
-                    else:
-                        run_staged = (consecutive_frames.run_list[-1]+lymph.run)/2
-                    if consecutive_frames.searching_list[-1] is None or lymph.searching is None:
-                        searching_staged = None
-                    else:
-                        searching_staged = (consecutive_frames.searching_list[-1]+lymph.searching)/2
 
-                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2, delta_centroid_staged, delta_sensing_direction_staged, run_staged, searching_staged)
+
+                    staged_list = []
+                    for attribute in ['delta_centroid', 'delta_sensing_direction', 'run', 'run_mean', 'spin_vec_magnitude', 'spin_vec_magnitude_mean', 'spin_vec_std', 'direction_std']:
+                        attribute_list = attribute + '_list'
+                        if getattr(consecutive_frames, attribute_list)[-1] is None or getattr(lymph, attribute) is None:
+                            staged = None
+                        else:
+                            staged = (getattr(consecutive_frames, attribute_list)[-1]+getattr(lymph, attribute))/2
+                        staged_list.append(staged)
+
+
+
+                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2, *staged_list)
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.run_mean, lymph.spin_vec_magnitude, lymph.spin_vec_magnitude_mean, lymph.spin_vec_std, lymph.direction_std)
+
                 else:
                     consecutive_frames.interpolate()
                     all_consecutive_frames.append(consecutive_frames)
                     count += 1
                     consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.searching)
-                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.searching]
+                    print('MAKING NEW')
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.run_mean, lymph.spin_vec_magnitude, lymph.spin_vec_magnitude_mean, lymph.spin_vec_std, lymph.direction_std)
+                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.run_mean, lymph.spin_vec_magnitude, lymph.spin_vec_magnitude_mean, lymph.spin_vec_std, lymph.direction_std]
 
             consecutive_frames.interpolate()
             all_consecutive_frames.append(consecutive_frames)
