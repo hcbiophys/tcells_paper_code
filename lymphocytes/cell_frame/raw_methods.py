@@ -19,7 +19,7 @@ class Raw_Methods:
     Contains methods without spherical harmonics.
     """
 
-    def surface_plot(self, plotter=None, uropod_align=False, color = (1, 1, 1),  opacity = 1, scalars = None, box = None):
+    def surface_plot(self, plotter=None, uropod_align=False, color = (1, 1, 1),  opacity = 1, scalars = None, box = None, with_uropod = True):
         """
         Plot the original cell mesh
         - plotter: plotter object to plot onto
@@ -32,7 +32,7 @@ class Raw_Methods:
             plotter.add_mesh(pv.Sphere(radius=1, center=uropod), color = (1, 0, 0))
             surf = pv.PolyData(vertices, self.faces)
         else:
-            if self.uropod is not None:
+            if self.uropod is not None and with_uropod:
                 plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
                 plotter.add_mesh(pv.Sphere(radius=1, center=self.centroid), color = (0, 0, 0))
 
@@ -42,7 +42,7 @@ class Raw_Methods:
 
 
         if scalars is None:
-            plotter.add_mesh(surf, color = color, opacity = 0.5)
+            plotter.add_mesh(surf, color = color, opacity = opacity)
         else:
             plotter.add_mesh(surf, color = color, scalars = scalars, opacity = opacity)
 
@@ -120,7 +120,7 @@ class Raw_Methods:
         if plotter is None:
             surf.plot()
         else:
-            plotter.add_lines(np.array([self.uropod, self.centroid]), color = color)
+            plotter.add_lines(np.array([self.mean_uropod, self.mean_centroid]), color = color)
 
 
 

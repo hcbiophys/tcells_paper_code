@@ -14,6 +14,7 @@ class Consecutive_Frames():
         self.pca0_list = []
         self.pca1_list = []
         self.pca2_list = []
+        self.RI_vector0_list = []
         self.delta_centroid_list = []
         self.delta_sensing_direction_list = []
         self.run_list = []
@@ -30,11 +31,12 @@ class Consecutive_Frames():
         self.closest_frames = []
 
 
-    def add(self, frame, pca0, pca1, pca2, delta_centroid, delta_sensing_direction, run, run_mean,  spin_vec_magnitude, spin_vec_magnitude_mean, spin_vec_std, direction_std):
+    def add(self, frame, pca0, pca1, pca2, RI_vector0, delta_centroid, delta_sensing_direction, run, run_mean,  spin_vec_magnitude, spin_vec_magnitude_mean, spin_vec_std, direction_std):
         self.orig_frame_list.append(frame)
         self.pca0_list.append(pca0)
         self.pca1_list.append(pca1)
         self.pca2_list.append(pca2)
+        self.RI_vector0_list.append(RI_vector0)
         self.delta_centroid_list.append(delta_centroid)
         self.delta_sensing_direction_list.append(delta_sensing_direction)
         self.run_list.append(run)
@@ -61,7 +63,7 @@ class Consecutive_Frames():
             closest_frame = self.orig_frame_list[dists.index(min(dists))]
             self.closest_frames.append(closest_frame)
 
-        for attribute in ['pca0_list', 'pca1_list', 'pca2_list', 'delta_centroid_list', 'delta_sensing_direction_list', 'run_list', 'run_mean_list', 'spin_vec_magnitude_list', 'spin_vec_magnitude_mean_list', 'spin_vec_std_list', 'direction_std_list']:
+        for attribute in ['pca0_list', 'pca1_list', 'pca2_list', 'RI_vector0_list', 'delta_centroid_list', 'delta_sensing_direction_list', 'run_list', 'run_mean_list', 'spin_vec_magnitude_list', 'spin_vec_magnitude_mean_list', 'spin_vec_std_list', 'direction_std_list']:
 
             f = interpolate.interp1d(frame_times, getattr(self, attribute))
             y_new = f(new_frame_times)

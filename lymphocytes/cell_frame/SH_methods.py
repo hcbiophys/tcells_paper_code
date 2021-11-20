@@ -148,6 +148,7 @@ class SH_Methods:
                     for m in np.arange(0, l+1):
                         clm = self._get_clm(coord_idx, l, m)
                         func_value += clm*sph_harm(m, l, p, t)
+                    
                 list.append(func_value.real)
 
 

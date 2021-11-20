@@ -88,7 +88,6 @@ def get_attribute_from_mat(mat_filename, zeiss_type, idx_cell = None, include_vo
 
     elif zeiss_type == 'zeiss_many':
         OUT_group = f.get('DataOut')
-
         cell_group = f[OUT_group[idx_cell, 0]]
 
         dataset = cell_group['Surf']

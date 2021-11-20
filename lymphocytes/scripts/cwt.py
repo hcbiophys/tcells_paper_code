@@ -145,6 +145,14 @@ elif filename[:3] == '250':
     min_length = 15
 
 
+elif filename[:3] == '400':
+    mexh_scales = [0.5*i for i in range(2, 32, 2)]
+    gaus1_scales = [0.4*i for i in range(2, 60, 4)]
+    chop = 25
+    inserts = [16+15*i for i in range(6)]
+    time_either_side = 175
+    min_length = 15
+
 
 
 
@@ -167,13 +175,18 @@ class CWT():
         self.chop = chop
 
 
-        self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series.pickle',"rb"))
+
+        if filename[-3:] == 'run':
+            self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
+            print('RUN CELLS')
+
+        elif filename[-4:] == 'stop':
+            self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_stop.pickle',"rb"))
+            print('STOP CELLS')
+        else:
+            self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series.pickle',"rb"))
 
         self.all_consecutive_frames = [i for i in self.all_consecutive_frames if i.name !='zm_3_4_2a']
-
-
-
-
 
 
         if not idx_segment == 'all':
@@ -203,7 +216,7 @@ class CWT():
         for cfs in self.all_consecutive_frames:
 
             if len(cfs.pca0_list) > 100 and count < 4:
-                if cfs.name == 'zm_3_4_1a': # zm_3_3_5a, zm_3_3_2a, zm_3_3_4a, zm_3_4_1a
+                if cfs.name == 'zm_3_3_5a': # zm_3_3_5a, zm_3_3_2a, zm_3_3_4a, zm_3_4_1a
                     ax = fig.add_subplot(4, 1, count+1)
                     ax.plot([i*5 for i,j in enumerate(cfs.pca0_list)], cfs.pca0_list, c = 'red')
                     ax.plot([i*5 for i,j in enumerate(cfs.pca1_list)], cfs.pca1_list, c = 'blue')
@@ -232,21 +245,19 @@ class CWT():
 
 
 
+
+
+
+
+
         #DO KDE WITH SMALLER TIME SCALES TO VALIDATE THAT (low number of) MOTIFS STRUCTURE IS AT ~50s
         idxs_keep = [i for i,j in enumerate(self.all_consecutive_frames) if len(j.pca0_list) > min_length]
         self.all_consecutive_frames = [j for i,j in enumerate(self.all_consecutive_frames) if i in idxs_keep]
 
 
-        for cfs in self.all_consecutive_frames:
-            typical_mean_200 = np.nanmean([i if i is not None else np.nan for i in cfs.run_mean_list])
-            if typical_mean_200 > 0.003:
-                cfs.high_or_low = 'high'
-            elif typical_mean_200 < 0.002:
-                cfs.high_or_low = 'low'
-            else:
-                cfs.high_or_low = None
 
-        #self.all_consecutive_frames = [i for i in self.all_consecutive_frames if i.high_or_low == 'high']
+
+
 
 
 
@@ -265,11 +276,10 @@ class CWT():
             return np.exp(-k*x)
 
         for i in self.all_consecutive_frames:
-            if i.high_or_low is None:
-                for idx, l in enumerate([i.pca0_list, i.pca1_list, i.pca2_list, i.run_list]):
-                    acf = list(sm.tsa.acf(l, nlags = 99, missing = 'conservative'))
-                    acf += [np.nan for _ in range(100-len(acf))]
-                    acorrs[idx].append(np.array(acf))
+            for idx, l in enumerate([i.pca0_list, i.pca1_list, i.pca2_list, i.run_list]):
+                acf = list(sm.tsa.acf(l, nlags = 99, missing = 'conservative'))
+                acf += [np.nan for _ in range(100-len(acf))]
+                acorrs[idx].append(np.array(acf))
 
         for acorr, color, linestyle in zip(acorrs, ['red', 'blue', 'green',  'black'], ['-', '-', '-', '--']):
             acorr = np.array([acorr])
@@ -310,9 +320,8 @@ class CWT():
 
 
 
-        self.all_consecutive_frames_dict = {}
-        for i in self.all_consecutive_frames:
-            self.all_consecutive_frames_dict[i.name] = i
+        self.all_consecutive_frames_dict = {cfs.name: cfs for cfs in self.all_consecutive_frames}
+
 
 
 
@@ -503,6 +512,7 @@ class CWT():
                 elif '_' in filename and filename.split('_')[1] == 'PC3':
                     concat = concat[:, 2*per_PC:]
 
+
             self.all_embeddings = TSNE(n_components=2).fit_transform(concat)
 
 
@@ -514,58 +524,59 @@ class CWT():
 
     def _set_embedding_colors(self, xs, ys):
 
+
+        run_all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
+        run_all_consecutive_frames_dict = {cfs.name: cfs for cfs in run_all_consecutive_frames}
+        run_idx_cells = list([i[:-1] for i in run_all_consecutive_frames_dict.keys()])
+        stop_all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_stop.pickle',"rb"))
+        stop_all_consecutive_frames_dict = {cfs.name: cfs for cfs in stop_all_consecutive_frames}
+        stop_idx_cells = list([i[:-1] for i in stop_all_consecutive_frames_dict.keys()])
+
+
         colors_pc = []
         colors_run = []
-        colors_run_mean = []
-        for i in self.all_consecutive_frames:
+        colors_mode = []
+        for cfs in self.all_consecutive_frames:
             """
-            x_list = [k for k,j in enumerate(i.run_list)]
-            y_list = [k*100 for k in i.run_list]
-
+            x_list = np.array([k*5 for k,j in enumerate(i.run_list)])
+            y_list = np.array(i.run_list)
             x_list2 = np.arange(min(x_list), max(x_list), 0.1)
-            closest_frames_many = np.linspace(min(i.closest_frames), max(i.closest_frames), len(x_list2))
-
-
-            plt.plot(i.closest_frames, y_list,  c = 'black')
-            spl = UnivariateSpline(x_list, y_list, s = 1)
-            plt.plot(closest_frames_many, spl(x_list2), c = 'red')
-            spl = UnivariateSpline(x_list, y_list, s = 2)
-            plt.plot(closest_frames_many, spl(x_list2), c = 'blue')
-            spl = UnivariateSpline(x_list, y_list, s = 6)
-            plt.plot(closest_frames_many, spl(x_list2), c = 'green')
-            #plt.plot(closest_frames_many, spl(x_list2, 1), c = 'green')
+            #plt.plot(x_list, y_list,  c = 'black')
+            spl = UnivariateSpline(x_list, y_list, s = 1e-4)
+            plt.plot(x_list2, spl(x_list2), c = 'blue')
+            plt.plot(x_list2, [0 for _ in x_list2], c = 'blue')
+            plt.plot(x_list2, 30*spl(x_list2, 1), c = 'red')
+            plt.plot(x_list2, 100*spl(x_list2, 2), c = 'red', linestyle = '--')
             plt.show()
+            sys.exit()
             """
 
-            colors_run_mean += [i.high_or_low for _ in range(len(i.run_list))]
 
 
-            #colors_run += list(i.run_list)
-            #spl = UnivariateSpline(x_list, y_list, s = 2)
-            #colors_grad += list(spl(x_list, 1))
-            colors_run += list(i.run_list)
-            colors_pc += list(i.pca0_list)
+            colors_run += list(cfs.run_list)
+            colors_pc += list(cfs.pca0_list)
+
+            if cfs.name[:-1] in run_idx_cells:
+
+                for j in cfs.closest_frames:
+                    if j in run_all_consecutive_frames_dict[cfs.name].closest_frames:
+                        colors_mode.append('red')
+                    else:
+                        colors_mode.append('grey')
+
+            elif cfs.name[:-1] in stop_idx_cells:
+                for j in cfs.closest_frames:
+                    if j in stop_all_consecutive_frames_dict[cfs.name].closest_frames:
+                        colors_mode.append('blue')
+                    else:
+                        colors_mode.append('grey')
+            else:
+                for j in cfs.closest_frames:
+                    colors_mode.append('grey')
 
 
-
-
-
-        colors_2d = []
-        colors_3d = []
-        for idx_point, run_mean in enumerate(colors_run_mean):
-            if run_mean == 'high':
-                color_2d = 'red'
-                color_3d = (1, 0, 0)
-            elif run_mean == 'low':
-                color_2d = 'blue'
-                color_3d = (0, 0, 1)
-            elif run_mean is None:
-                color_2d = 'grey'
-                color_3d = (0.8, 0.8, 0.8)
-            colors_2d.append(color_2d)
-            colors_3d.append(color_3d)
-
-        #colors_2d = colors_run
+        colors_2d = colors_mode
+        colors_3d = None
 
 
 
@@ -583,8 +594,14 @@ class CWT():
                 cfs_ys.append(ys[idx])
         plt.plot(cfs_xs, cfs_ys, '-o')
 
-        for idx in range(len(cfs_xs)):
-            plt.text(cfs_xs[idx], cfs_ys[idx], str(chop*5 + 5*idx))
+        contours = []
+        for i in np.linspace(np.min(self.all_embeddings[:, 0])-10, np.max(self.all_embeddings[:, 0])+10, 6)[1:-1]:
+            for j in np.linspace(np.min(self.all_embeddings[:, 1])-10, np.max(self.all_embeddings[:, 1])+10, 6)[1:-1]:
+                contours.append(np.array([i, j]))
+        plt.scatter([c[0] for c in contours], [c[1] for c in contours], s =50, c = 'black' )
+
+        #for idx in range(len(cfs_xs)):
+            #plt.text(cfs_xs[idx], cfs_ys[idx], str(chop*5 + 5*idx))
 
         """
         for idx_section in range(1+len(cfs_xs)//num_per_section):
@@ -658,7 +675,10 @@ class CWT():
         else:
             fig = plt.figure()
             ax = fig.add_subplot(111)
-            sc = ax.scatter(xs, ys, c = colors_2d)
+            sc = ax.scatter(xs, ys, c = colors_2d, vmax = 0.015, cmap = 'Blues')
+
+
+
 
 
 
@@ -823,14 +843,14 @@ class CWT():
 
 
 
-    def transition_matrix(self, s, b, high_or_low):
+    def transition_matrix(self, s, b, grid):
 
         pdf = copy.deepcopy(self.pdf_array)
 
         pdf[self.pdf_array<8e-5] = np.nan
 
 
-        contours, pdf_borders = self._get_contours(pdf, s = s, b = b)
+
 
 
         def get_tm(contours, sequences):
@@ -846,22 +866,23 @@ class CWT():
             return T
 
 
-
-
         fig_both = plt.figure()
         ax = fig_both.add_subplot(1, 3, 1)
-        ax.imshow(pdf_borders[::-1, :])
+
         sequences = []
         for cfs in self.all_consecutive_frames:
-            if high_or_low is None:
+            if grid:
+                contours = []
+                for i in np.linspace(0, 50, 6)[1:-1]:
+                    for j in np.linspace(0, 50, 6)[1:-1]:
+                        contours.append(np.array([[i, j]]))
                 sequence = self._get_idx_contours(contours, list(self.all_embeddings[:, 0]), list(self.all_embeddings[:, 1]), list(cfs.embeddings[:, 0]), list(cfs.embeddings[:, 1]))
-                sequences.append(sequence)
-            else:
-                if cfs.high_or_low == high_or_low:
-                    sequence = self._get_idx_contours(contours, list(self.all_embeddings[:, 0]), list(self.all_embeddings[:, 1]), list(cfs.embeddings[:, 0]), list(cfs.embeddings[:, 1]))
-                    sequences.append(sequence)
-        print(len(sequences))
 
+            else:
+                contours, pdf_borders = self._get_contours(pdf, s = s, b = b)
+                ax.imshow(pdf_borders[::-1, :])
+                sequence = self._get_idx_contours(contours, list(self.all_embeddings[:, 0]), list(self.all_embeddings[:, 1]), list(cfs.embeddings[:, 0]), list(cfs.embeddings[:, 1]))
+            sequences.append(sequence)
 
         ax = fig_both.add_subplot(1, 3, 2)
         T = get_tm(contours, sequences)
@@ -1072,9 +1093,6 @@ class CWT():
                 lengths = [len(i) for i in time_series_split]
                 time_series = time_series_split[lengths.index(max(lengths))]
 
-                if high_or_low_run == 'low' and cfs.name == '2_1a':
-                    time_series = time_series[:-10]
-
 
 
                 #if len(time_series) > 50:
@@ -1165,7 +1183,7 @@ def show_cell_series_clustered(idx_segments, center_frames):
                     lymph_t_res = lymph.t_res
                 prev_frame = lymph.frame
         cells.cells[idx_cell] = keep
-        cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 8)
+        cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 1)
 
 
 
@@ -1221,10 +1239,8 @@ scales_lists = [[0.5*i for i in range(2, 5)], [0.4*i for i in range(2, 9, 2)], [
 
 # f_nyquist = 0.5
 
-"""
-show_cell_series_clustered([ 'zm_3_4_0a', 'zm_3_3_3a', 'zm_3_3_4a'],
-                            [176, 148, 174])
-"""
+
+
 
 
 
@@ -1232,6 +1248,14 @@ show_cell_series_clustered([ 'zm_3_4_0a', 'zm_3_3_3a', 'zm_3_3_4a'],
 
 # CHANGED
 cwt = CWT(idx_segment = 'all', chop = chop)
+
+
+
+
+#show_cell_series_clustered(idx_segments = ['zm_3_4_1a', 'zm_3_3_5a'],
+#                                center_frames = [7, 163])
+
+
 
 """
 fig = plt.figure()
@@ -1263,13 +1287,14 @@ cwt.set_tsne_embeddings(load_or_save_or_run = load_or_save_or_run, filename = fi
 
 cwt.kde(load_or_save_or_run = load_or_save_or_run, filename = filename)
 
-#cwt.transition_matrix(s = thresh_params_dict[filename][0], b = thresh_params_dict[filename][1], high_or_low = 'high')
+cwt.transition_matrix(s = None, b = None, grid = True)
+#cwt.transition_matrix(s = thresh_params_dict[filename][0], b = thresh_params_dict[filename][1], grid = True)
 
-#for name in ['zm_3_3_5a', 'zm_3_3_2a', 'zm_3_3_4a', 'zm_3_4_1a']:
-cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = None)
+#['2_1a', 'zm_3_4_0a', 'zm_3_3_3a']
+#['zm_3_3_5a', 'zm_3_3_2a', 'zm_3_3_4a', 'zm_3_4_1a']
 
-
-
-
+for name in ['zm_3_3_5a', 'zm_3_3_2a', 'zm_3_3_4a', 'zm_3_4_1a']:
+    #for cfs in cwt.all_consecutive_frames:
+    cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = name)
 
 plt.show()

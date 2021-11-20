@@ -128,7 +128,6 @@ class Single_Cell_Methods:
         Plot original mesh series, with point at the uropods
         """
 
-        self._set_centroid_attributes('searching', time_either_side = 7)
 
         lymphs_plot = self.cells[idx_cell][::plot_every]
         num_cols=int(len(lymphs_plot)/3)+1
@@ -146,6 +145,9 @@ class Single_Cell_Methods:
                 self._set_morph_derivs()
             elif color_by == 'run':
                 self._set_centroid_attributes('run', time_either_side = 7)
+            elif color_by[:4] == 'spin' or color_by[:3] == 'dir':
+                self._set_centroid_attributes('searching', time_either_side = 50,  time_either_side_2 = 150)
+            print([lymph.spin_vec_magnitude for lymph in self.cells[idx_cell]])
             vmin, vmax = utils_general.get_color_lims(self, color_by)
 
         for idx_plot, lymph in enumerate(lymphs_plot):
@@ -153,30 +155,52 @@ class Single_Cell_Methods:
             #plotter.subplot(0, idx_plot)
 
 
-            plotter.add_text("{}".format(int(lymph.frame*lymph.t_res)), font_size=10)
-            plotter.camera.focal_point = lymph.centroid
+            plotter.add_text("{}".format(int((lymph.frame-lymphs_plot[0].frame)*lymph.t_res)), font_size=10)
 
 
             color = (1, 1, 1)
             if color_by is not None:
                 if getattr(lymph, color_by) is not None:
+                    print(getattr(lymph, color_by))
                     color = (1-(getattr(lymph, color_by)-vmin)/(vmax-vmin), 1, 1)
 
             mins, maxs = np.min(self.cells[idx_cell][0].vertices, axis = 0), np.max(self.cells[idx_cell][0].vertices, axis = 0)
             box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
             lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box)
-            #lymph.surface_plot(plotter=plotter, uropod_align=True, color = color)
             #lymph.plotRecon_singleDeg(plotter=plotter, max_l = 1)
+            if lymph.direction_mean is not None:
+                plotter.add_lines(np.array([lymph.uropod, lymph.uropod+lymph.direction_mean*20]), color = (0, 0, 0))
 
-            #if lymph.spin_vec is not None:
-                #plotter.add_lines(np.array([lymph.uropod, lymph.uropod+lymph.direction*25]), color = (0, 0, 0))
+            if lymph.spin_vec_2 is not None:
+                plotter.add_lines(np.array([lymph.uropod, lymph.uropod+lymph.spin_vec_2*5000]), color = (0, 1, 0))
 
 
 
-        #plotter.show(cpos=[0, 1, 0])
+        fig = plt.figure()
+        times = [(lymph.frame-self.cells[idx_cell][0].frame)*lymph.t_res for lymph in self.cells[idx_cell]]
 
+        plt.plot(times, [0 for _ in times], c = 'black', linewidth = 0.2)
+        """
+        plt.plot(times, [lymph.spin_vec_magnitude for lymph in self.cells[idx_cell]], c = 'red')
+        plt.plot(times, [lymph.spin_vec_magnitude_mean for lymph in self.cells[idx_cell]], c = 'red', linestyle = '--') # highlights amount of turning
+        plt.plot(times, [lymph.spin_vec_std for lymph in self.cells[idx_cell]], c = 'blue') # highlights changing turning direction
+        plt.plot(times, [lymph.direction_std/20 if lymph.direction_std is not None else None  for lymph in self.cells[idx_cell]], c = 'green') # highlights direction change (e.g. turning could be oscilatory)
+        plt.ylim([0, 0.03])
+        """
+        plt.plot(times, [lymph.run for lymph in self.cells[idx_cell]], c = 'red')
+        plt.plot(times, [lymph.run_centroid for lymph in self.cells[idx_cell]], c = 'blue')
+        plt.show()
+
+        plt.hist([lymph.run for lymph in self.cells[idx_cell] if lymph.run is not None], bins = 10, alpha = 0.5, color = 'red')
+        plt.hist([lymph.run_centroid for lymph in self.cells[idx_cell] if lymph.run_centroid is not None], bins = 10, alpha = 0.5, color = 'blue')
+        plt.show()
+
+        #plotter.show(cpos=[-1, 0, 0])
         plotter.show(cpos=[0, 0, 1])
         print('------')
+
+
+
 
     def plot_voxels_series(self, idx_cell, plot_every):
 
@@ -196,55 +220,26 @@ class Single_Cell_Methods:
         plotter.show()
 
 
+
+
+
     def plot_uropod_centroid_line(self, idx_cell, plot_every):
 
-        self._set_centroid_attributes('delta_sensing_direction')
-        self._set_centroid_attributes('delta_centroid')
+        self._set_mean_uropod_and_centroid(time_either_side = 12)
 
         lymphs_plot = self.cells[idx_cell][::plot_every]
         plotter = pv.Plotter()
 
-        fig = plt.figure()
-        ax_centroid  = fig.add_subplot(411)
-        ax_uropod = fig.add_subplot(412)
-        ax_deltas = fig.add_subplot(413)
-        ax_actual_uropods = fig.add_subplot(414)
-
-        frames = []
-        mean_centroids = []
-        mean_uropods = []
-        actual_uropods = []
-        delta_centroids = []
-        delta_sensing_directions = []
 
         for idx_plot, lymph in enumerate(lymphs_plot):
-            lymph.uropod_centroid_line_plot(plotter=plotter, color = (1, idx_plot/(len(lymphs_plot)-1), 1))
+            if lymph.mean_uropod is not None and lymph.mean_centroid is not None:
+                lymph.uropod_centroid_line_plot(plotter=plotter, color = (1, idx_plot/(len(lymphs_plot)-1), 1))
 
-            plotter.add_mesh(pv.Sphere(radius=0.1, center=lymph.uropod), color = (1, 0, 0))
-            plotter.add_mesh(pv.Sphere(radius=0.1, center=lymph.centroid), color = (0, 1, 0))
+                plotter.add_mesh(pv.Sphere(radius=0.7, center=lymph.mean_uropod), color = (1, 0, 0))
+                plotter.add_mesh(pv.Sphere(radius=0.7, center=lymph.mean_centroid), color = (0,  0, 1))
 
-            frames.append(lymph.frame)
-            actual_uropods.append(lymph.uropod)
-            mean_centroids.append(lymph.mean_centroid)
-            mean_uropods.append(lymph.mean_uropod)
-            delta_centroids.append(lymph.delta_centroid)
-            delta_sensing_directions.append(lymph.delta_sensing_direction)
-
-        mean_centroids = [i if i is not None else np.array([np.nan, np.nan, np.nan]) for i in mean_centroids]
-        mean_uropods = [i  if i is not None else np.array([np.nan, np.nan, np.nan]) for i in mean_uropods]
-        actual_uropods -=  np.nanmean(np.array(actual_uropods), axis = 0)
-        mean_centroids -= np.nanmean(np.array(mean_centroids), axis = 0)
-        mean_uropods -=  np.nanmean(np.array(mean_uropods), axis = 0)
-
-        for i in range(3):
-            ax_centroid.plot(frames, [j[i] for j in mean_centroids])
-        for i in range(3):
-            ax_uropod.plot(frames, [j[i] for j in mean_uropods])
-
-        ax_deltas.plot(frames, delta_centroids, color = 'red')
-        ax_deltas.plot(frames, delta_sensing_directions, color = 'blue')
-        ax_actual_uropods.plot(frames, actual_uropods)
-        plt.show()
+                if not len(lymphs_plot) < 5 and idx_plot % int(len(lymphs_plot)/5) == 0:
+                    lymph.surface_plot(plotter = plotter, opacity = 0.2, with_uropod = False)
 
         plotter.show(cpos=[0, 1, 0])
 
