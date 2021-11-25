@@ -25,6 +25,8 @@ import itertools
 from scipy.optimize import curve_fit
 from scipy import interpolate
 from matplotlib import colors as mpl_colors
+from scipy.linalg import eig
+from scipy import signal
 
 
 from lymphocytes.data.dataloader_good_segs_2 import stack_attributes_2
@@ -34,7 +36,6 @@ from lymphocytes.cells.cells_class import Cells
 
 filename = sys.argv[1]
 load_or_save_or_run = sys.argv[2]
-
 
 
 
@@ -178,6 +179,7 @@ class CWT():
 
         if filename[-3:] == 'run':
             self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
+
             print('RUN CELLS')
 
         elif filename[-4:] == 'stop':
@@ -191,6 +193,8 @@ class CWT():
 
         if not idx_segment == 'all':
             self.all_consecutive_frames = [i for i in self.all_consecutive_frames if i.name == idx_segment]
+
+
 
 
 
@@ -242,22 +246,9 @@ class CWT():
 
 
 
-
-
-
-
-
-
-
-
         #DO KDE WITH SMALLER TIME SCALES TO VALIDATE THAT (low number of) MOTIFS STRUCTURE IS AT ~50s
         idxs_keep = [i for i,j in enumerate(self.all_consecutive_frames) if len(j.pca0_list) > min_length]
         self.all_consecutive_frames = [j for i,j in enumerate(self.all_consecutive_frames) if i in idxs_keep]
-
-
-
-
-
 
 
 
@@ -267,26 +258,80 @@ class CWT():
         self.all_embeddings = None
 
 
+        def butter_highpass(cutoff, fs, order=5):
+            nyq = 0.5 * fs
+            normal_cutoff = cutoff / nyq
+            b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+            return b, a
 
+        def butter_highpass_filter(data, cutoff, fs, order=5):
+            b, a = butter_highpass(cutoff, fs, order=order)
+            y = signal.filtfilt(b, a, data)
+            return y
 
-        """
-        acorrs = [[], [], [], [], []]
+        acorrs1 = [[], [], [], []]
+        acorrs2 = [[], [], [], []]
+        colors = ['red', 'blue', 'green',  'black']
         def _model_func(x,  k):
             x = np.array(x)
             return np.exp(-k*x)
 
+        fig_series = plt.figure()
+        ax1 = fig_series.add_subplot(211)
+        ax2 = fig_series.add_subplot(212)
         for i in self.all_consecutive_frames:
-            for idx, l in enumerate([i.pca0_list, i.pca1_list, i.pca2_list, i.run_list]):
-                acf = list(sm.tsa.acf(l, nlags = 99, missing = 'conservative'))
-                acf += [np.nan for _ in range(100-len(acf))]
-                acorrs[idx].append(np.array(acf))
+            if i.name == '2_1a':
+                for idx, l in enumerate([i.pca0_list, i.pca1_list, i.pca2_list, i.run_list]):
+                    acf = list(sm.tsa.acf(l, nlags = 99, missing = 'conservative'))
+                    acf += [np.nan for _ in range(100-len(acf))]
+                    acorrs1[idx].append(np.array(acf))
 
-        for acorr, color, linestyle in zip(acorrs, ['red', 'blue', 'green',  'black'], ['-', '-', '-', '--']):
+                    ax1.plot([i*5 for i in range(len(l))], [i*(1/np.nanmax(l)) for i in l], c = colors[idx])
+
+                    if len([i for i in l if np.isnan(i)]) > 0:
+
+                        f = interpolate.interp1d([i*5  for i,j in enumerate(l) if not np.isnan(j)], [j  for i,j in enumerate(l)if not np.isnan(j)])
+
+                        l = f([i*5 for i in range(len(l))][3:-2])
+                    l_new  = butter_highpass_filter(l,1/400,fs=0.2)
+
+                    ax2.plot([i*5 for i in range(len(l_new))], [i*(1/np.nanmax(l_new)) for i in l_new], c = colors[idx])
+                    acf = list(sm.tsa.acf(l_new, nlags = 99, missing = 'conservative'))
+                    acf += [np.nan for _ in range(100-len(acf))]
+                    acorrs2[idx].append(np.array(acf))
+
+
+
+        fig_acf = plt.figure()
+        ax1 = fig_acf.add_subplot(211)
+        ax2 = fig_acf.add_subplot(212)
+
+
+
+        for idx in range(len(acorrs1)):
+            xs = [i*5 for i in range(len(acorrs1[idx][0]))]
+            ys = acorrs1[idx][0]
+
+            ax1.plot(xs, ys, c = colors[idx])
+            ax1.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
+
+            xs = [i*5 for i in range(len(acorrs2[idx][0]))]
+            ys = acorrs2[idx][0]
+
+            ax2.plot(xs, ys, c = colors[idx])
+            ax2.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
+        plt.show()
+
+
+
+
+        for acorr, color, linestyle in zip(acorrs, colors, ['-', '-', '-', '--']):
             acorr = np.array([acorr])
             concat = np.concatenate(acorr, axis = 0)
-            ys = np.nanmean(abs(concat), axis = 0)
+            ys = np.nanmean(concat, axis = 0)
             xs = [i*5 for i,j in enumerate(ys)]
             plt.plot(xs, ys, c = color, linestyle = linestyle)
+            plt.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
 
             points=[(xs[0], ys[0])]
             for idx in range(1, len(ys)-2):
@@ -316,7 +361,7 @@ class CWT():
         #plt.ylim([0, 1])
         plt.show()
         sys.exit()
-        """
+
 
 
 
@@ -845,6 +890,33 @@ class CWT():
 
     def transition_matrix(self, s, b, grid):
 
+        def _entropy(T):
+            vals, vecs, _ = eig(T,left=True)
+            for i,j in enumerate(vals):
+                if abs(j.real-1) <  1e-6 and j.imag == 0:
+                    idx_1 = i
+                    break
+            vec = vecs[:, idx_1]
+            normalized = vec/sum(vec)
+
+
+            total = 0
+            for row in range(T.shape[0]):
+                entropy = 0
+                for col in range(T.shape[1]):
+                    el = T[row, col]
+                    if el > 0:
+                        entropy += el*np.log2(el)
+                entropy = -entropy
+
+                total += normalized[row]*entropy
+
+            print('total', total)
+
+
+
+
+
         pdf = copy.deepcopy(self.pdf_array)
 
         pdf[self.pdf_array<8e-5] = np.nan
@@ -886,12 +958,14 @@ class CWT():
 
         ax = fig_both.add_subplot(1, 3, 2)
         T = get_tm(contours, sequences)
+        _entropy(T)
         ax.imshow(T, cmap = 'Blues')
         ax = fig_both.add_subplot(1, 3, 3)
         sequences_no_duplicates = []
         for sequence in sequences:
             sequences_no_duplicates.append([key for key, grp in itertools.groupby(sequence)])
         T = get_tm(contours, sequences_no_duplicates)
+        _entropy(T)
         ax.imshow(T, cmap = 'Blues')
         plt.show()
 
@@ -1150,6 +1224,57 @@ class CWT():
         plt.show()
 
 
+    def longer_motifs(self):
+
+
+        from matplotlib.patches import Rectangle
+
+        pca0_all = []
+        pca1_all = []
+        pca2_all = []
+
+        time_series = self.all_embeddings.T
+
+        m = 100
+
+        all_i = []
+        all_j = []
+        diffs = []
+        print(time_series.shape[1])
+        for i in np.arange(0, time_series.shape[1], 20):
+            for j in np.arange(0, time_series.shape[1], 20):
+                slice1 = time_series[:, i:i+m]
+                slice2 = time_series[:, j:j+m]
+                if slice1.shape[1] == m and slice2.shape[1] == m:
+                    diff = np.linalg.norm(slice1-slice2)
+                    if diff != 0:
+                        diffs.append(diff)
+                        all_i.append(i)
+                        all_j.append(j)
+
+        idx_min = diffs.index(min(diffs))
+        print(all_i[idx_min], all_j[idx_min])
+
+        plt.plot(diffs)
+        plt.show()
+        fig = plt.figure()
+        ax = fig.add_subplot(221)
+        ax.plot(time_series[0, :], c = 'red')
+        plt.axvspan(all_i[idx_min], all_i[idx_min]+m, color='pink', alpha=0.5)
+        ax = fig.add_subplot(223)
+        ax.plot(time_series[1, :], c = 'blue')
+        plt.axvspan(all_i[idx_min], all_i[idx_min]+m, color='pink', alpha=0.5)
+
+        ax = fig.add_subplot(222)
+        ax.plot(time_series[0, :], c = 'red')
+        plt.axvspan(all_j[idx_min], all_j[idx_min]+m, color='purple', alpha=0.5)
+        ax = fig.add_subplot(224)
+        ax.plot(time_series[1, :], c = 'blue')
+        plt.axvspan(all_j[idx_min], all_j[idx_min]+m, color='purple', alpha=0.5)
+
+        plt.show()
+
+
 
 
 
@@ -1284,12 +1409,12 @@ cwt.set_spectograms()
 
 
 cwt.set_tsne_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename)
-
+#cwt.longer_motifs()
 cwt.kde(load_or_save_or_run = load_or_save_or_run, filename = filename)
 
 cwt.transition_matrix(s = None, b = None, grid = True)
 #cwt.transition_matrix(s = thresh_params_dict[filename][0], b = thresh_params_dict[filename][1], grid = True)
-
+sys.exit()
 #['2_1a', 'zm_3_4_0a', 'zm_3_3_3a']
 #['zm_3_3_5a', 'zm_3_3_2a', 'zm_3_3_4a', 'zm_3_4_1a']
 
