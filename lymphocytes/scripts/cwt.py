@@ -109,7 +109,6 @@ class CWT():
         if filename[-3:] == 'run':
             self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
 
-            print('RUN CELLS')
 
         elif filename[-4:] == 'stop':
             self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_stop.pickle',"rb"))
@@ -217,24 +216,26 @@ class CWT():
         for i in self.all_consecutive_frames:
 
                 for idx, l in enumerate([i.pca0_list, i.pca1_list, i.pca2_list, i.run_list]):
+                    if len(l) > 50:
+                        acf = get_acf(l)
+                        acfs1[idx].append(np.array(acf))
+                        #ax1.plot([i*5 for i in range(len(l))], [i*(1/np.nanmax(l)) for i in l], c = colors[idx])
+                        ax1.plot([i*5 for i in range(len(l))], l, c = colors[idx])
 
-                    acf = get_acf(l)
-                    acfs1[idx].append(np.array(acf))
-                    ax1.plot([i*5 for i in range(len(l))], [i*(1/np.nanmax(l)) for i in l], c = colors[idx])
+                        if len([i for i in l if np.isnan(i)]) > 0: # if it contains nans
+                            f = interpolate.interp1d([i*5  for i,j in enumerate(l) if not np.isnan(j)], [j  for i,j in enumerate(l) if not np.isnan(j)])
+                            to_model = [i*5 for i in range(len(l))]
+                            idxs_del, _ = utils_cwt.remove_border_nans(l)
+                            to_model = [j for i,j in enumerate(to_model) if i not in idxs_del]
 
-                    if len([i for i in l if np.isnan(i)]) > 0: # if it contains nans
-                        print(l)
-                        f = interpolate.interp1d([i*5  for i,j in enumerate(l) if not np.isnan(j)], [j  for i,j in enumerate(l) if not np.isnan(j)])
-                        to_model = [i*5 for i in range(len(l))]
-                        idxs_del, _ = utils_cwt.remove_border_nans(l)
-                        to_model = [j for i,j in enumerate(to_model) if i not in idxs_del]
+                            l = f(to_model)
 
-                        l = f(to_model)
-                    l_new  = butter_highpass_filter(l,1/400,fs=0.2)
+                        l_new  = butter_highpass_filter(l,1/400,fs=0.2)
 
-                    ax2.plot([i*5 for i in range(len(l_new))], [i*(1/np.nanmax(l_new)) for i in l_new], c = colors[idx])
-                    acf = get_acf(l_new)
-                    acfs2[idx].append(np.array(acf))
+                        #ax2.plot([i*5 for i in range(len(l_new))], [i*(1/np.nanmax(l_new)) for i in l_new], c = colors[idx])
+                        ax2.plot([i*5 for i in range(len(l_new))], l_new, c = colors[idx])
+                        acf = get_acf(l_new)
+                        acfs2[idx].append(np.array(acf))
 
         fig_acf = plt.figure()
         ax1 = fig_acf.add_subplot(211)
@@ -1257,7 +1258,7 @@ scales_lists = [[0.5*i for i in range(2, 5)], [0.4*i for i in range(2, 9, 2)], [
 
 # CHANGED
 cwt = CWT(idx_segment = 'all', chop = chop)
-#cwt.ACF()
+cwt.ACF()
 
 
 
