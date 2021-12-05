@@ -137,12 +137,10 @@ class CWT():
                     ax.plot([i*5 for i,j in enumerate(cfs.pca1_list)], cfs.pca1_list, c = 'blue')
                     ax.plot([i*5 for i,j in enumerate(cfs.pca2_list)], cfs.pca2_list, c = 'green')
                     ax.plot([i*5 for i,j in enumerate(cfs.run_list)], [i*75 for i in cfs.run_list], c = 'black', linestyle = '--')
-                    #ax.plot([i*5 for i,j in enumerate(cfs.run_mean_list)], [i*75 for i in cfs.run_mean_list], c = 'orange', linestyle = '--')
 
-                    #ax.plot([i*5 for i,j in enumerate(cfs.spin_vec_magnitude_list)], [50*i for i in cfs.spin_vec_magnitude_list], c = 'pink')
-                    #ax.plot([i*5 for i,j in enumerate(cfs.spin_vec_magnitude_mean_list)], [50*i for i in cfs.spin_vec_magnitude_mean_list], c = 'pink', linestyle = '--')
+                    #ax.plot([i*5 for i,j in enumerate(cfs.angle_list)], [50*i for i in cfs.angle_list], c = 'pink')
+                    #ax.plot([i*5 for i,j in enumerate(cfs.angle_mean_list)], [50*i for i in cfs.angle_mean_list], c = 'pink', linestyle = '--')
                     #ax.plot([i*5 for i,j in enumerate(cfs.spin_vec_std_list)], [50*i for i in cfs.spin_vec_std_list], c = 'pink', linestyle = ':')
-                    #ax.plot([i*5 for i,j in enumerate(cfs.direction_std_list)], [i for i in cfs.direction_std_list], c = 'grey')
 
                     #ax.plot([i*5 for i,j in enumerate(cfs.run_list)], [0 for _ in cfs.run_list], c = 'black', linewidth = 0.5)
 
@@ -411,11 +409,9 @@ class CWT():
                 consecutive_frames.pca2_list = consecutive_frames.pca2_list[self.chop :-self.chop]
                 consecutive_frames.delta_centroid_list = consecutive_frames.delta_centroid_list[self.chop :-self.chop]
                 consecutive_frames.run_list = consecutive_frames.run_list[self.chop :-self.chop]
-                consecutive_frames.run_mean_list = consecutive_frames.run_mean_list[self.chop :-self.chop]
-                consecutive_frames.spin_vec_magnitude_list = consecutive_frames.spin_vec_magnitude_list[self.chop :-self.chop]
-                consecutive_frames.spin_vec_magnitude_mean_list = consecutive_frames.spin_vec_magnitude_mean_list[self.chop :-self.chop]
+                consecutive_frames.angle_list = consecutive_frames.angle_list[self.chop :-self.chop]
+                consecutive_frames.angle_mean_list = consecutive_frames.angle_mean_list[self.chop :-self.chop]
                 consecutive_frames.spin_vec_std_list = consecutive_frames.spin_vec_std_list[self.chop :-self.chop]
-                consecutive_frames.direction_std_list = consecutive_frames.direction_std_list[self.chop :-self.chop]
 
             consecutive_frames.spectogram = spectogram
 
