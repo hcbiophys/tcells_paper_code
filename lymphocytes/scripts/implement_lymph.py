@@ -50,13 +50,15 @@ if __name__ == '__main__':
 
     random.shuffle(idx_cells_orig)
 
+    idx_cells_orig = ['2_7']
+
     for idx_cell in idx_cells_orig:
 
 
 
 
         cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = [idx_cell], max_l = 15, keep_every_random = 1)
-        cells.plot_uropod_centroid_line(idx_cell=idx_cell, plot_every=1, time_either_side=None)
+        #cells.plot_uropod_centroid_line(idx_cell=idx_cell, plot_every=1, time_either_side=None)
 
 
         #cells.plot_uropod_centroid_line(idx_cell = idx_cell, plot_every = 1, time_either_side = None)
@@ -88,7 +90,7 @@ if __name__ == '__main__':
 
         #cells.plot_migratingCell(idx_cell=idx_cell, color_by = 'time', plot_every = 1)
         #cells.scatter_run_running_means()
-        #cells.plot_orig_series(idx_cell = idx_cell, uropod_align = False, color_by = 'angle', plot_every = 5)
+        cells.plot_orig_series(idx_cell = idx_cell, uropod_align = False, color_by = 'angle', plot_every = 5)
         #cells.plot_voxels_series(idx_cell=idx_cell, plot_every = 10)
         #cells.select_uropods(idx_cell=idx_cell)
         #cells.select_uropods_add_frames(idx_cell = idx_cell)
