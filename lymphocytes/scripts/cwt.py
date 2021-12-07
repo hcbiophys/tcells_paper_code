@@ -108,50 +108,55 @@ class CWT():
 
         if filename[-3:] == 'run':
             self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
-
-
         elif filename[-4:] == 'stop':
             self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_stop.pickle',"rb"))
         else:
             self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series.pickle',"rb"))
 
-        self.all_consecutive_frames = [i for i in self.all_consecutive_frames if i.name !='zm_3_4_2a']
 
 
         if not idx_segment == 'all':
             self.all_consecutive_frames = [i for i in self.all_consecutive_frames if i.name == idx_segment]
 
+        PC_uncertainties = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/PC_uncertainties.pickle', 'rb'))
+        for cfs in self.all_consecutive_frames:
+            cfs.PC_uncertainties = PC_uncertainties[cfs.name[:-1]]
+            print(cfs.name, cfs.PC_uncertainties)
+
+
+
 
 
         """
+
+
+
+
         fig = plt.figure()
         count = 0
-        #random.shuffle(self.all_consecutive_frames)
-
         for cfs in self.all_consecutive_frames:
-
+            print(cfs.name, len(cfs.pca0_list) ,count)
             if len(cfs.pca0_list) > 100 and count < 4:
-                if cfs.name == 'zm_3_3_5a': # zm_3_3_5a, zm_3_3_2a, zm_3_3_4a, zm_3_4_1a
-                    ax = fig.add_subplot(4, 1, count+1)
-                    ax.plot([i*5 for i,j in enumerate(cfs.pca0_list)], cfs.pca0_list, c = 'red')
-                    ax.plot([i*5 for i,j in enumerate(cfs.pca1_list)], cfs.pca1_list, c = 'blue')
-                    ax.plot([i*5 for i,j in enumerate(cfs.pca2_list)], cfs.pca2_list, c = 'green')
-                    ax.plot([i*5 for i,j in enumerate(cfs.run_list)], [i*75 for i in cfs.run_list], c = 'black', linestyle = '--')
+                print(cfs.name)
+                ax = fig.add_subplot(4, 1, count+1)
+                for var_list, color in zip([cfs.pca0_list, cfs.pca1_list, cfs.pca2_list, cfs.run_uropod_list], ['red', 'blue', 'green', 'black']):
+                    var_list = self.interpolate_list(var_list)
+                    var_list  = self.butter_highpass_filter(var_list,1/400,fs=0.2)
+                    if color == 'black':
+                        var_list = [i*100 for i in var_list]
+                    ax.plot([i*5 for i,j in enumerate(var_list)], var_list, c = color)
+                    ax.set_title(cfs.name)
+                    #ax.set_ylim([-1, 1])
 
-                    #ax.plot([i*5 for i,j in enumerate(cfs.angle_list)], [50*i for i in cfs.angle_list], c = 'pink')
-                    #ax.plot([i*5 for i,j in enumerate(cfs.angle_mean_list)], [50*i for i in cfs.angle_mean_list], c = 'pink', linestyle = '--')
-                    #ax.plot([i*5 for i,j in enumerate(cfs.spin_vec_std_list)], [50*i for i in cfs.spin_vec_std_list], c = 'pink', linestyle = ':')
 
-                    #ax.plot([i*5 for i,j in enumerate(cfs.run_list)], [0 for _ in cfs.run_list], c = 'black', linewidth = 0.5)
-
-                    ax.set_ylim([-1, 1])
-                    #ax.set_title(cfs.name)
-                    count += 1
+                count += 1
 
         plt.show()
         plt.subplots_adjust(hspace = 0)
         sys.exit()
         """
+
+
 
 
 
@@ -167,30 +172,84 @@ class CWT():
         self.all_embeddings = None
 
 
-
-
-
-
-
-
-
-
-
-
         self.all_consecutive_frames_dict = {cfs.name: cfs for cfs in self.all_consecutive_frames}
+
+
+    def interpolate_list(self, l):
+        if len([i for i in l if np.isnan(i)]) > 0: # if it contains nans
+            f = interpolate.interp1d([i*5  for i,j in enumerate(l) if not np.isnan(j)], [j  for i,j in enumerate(l) if not np.isnan(j)])
+            to_model = [i*5 for i in range(len(l))]
+            idxs_del, _ = utils_cwt.remove_border_nans(l)
+            to_model = [j for i,j in enumerate(to_model) if i not in idxs_del]
+
+            l = f(to_model)
+        return l
+
+
+
+    def butter_highpass_filter(self, data, cutoff, fs, order=5):
+        nyq = 0.5 * fs
+        normal_cutoff = cutoff / nyq
+        b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+        y = signal.filtfilt(b, a, data)
+        return y
+
+
+
+    def fit_exponentials(self, acfs2):
+        def _linear_model(x,  k):
+            x = np.array(x)
+            return -k*x
+        def _exp_model(x,  k):
+            x = np.array(x)
+            return np.exp(-k*x)
+
+        taus = []
+        for idx_attribute, acfs in enumerate(acfs2):
+
+            #fig = plt.figure()
+            #ax1 = fig.add_subplot(121)
+            #ax2 = fig.add_subplot(122)
+
+            points_fit = []
+            for acf in acfs:
+                xs = [i*5 for i,j in enumerate(acf)]
+                #ax2.plot(xs, acf)
+
+                points_fit.append((xs[0], np.log(acf[0])))
+                for idx in range(1, len(acf)-2):
+                    if  acf[idx] > 0 and acf[idx] > acf[idx-1] and acf[idx] > acf[idx-2] and acf[idx] > acf[idx+1] and acf[idx] > acf[idx+2]:
+                        points_fit.append((xs[idx], np.log(acf[idx])))
+
+            xs_fit = [x for x,y in sorted(points_fit)]
+            ys_fit = [y for x,y in sorted(points_fit)]
+            #ax1.scatter([i[0] for i in points_fit], [i[1] for i in points_fit])
+
+
+            p0 = (0.01)
+            #opt, pcov = curve_fit(_linear_model, xs_fit, ys_fit,  sigma = [0.27**y for y in ys_fit], absolute_sigma=True)
+            opt, pcov = curve_fit(_linear_model, xs_fit, ys_fit)
+
+
+
+            k = opt
+            xs_show = np.linspace(min([i[0] for i in points_fit]), max([i[0] for i in points_fit]), 5000)
+            #ax1.plot(xs_show, _linear_model(xs_show,  k = k))
+
+            #ax2.scatter([i[0] for i in points_fit], [np.exp(i[1]) for i in points_fit])
+            #ax2.plot(xs_show, _exp_model(xs_show,  k = k))
+            tau = 1./k
+            taus.append(tau)
+            print('idx_attribute', idx_attribute, 'tau', tau)
+            #plt.show()
+
+        return taus
 
 
 
     def ACF(self):
-        def butter_highpass(cutoff, fs, order=5):
-            nyq = 0.5 * fs
-            normal_cutoff = cutoff / nyq
-            b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
-            return b, a
-        def butter_highpass_filter(data, cutoff, fs, order=5):
-            b, a = butter_highpass(cutoff, fs, order=order)
-            y = signal.filtfilt(b, a, data)
-            return y
+
+
 
 
 
@@ -199,9 +258,7 @@ class CWT():
         acfs2 = [[], [], [], []]
         colors = ['red', 'blue', 'green',  'black']
 
-        def _model_func(x,  k):
-            x = np.array(x)
-            return np.exp(-k*x)
+
         def get_acf(time_series):
             acf = list(sm.tsa.acf(time_series, nlags = 99, missing = 'conservative')) # LOOK INTO THIS FOR PURE SINE WAVE
             acf += [np.nan for _ in range(100-len(acf))]
@@ -211,36 +268,41 @@ class CWT():
         fig_series = plt.figure()
         ax1 = fig_series.add_subplot(211)
         ax2 = fig_series.add_subplot(212)
-        for i in self.all_consecutive_frames:
+        SNRs = [[], [], []] # each list is for a PC
+        for cfs in self.all_consecutive_frames:
 
-                for idx, l in enumerate([i.pca0_list, i.pca1_list, i.pca2_list, i.run_list]):
+                for idx_attribute, l in enumerate([cfs.pca0_list, cfs.pca1_list, cfs.pca2_list, cfs.run_uropod_list]):
+
                     if len(l) > 50:
                         acf = get_acf(l)
-                        acfs1[idx].append(np.array(acf))
-                        #ax1.plot([i*5 for i in range(len(l))], [i*(1/np.nanmax(l)) for i in l], c = colors[idx])
-                        ax1.plot([i*5 for i in range(len(l))], l, c = colors[idx])
+                        acfs1[idx_attribute].append(np.array(acf))
+                        #ax1.plot([i*5 for i in range(len(l))], [i*(1/np.nanmax(l)) for i in l], c = colors[idx_attribute])
+                        ax1.plot([i*5 for i in range(len(l))], l, c = colors[idx_attribute])
 
-                        if len([i for i in l if np.isnan(i)]) > 0: # if it contains nans
-                            f = interpolate.interp1d([i*5  for i,j in enumerate(l) if not np.isnan(j)], [j  for i,j in enumerate(l) if not np.isnan(j)])
-                            to_model = [i*5 for i in range(len(l))]
-                            idxs_del, _ = utils_cwt.remove_border_nans(l)
-                            to_model = [j for i,j in enumerate(to_model) if i not in idxs_del]
-
-                            l = f(to_model)
-
-                        l_new  = butter_highpass_filter(l,1/400,fs=0.2)
+                        l = self.interpolate_list(l)
+                        l_new  = self.butter_highpass_filter(l,1/400,fs=0.2)
 
                         #ax2.plot([i*5 for i in range(len(l_new))], [i*(1/np.nanmax(l_new)) for i in l_new], c = colors[idx])
-                        ax2.plot([i*5 for i in range(len(l_new))], l_new, c = colors[idx])
+                        ax2.plot([i*5 for i in range(len(l_new))], l_new, c = colors[idx_attribute])
                         acf = get_acf(l_new)
-                        acfs2[idx].append(np.array(acf))
+                        acfs2[idx_attribute].append(np.array(acf))
 
+                        if idx_attribute < 3: # if it's a PC
+                            PC_uncertainty = cfs.PC_uncertainties[idx_attribute]
+                            signal_var = np.std(l_new)
+                            #print('signal_var', signal_var, 'PC_uncertainty', PC_uncertainty)
+                            SNR = signal_var/PC_uncertainty
+                            SNRs[idx_attribute].append(SNR)
+
+
+
+        print('SNRs', SNRs)
         fig_acf = plt.figure()
         ax1 = fig_acf.add_subplot(211)
         ax2 = fig_acf.add_subplot(212)
 
         for idx1 in range(len(acfs1)):
-            for idx2 in range(len(acfs1[idx])):
+            for idx2 in range(len(acfs1[idx1])):
                 xs = [i*5 for i in range(len(acfs1[idx1][idx2]))]
                 ys = acfs1[idx1][idx2]
                 ax1.plot(xs, ys, c = colors[idx1])
@@ -249,48 +311,16 @@ class CWT():
                 xs = [i*5 for i in range(len(acfs2[idx1][idx2]))]
                 ys = acfs2[idx1][idx2]
                 ax2.plot(xs, ys, c = colors[idx1])
+
+        taus = self.fit_exponentials(acfs2)
+        print('taus', taus)
+
+
         ax1.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
         ax2.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
         plt.show()
 
-        """
-        for acf, color, linestyle in zip(acfs, colors, ['-', '-', '-', '--']):
-            acf = np.array([acf])
-            concat = np.concatenate(acf, axis = 0)
-            ys = np.nanmean(concat, axis = 0)
-            xs = [i*5 for i,j in enumerate(ys)]
-            plt.plot(xs, ys, c = color, linestyle = linestyle)
-            plt.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
 
-            points=[(xs[0], ys[0])]
-            for idx in range(1, len(ys)-2):
-
-                if  ys[idx] > ys[idx-1] and ys[idx] > ys[idx+1] :
-                    points.append((xs[idx], ys[idx]))
-
-
-            xs_scatter = [i[0] for i in points]
-            ys_scatter = [i[1] for i in points]
-            #plt.scatter(xs_scatter, ys_scatter)
-
-            f = interpolate.interp1d(xs_scatter, ys_scatter)
-            xs_scatter = [i for i in range(max(xs_scatter))]
-            ys_scatter = f(xs_scatter)
-
-            p0 = (0.01) # starting search koefs
-            opt, pcov = curve_fit(_model_func, xs_scatter, ys_scatter)
-
-            k = opt
-
-            ys_model = _model_func(xs_scatter,  k = k)
-            #plt.plot(xs_scatter, ys_model, c = color, linestyle = linestyle)
-            tau = 1./k
-            print(color, tau)
-
-        #plt.ylim([0, 1])
-        plt.show()
-        """
-        sys.exit()
 
 
     def print_freqs(self):
@@ -407,8 +437,7 @@ class CWT():
                 consecutive_frames.pca0_list = consecutive_frames.pca0_list[self.chop :-self.chop]
                 consecutive_frames.pca1_list = consecutive_frames.pca1_list[self.chop :-self.chop]
                 consecutive_frames.pca2_list = consecutive_frames.pca2_list[self.chop :-self.chop]
-                consecutive_frames.delta_centroid_list = consecutive_frames.delta_centroid_list[self.chop :-self.chop]
-                consecutive_frames.run_list = consecutive_frames.run_list[self.chop :-self.chop]
+                consecutive_frames.run_uropod_uropod_list = consecutive_frames.run_uropod_uropod_list[self.chop :-self.chop]
                 consecutive_frames.angle_list = consecutive_frames.angle_list[self.chop :-self.chop]
                 consecutive_frames.angle_mean_list = consecutive_frames.angle_mean_list[self.chop :-self.chop]
                 consecutive_frames.spin_vec_std_list = consecutive_frames.spin_vec_std_list[self.chop :-self.chop]
@@ -497,12 +526,12 @@ class CWT():
 
 
         colors_pc = []
-        colors_run = []
+        colors_run_uropod = []
         colors_mode = []
         for cfs in self.all_consecutive_frames:
             """
-            x_list = np.array([k*5 for k,j in enumerate(i.run_list)])
-            y_list = np.array(i.run_list)
+            x_list = np.array([k*5 for k,j in enumerate(i.run_uropod_list)])
+            y_list = np.array(i.run_uropod_list)
             x_list2 = np.arange(min(x_list), max(x_list), 0.1)
             #plt.plot(x_list, y_list,  c = 'black')
             spl = UnivariateSpline(x_list, y_list, s = 1e-4)
@@ -516,7 +545,7 @@ class CWT():
 
 
 
-            colors_run += list(cfs.run_list)
+            colors_run_uropod += list(cfs.run_uropod_list)
             colors_pc += list(cfs.pca0_list)
 
             if cfs.name[:-1] in run_idx_cells:
@@ -961,7 +990,7 @@ class CWT():
             vmin, vmax = np.min(np.concatenate(color_by_split)), np.max(np.concatenate(color_by_split))
             cmap = plt.cm.PiYG
             norm = plt.Normalize(vmin, vmax)
-        all_features = {'frame': [], 'PC0':[], 'PC1':[], 'PC2':[], 'delta_centroid':[]}
+        all_features = {'frame': [], 'PC0':[], 'PC1':[], 'PC2':[]}
         for dict2 in dict1.values():
             for name, list in dict2.items():
                 all_features[name] = all_features[name] + list
@@ -981,79 +1010,63 @@ class CWT():
 
 
 
-    def run_power_spectrum(self, attribute_list, name, high_or_low_run):
+    def run_power_spectrum(self, attribute_list):
+        print('attribute_list', attribute_list)
 
-        f_max = 0.04
-        if attribute_list[:3] == 'pca':
-            f_max = 0.02
+        cfs_run = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
+        cfs_stop = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_stop.pickle',"rb"))
+
+
+        f_max = 0.02
 
 
         fig = plt.figure()
-        ax1 = fig.add_subplot(131)
-        ax2 = fig.add_subplot(132)
-        ax3 = fig.add_subplot(133)
+        ax1 = fig.add_subplot(121)
+        ax2 = fig.add_subplot(122)
 
-        all_fs = []
-        all_Ps = []
-        for cfs in self.all_consecutive_frames:
-            if name == 'all' or cfs.name == name:
+        for cfs_all, color in zip([cfs_run, cfs_stop], ['red', 'blue']):
+            all_fs = []
+            all_Ps = []
+            for cfs in cfs_all:
 
                 time_series = getattr(cfs, attribute_list)
 
+                time_series = self.interpolate_list(time_series)
 
-                time_series_split = []
-                new = []
-                for i in time_series:
-                    if not np.isnan(i):
-                        new.append(i)
-                    else:
-                        time_series_split.append(new)
-                        new = []
-                    time_series_split.append(new)
-                lengths = [len(i) for i in time_series_split]
-                time_series = time_series_split[lengths.index(max(lengths))]
+                if len(time_series) > 50:
 
+                    idxs_del, time_series = utils_cwt.remove_border_nans(time_series)
 
-
-                #if len(time_series) > 50:
-                if len(time_series) > 50 and cfs.high_or_low == high_or_low_run or high_or_low_run == 'all':
-                    print(cfs.name)
-                    p = ax1.plot([i*5 for i in range(len(time_series))], time_series)
+                    p = ax1.plot([i*5 for i in range(len(time_series))], time_series, c = color)
                     ax1.set_xlim([0, 5*230])
                     ax1.set_ylim([-0.01, 0.04])
                     if attribute_list[:3] == 'pca':
                         ax1.set_ylim([-1, 1])
 
-                    idxs_del, time_series2 = utils_cwt.remove_border_nans(time_series)
-
-
-                    f, Pxx_den = signal.periodogram(time_series2, fs = 1/5, scaling = 'spectrum')
+                    f, Pxx_den = signal.periodogram(time_series, fs = 1/5, scaling = 'spectrum')
+                    f, Pxx_den = f[1:] , Pxx_den[1:]
                     all_fs += list(f)
                     all_Ps += list(Pxx_den)
-                    ax2.scatter(f, Pxx_den, c = p[0].get_color())
+                    ax2.scatter(f, np.log10(Pxx_den), c = p[0].get_color(), zorder = 1, s = 2, label = cfs.name)
                     ax2.set_xlim([0, f_max])
-                    ax2.set_ylim([0, 1.2e-5])
-                    if attribute_list[:3] == 'pca':
-                        ax2.set_ylim([0, 0.06])
+                    #ax2.set_ylim([0, 1.2e-5])
+                    #if attribute_list[:3] == 'pca':
+                    #    ax2.set_ylim([0, 0.06])
 
+            bins = np.linspace(0, f_max, 10)
+            digitized = list(np.digitize(all_fs, bins).squeeze())
 
+            means = []
+            stds = []
+            for bin in range(10):
+                digitized_bin = [j for idx,j in enumerate(all_Ps) if digitized[idx] == bin]
+                means.append(np.nanmean(digitized_bin))
+                stds.append(np.nanstd(digitized_bin))
+            ax2.plot(np.linspace(0, f_max, 10), np.log10(means), zorder = 0, c = color)
+            #ax3.errorbar(np.linspace(0, f_max, 10), means, yerr = stds, ls = 'none', ecolor = 'red')
+            #ax3.set_ylim([0, 0.4e-5])
 
-        bins = np.linspace(0, f_max, 10)
-        digitized = list(np.digitize(all_fs, bins).squeeze())
-
-        means = []
-        stds = []
-        for bin in range(10):
-            digitized_bin = [j for idx,j in enumerate(all_Ps) if digitized[idx] == bin]
-            means.append(np.nanmean(digitized_bin))
-            stds.append(np.nanstd(digitized_bin))
-        ax3.bar(np.linspace(0, f_max, 10), means, width = bins[1]-bins[0])
-        ax3.errorbar(np.linspace(0, f_max, 10), means, yerr = stds, ls = 'none', ecolor = 'red')
-        ax3.set_xlim([0, f_max])
-        ax3.set_ylim([0, 0.4e-5])
-        if attribute_list[:3] == 'pca':
-            ax3.set_ylim([0, 0.0125])
-
+            #plt.legend()
         plt.show()
 
 
@@ -1251,10 +1264,10 @@ scales_lists = [[0.5*i for i in range(2, 5)], [0.4*i for i in range(2, 9, 2)], [
 
 
 
-
+#['2_1', 'zm_3_4_0', 'zm_3_3_3', 'zm_3_6_0']
 # CHANGED
 cwt = CWT(idx_segment = 'all', chop = chop)
-cwt.ACF()
+#cwt.ACF()
 
 
 
@@ -1263,15 +1276,10 @@ cwt.ACF()
 
 
 
-"""
-fig = plt.figure()
-for attribute_list in ['run_list', 'pca0_list', 'pca1_list', 'pca2_list']:
-    print(attribute_list)
-    for high_or_low_run in ['all', 'low', 'high']:
-        print(high_or_low_run)
-        cwt.run_power_spectrum(attribute_list = attribute_list, name = 'all', high_or_low_run = high_or_low_run)
+
+for attribute_list in ['run_uropod_list', 'pca0_list', 'pca1_list', 'pca2_list']:
+    cwt.run_power_spectrum(attribute_list = attribute_list)
 sys.exit()
-"""
 
 
 #cwt.print_freqs()
@@ -1299,8 +1307,6 @@ cwt.kde(load_or_save_or_run = load_or_save_or_run, filename = filename)
 #cwt.transition_matrix(s = None, b = None, grid = True)
 #cwt.transition_matrix(s = thresh_params_dict[filename][0], b = thresh_params_dict[filename][1], grid = True)
 
-#['2_1a', 'zm_3_4_0a', 'zm_3_3_3a']
-#['zm_3_3_5a', 'zm_3_3_2a', 'zm_3_3_4a', 'zm_3_4_1a']
 
 #for name in ['zm_3_3_5a', 'zm_3_3_2a', 'zm_3_3_4a', 'zm_3_4_1a']:
 for cfs in cwt.all_consecutive_frames:
