@@ -1,6 +1,6 @@
 batch*/
 cell_info.docx
-*data*/
+*seg_data*/
 
 *.docx
 *.pickle
