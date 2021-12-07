@@ -11,6 +11,8 @@ import lymphocytes.utils.general as utils_general
 import pickle
 import lymphocytes.utils.disk as utils_disk
 import os
+from matplotlib.patches import FancyArrowPatch
+from mpl_toolkits.mplot3d import proj3d
 
 from lymphocytes.cell_frame.cell_frame_class import Cell_Frame
 
@@ -37,38 +39,33 @@ class PCA_Methods:
         - removeAngleNone: whether to remove frames with angle None.
         """
 
-        if not self.pca_set:
-            lymphs = utils_general.list_all_lymphs(self)
+        lymphs = utils_general.list_all_lymphs(self)
+
+        if self.pca_obj is None:
             RI_vectors = np.array([lymph.RI_vector for lymph in lymphs])
-            pca_obj = PCA(n_components = n_components)
-            pca_obj.fit_transform(RI_vectors)
-            print('EXPLAINED VARIANCE RATIO: ', pca_obj.explained_variance_ratio_)
+            self.pca_obj = PCA(n_components = n_components)
+            self.pca_obj.fit_transform(RI_vectors)
+            print('SETTING PCS; explained variance ratio: ', self.pca_obj.explained_variance_ratio_)
+
+
+        for lymph in lymphs:
+            lymph.pca = self.pca_obj.transform(lymph.RI_vector.reshape(1, -1))
+            lymph.pca = np.squeeze(lymph.pca, axis = 0)
+            lymph.pca0 = lymph.pca[0]
+            lymph.pca1 = lymph.pca[1]
+            lymph.pca2 = lymph.pca[2]
+
+        # set normalized PCs
+        pcas = np.array([lymph.pca for lymph in lymphs])
+        means = np.mean(pcas, axis = 0)
+        stds = np.std(pcas, axis = 0)
+        all_pcas_normalized = (pcas - means)/stds
+        for idx, lymph in enumerate(lymphs):
+            lymph.pca_normalized = all_pcas_normalized[idx, :]
 
 
 
-
-            for lymph in lymphs:
-                lymph.pca = pca_obj.transform(lymph.RI_vector.reshape(1, -1))
-                lymph.pca = np.squeeze(lymph.pca, axis = 0)
-                lymph.pca0 = lymph.pca[0]
-                lymph.pca1 = lymph.pca[1]
-                lymph.pca2 = lymph.pca[2]
-
-            # set normalized PCs
-            pcas = np.array([lymph.pca for lymph in lymphs])
-            means = np.mean(pcas, axis = 0)
-            stds = np.std(pcas, axis = 0)
-            all_pcas_normalized = (pcas - means)/stds
-            for idx, lymph in enumerate(lymphs):
-                lymph.pca_normalized = all_pcas_normalized[idx, :]
-
-            self.pca_set = True
-
-            self.pca_obj = pca_obj
-
-            return pca_obj
-
-
+    """
     def add_cells_set_PCs(self, new_stack_attributes, idx_cells_new):
         max_l = 15
         new_stack_attributes_dict = {i[0]:i for i in new_stack_attributes}
@@ -111,14 +108,64 @@ class PCA_Methods:
 
 
             self.cells[idx_cell] = lymph_series
+    """
+
+
+    def PC_arrows(self):
+
+
+
+        class Arrow3D(FancyArrowPatch):
+            def __init__(self, xs, ys, zs, *args, **kwargs):
+                FancyArrowPatch.__init__(self, (0,0), (0,0), *args, **kwargs)
+                self._verts3d = xs, ys, zs
+
+            def draw(self, renderer):
+                xs3d, ys3d, zs3d = self._verts3d
+                xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, renderer.M)
+                self.set_positions((xs[0],ys[0]),(xs[1],ys[1]))
+                FancyArrowPatch.draw(self, renderer)
+
+        #self._set_pca(n_components=3)
+        #components = self.pca_obj.components_[:, :3]
+        components = np.array([[ 0.8072487,   0.45532269,  0.34706196,],
+        [-0.14969418, -0.45074785,  0.80496108,],
+        [-0.56602573,  0.75203689,  0.23602912]])
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        for i in self.cells['2_8']:
+            ax.scatter(*i.RI_vector[:3], c = 'red')
+        for i in self.cells['zm_3_4_0']:
+            ax.scatter(*i.RI_vector[:3], c = 'blue')
+
+        ax.set_xlabel('RI0')
+        ax.set_ylabel('RI1')
+        ax.set_zlabel('RI2')
+        ax.set_xlim([1, 3])
+        ax.set_ylim([3, 4])
+        ax.set_zlim([0, 1])
+
+        mean = np.mean([lymph.RI_vector for lymph in utils_general.list_all_lymphs(self)], axis = 0)
+
+        for row, color in zip(range(components.shape[0]), ['r', 'b', 'g']):
+            a = Arrow3D([mean[0], mean[0]+components[row, 0]*4], [mean[1], mean[1]+components[row, 1]*4],
+                    [mean[2], mean[2]+components[row, 2]*4], mutation_scale=20,
+                    lw=3, arrowstyle="-|>", color=color)
+            ax.add_artist(a)
+
+        plt.show()
 
 
 
 
-    def PC_sampling(self, n_components):
+
+    def PC_sampling(self, n_components = 3):
 
 
-        pca_obj = self._set_pca(n_components)
+        self._set_pca(n_components)
+
         lymphs = utils_general.list_all_lymphs(self)
         PCs = np.array([lymph.pca for lymph in lymphs])
         mins = np.min(PCs, axis = 0)
@@ -139,12 +186,12 @@ class PCA_Methods:
             max_copy[idx_PC] = maxs[idx_PC]
 
             for idx_sample, sample in enumerate([min_copy, mean, max_copy]):
-                colors = ['red']*len(pca_obj.inverse_transform(max_copy))
-                for i,j in enumerate(list(pca_obj.inverse_transform(max_copy)-pca_obj.inverse_transform(min_copy))):
+                colors = ['red']*len(self.pca_obj.inverse_transform(max_copy))
+                for i,j in enumerate(list(self.pca_obj.inverse_transform(max_copy)-self.pca_obj.inverse_transform(min_copy))):
                     if j > 0:
                         colors[i] = 'blue'
 
-                inverted = pca_obj.inverse_transform(sample)
+                inverted = self.pca_obj.inverse_transform(sample)
                 ax = fig_sampling.add_subplot(n_components, 3, 3*idx_PC+idx_sample+1)
                 ax.bar(range(len(inverted[:5])), inverted[:5], color = colors)
                 ax.set_ylim([0, 4.2])
@@ -176,8 +223,12 @@ class PCA_Methods:
         else:
             vectors = [lymph.RI_vector for lymph in lymphs]
 
-
+        all_colors = ['red', 'blue', 'green', 'orange', 'black', 'grey', 'fuchsia', 'dodgerblue', 'pink']
         for idx_component in range(3):
+            print('idx_component', idx_component)
+            to_scatter= []
+            colors = []
+
             color = ['pink']*3
             color[idx_component] = 'green'
             plotted_points = []
@@ -190,7 +241,8 @@ class PCA_Methods:
                 grid_vectors = [] # vectors that could be good for this part of the PC
                 grid_lymphs = []
                 for vector, lymph in zip(vectors, lymphs):
-                    #if int((vector[idx_component] - min_) // (range_/grid_size)) in [grid, grid+1]:
+                    to_scatter.append( vector[idx_component])
+                    colors.append(all_colors[int((vector[idx_component] - min_) // (range_/grid_size))])
                     if int((vector[idx_component] - min_) // (range_/grid_size)) == grid:
                         grid_vectors.append(vector)
                         grid_lymphs.append(lymph)
@@ -206,7 +258,7 @@ class PCA_Methods:
                 if plot_original:
                     to_plot.surface_plot(plotter, uropod_align=True)
                 else:
-                    to_plot.plotRecon_singleDeg(plotter, max_l = 3, uropod_align = True)
+                    to_plot.plotRecon_singleDeg(plotter, max_l = 2, uropod_align = True)
 
                 ax = fig_bars.add_subplot(3, grid_size, (idx_component*grid_size)+grid+1)
 
@@ -220,6 +272,12 @@ class PCA_Methods:
 
             plt.subplots_adjust(hspace = 0.1, wspace = 0)
             plotted_points_all.append(plotted_points)
+
+
+            fig_temp = plt.figure()
+            ax = fig_temp.add_subplot(111)
+            ax.scatter([0 for _ in to_scatter], to_scatter, c = colors)
+            ax.set_title(str(idx_component))
 
         plotter.show(cpos=[0, 1, 0])
         self._scatter_plotted_components(vectors, plotted_points_all)

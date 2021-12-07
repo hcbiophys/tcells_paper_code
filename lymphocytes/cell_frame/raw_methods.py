@@ -26,6 +26,8 @@ class Raw_Methods:
         - uropod_align: whether or not to shift centroid to origin and rotate to align ellipsoid with an axis.
         - scalars: color each face differently (?)
         """
+        if self.vertices is None:
+            return
 
         if uropod_align:
             uropod, centroid, vertices = self._uropod_align()
@@ -47,7 +49,7 @@ class Raw_Methods:
             plotter.add_mesh(surf, color = color, scalars = scalars, opacity = opacity)
 
         if box is not None:
-            plotter.add_mesh(box, style='wireframe')
+            plotter.add_mesh(box, style='wireframe', opacity = 0.5)
 
 
         """
@@ -109,18 +111,6 @@ class Raw_Methods:
         x, y, z = coordinates.sum(0) / np.sum(voxels)
         self.voxels_centroid = np.array([x, y, z])
 
-
-
-
-
-    def uropod_centroid_line_plot(self, plotter=None, color = (1, 1, 1)):
-        """
-        Plot the line joining the uropod and centroid
-        """
-        if plotter is None:
-            surf.plot()
-        else:
-            plotter.add_lines(np.array([self.mean_uropod, self.mean_centroid]), color = color)
 
 
 

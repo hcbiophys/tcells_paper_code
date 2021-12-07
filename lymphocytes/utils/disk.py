@@ -128,21 +128,22 @@ def get_attribute_from_mat(mat_filename, zeiss_type, idx_cell = None, include_vo
 
 
 
-def _voxelize(vertices, faces):
+def _voxelize(vertices, faces, dx = 0.5, decimate = True):
     surf = pv.PolyData(vertices, faces)
-    surf = surf.decimate(0.95)
+    if decimate:
+        surf = surf.decimate(0.95)
 
     #surf = pv.voxelize(surf, density=0.5, check_surface=False)
     x_min, x_max, y_min, y_max, z_min, z_max = surf.bounds
-    x = np.arange(x_min, x_max, 0.5)
-    y = np.arange(y_min, y_max, 0.5)
-    z = np.arange(z_min, z_max, 0.5)
+    x = np.arange(x_min, x_max, dx)
+    y = np.arange(y_min, y_max, dx)
+    z = np.arange(z_min, z_max, dx)
     xx, yy, zz = np.meshgrid(x, y, z)
     xx = np.moveaxis(xx, 0, 1)
     yy = np.moveaxis(yy, 0, 1)
     zz = np.moveaxis(zz, 0, 1)
 
-    # Create unstructured grid from the structured grid
+    # Create  unstructured grid from the structured grid
     grid = pv.StructuredGrid(xx, yy, zz)
     ugrid = pv.UnstructuredGrid(grid)
     # get part of the mesh within the mesh's bounding surface.
@@ -197,33 +198,6 @@ def write_all_zoomed_niigz(mat_filename, save_format, voxelize = False, zoom_fac
 
 
 
-                xyz_res = np.array([0.5, 0.5, 0.5])
-                coordinates = np.argwhere(voxels_cleaned == 1)*xyz_res
-
-
-                plotter = pv.Plotter()
-
-                point_cloud = pv.PolyData(coordinates)
-                plotter.add_mesh(point_cloud)
-
-
-                vertices = vertices_all[idx]
-
-                coordinates += np.min(vertices, axis = 0) + np.array([5, 0, 0])
-                point_cloud = pv.PolyData(coordinates)
-                plotter.add_mesh(point_cloud)
-
-
-
-                #vertices -= np.min(vertices, axis = 0)
-                surf = pv.PolyData(vertices, faces_all[idx])
-                plotter.add_mesh(surf, color = (1, 0, 1), opacity = 0.1)
-                plotter.add_lines(np.array([[-10, 0, 0], [10, 0, 0]]), color = (0, 0, 0))
-                plotter.add_lines(np.array([[0, -10, 0], [0, 10, 0]]), color = (0, 0, 0))
-                plotter.add_lines(np.array([[0, 0, -10], [0, 0, 10]]), color = (0, 0, 0))
-                plotter.show()
-
-
 
 
             else:
@@ -243,8 +217,8 @@ def write_all_zoomed_niigz(mat_filename, save_format, voxelize = False, zoom_fac
                 voxels_cleaned = zoom(voxels_cleaned, (zoom_factor, zoom_factor, zoom_factor), order = 0) # order 0 means not interpolation
 
             #print(save_format.format(int(frames_all[idx])))
-            #new_image = nib.Nifti1Image(voxels_cleaned, affine=np.eye(4))
-            #nib.save(new_image, save_format.format(int(frames_all[idx])))
+            new_image = nib.Nifti1Image(voxels_cleaned, affine=np.eye(4))
+            nib.save(new_image, save_format.format(int(frames_all[idx])))
 
 
 
@@ -337,31 +311,17 @@ if __name__ == "__main__":
 
 
 
-    """
-    for idx_cell in range(10):
-        print(idx_cell)
-        save_calibrations(idx_cell = 'zm_3_2_{}'.format(idx_cell), cell_no = idx_cell, xyz_res = (0.145, 0.145, 0.4))
-        #rm_done_from_inDir()
-    sys.exit()
-    """
-
-
-
-
-
-
     #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210428/'
     #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/many/20210828_ot1gfp in collagen-01_clean.mat'
-    mat_filename = '../../good_seg_data_3/ZeissLLS_2/20210828_ot1gfp in collagen-01-lattice lightsheet-11-3_clean_Export_Multi_Surf.mat'
-    #save_format = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_4/cell_{}/zoomedVoxels_dist0.5/{}_{{}}.nii.gz'.format(idx_cell, idx_cell)
-    save_format = 'none'
-    idx_cell = 0
-    write_all_zoomed_niigz(mat_filename = mat_filename, save_format = save_format, zoom_factor = None, voxelize = True, zeiss_type = 'zeiss_many', idx_cell = idx_cell, xyz_res = [0.5, 0.5, 0.5])
-    for idx_cell in [0, 1, 2]:
-        outDir =  '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_3/cell_{}/coeffs/'.format(idx_cell)
+    #mat_filename = '../../good_seg_data_3/ZeissLLS_5/20211112_OT1GFP in collagen-03-deskewed_Export_Multi_Surf.mat'
+
+    for idx_cell in range(5):
+        print('idx_cell', idx_cell)
+        #save_format = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_5/cell_{}/zoomedVoxels_dist0.5/{}_{{}}.nii.gz'.format(idx_cell, idx_cell)
+        #write_all_zoomed_niigz(mat_filename = mat_filename, save_format = save_format, zoom_factor = None, voxelize = True, zeiss_type = 'zeiss_many', idx_cell = idx_cell, xyz_res = [0.5, 0.5, 0.5])
+        outDir =  '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_5/cell_{}/coeffs/'.format(idx_cell)
         copy_coefs_into_dir(outDir = outDir, idx_cell=idx_cell)
 
 
 
-
-    #rm_done_from_inDir('/Users/harry/Desktop/RUNNING/STACK2/', '/Users/harry/Desktop/RUNNING/out/Step1_SegPostProcess/')
+        #rm_done_from_inDir('/Users/harry/Desktop/RUNNING/STACK2/', '/Users/harry/Desktop/RUNNING/out/Step1_SegPostProcess/')

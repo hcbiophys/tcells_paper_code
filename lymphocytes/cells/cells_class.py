@@ -22,18 +22,20 @@ from pykdtree.kdtree import KDTree
 import pandas as pd
 from scipy import signal
 from sklearn.decomposition import PCA
-
+from pyvista import examples
+import time
 
 from lymphocytes.cells.pca_methods import PCA_Methods
 from lymphocytes.cells.single_cell_methods import Single_Cell_Methods
 from lymphocytes.cells.centroid_variable_methods import Centroid_Variable_Methods
 from lymphocytes.cell_frame.cell_frame_class import Cell_Frame
 from lymphocytes.behavior_analysis.consecutive_frames_class import Consecutive_Frames
+from lymphocytes.cells.curvature_lists import all_lists
+from lymphocytes.cells.uncertainties import save_PC_uncertainties, get_mean_time_diff, save_curvatures
 
 import lymphocytes.utils.disk as utils_disk
 import lymphocytes.utils.plotting as utils_plotting
 import lymphocytes.utils.general as utils_general
-
 
 
 class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
@@ -42,11 +44,11 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
     Mixins are:
     - Single_Cell_Methods: methods suitable for a single cell series
     - PCA_Methods: methods without involving reduced-dimensionality representation (via PCA)
-    - Centroid_Variable_Methods: methods to set attributes based on centroid and uropod, e.g. delta_centroid and delta_sensing_direction
+    - Centroid_Variable_Methods: methods to set attributes based on centroid and uropod, e.g. delta_centroid
     """
 
 
-    def __init__(self, stack_attributes, cells_model, max_l):
+    def __init__(self, stack_attributes, cells_model, max_l, uropods_bool, keep_every_random = 1):
         """
         - stack_attributes: (idx_cell, mat_filename, coeffPathFormat, zoomedVoxelsPathFormat, xyz_res)
         - cells_model: indexes of the cells to model, e.g. ['3_1_0', '3_1_2']
@@ -58,6 +60,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
         for idx_cell in cells_model:
 
+
             (idx_cell, mat_filename, coeffPathFormat, xyz_res, color, t_res) = stack_attributes_dict[idx_cell]
 
             print('idx_cell: {}'.format(idx_cell))
@@ -65,136 +68,251 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
             uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
-
+            self.uropods = uropods_bool
 
 
             if idx_cell[:2] == 'zs':
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_single')
+                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_single', include_voxels = False)
             elif idx_cell[:2] == 'zm':
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_many', idx_cell = int(idx_cell[-1]), include_voxels = True)
-                #calibrations = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/calibrations/cell_{}.pickle'.format(idx_cell), "rb"))
+                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_many', idx_cell = int(idx_cell[-1]), include_voxels = False)
             else:
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='not_zeiss', include_voxels = True)
+                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='not_zeiss', include_voxels = False)
+
             for frame in range(int(max(frames_all)+1)):
 
                 if os.path.isfile(coeffPathFormat.format(frame)): # if it's within arena and SPHARM-PDM worked
 
-                    #if np.random.randint(0, 200) == 5:
+                    if np.random.randint(0, keep_every_random) == 0:
+                        idx = frames_all.index(frame)
+                        if self.uropods:
+                            snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
+                        else:
+                            snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod = None, vertices = vertices_all[idx], faces = faces_all[idx])
 
-                    idx = frames_all.index(frame)
-                    snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
-                    #snap = Cell_Frame(mat_filename = mat_filename, frame = frame, coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod  = None,  vertices = vertices_all[idx], faces = faces_all[idx])
+                        snap.color = np.array(color)
+                        snap.t_res = t_res
 
-                    snap.color = color
-                    snap.t_res = t_res
-                    lymph_series.append(snap)
+                        lymph_series.append(snap)
+
 
 
             self.cells[idx_cell] = lymph_series
             print('max_frame: {}'.format(max(frames_all)))
 
-        self.pca_set = False
-        self.attributes_set = []
+
+        if self.uropods:
+            self.interoplate_SPHARM()
+
+            for idx_cell, lymph_series in self.cells.items():
+                mean_time_diff = get_mean_time_diff(idx_cell, lymph_series)
+                for snap in lymph_series:
+                    snap.mean_time_diff = mean_time_diff
+
+            for idx_cell in self.cells.keys():
+                print(idx_cell, ' mean_time_diff: {}'.format(self.cells[idx_cell][0].mean_time_diff))
+                self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = self.cells[idx_cell][0].mean_time_diff/2)
+
+        self.pca_obj = None
 
 
 
-    def curvatures(self):
+
+
+    def interoplate_SPHARM(self):
+
+        for idx_cell, lymph_series in self.cells.items():
+            lymph_series_new = []
+            dict = utils_general.get_frame_dict(lymph_series)
+            frames = list(dict.keys())
+            for i in range(int(frames[0]), int(max(frames))+1):
+                if i in frames:
+                    lymph_series_new.append(dict[i])
+
+                elif i not in frames and i-1 in frames and i+1 in frames:
+                    uropod_interpolated = (dict[i-1].uropod + dict[i+1].uropod)/2
+                    snap = Cell_Frame(mat_filename = None, frame = i, coeffPathFormat = None, voxels = None, xyz_res = None,  idx_cell = lymph_series[0].idx_cell, max_l = None, uropod = uropod_interpolated, vertices = None, faces = None)
+                    snap.color = dict[i-1].color
+                    snap.t_res = dict[i-1].t_res
+                    snap.centroid = (dict[i-1].centroid + dict[i+1].centroid)/2
+                    snap.volume = (dict[i-1].volume + dict[i+1].volume)/2
+                    snap.RI_vector = (dict[i-1].RI_vector + dict[i+1].RI_vector)/2
+                    snap.is_interpolation = True
+                    lymph_series_new.append(snap)
+            self.cells[idx_cell] = lymph_series_new
+
+
+
+
+    def plot_cumulatives(self):
+        """
+        Plot cumulatives of run_uropod, run_centroid etc
+        """
+
+        labeled = []
+
+
+        fig = plt.figure()
+        ax1 = fig.add_subplot(141)
+        ax2 = fig.add_subplot(142)
+        ax3 = fig.add_subplot(143)
+        ax4 = fig.add_subplot(144)
+
+        axes = [ax2, ax3, ax4]
+        attributes = ['run_centroid', 'delta_uropod', 'delta_centroid']
+        norm_bools = [False, True, True]
+
+        self._set_centroid_attributes('run')
+
+        for lymph_series in self.cells.values():
+            t_res = lymph_series[0].t_res
+            print(lymph_series[0].idx_cell)
+
+
+
+            all_lists = utils_general.split_by_consecutive_frames(lymph_series, attribute='run_uropod', and_nan = True)
+
+            for i in all_lists:
+
+                runs = [j.run_uropod for j in i]
+                runs_sum = np.nancumsum(runs)
+                times = [t_res*i for i,j in enumerate(runs_sum)]
+                color = max([np.linalg.norm(j.centroid-i[0].centroid) for j in i])
+                color /= (max(times)-min(times))
+                print('color', color)
+                color_lim = 0.07
+
+                if lymph_series[0].idx_cell not in labeled:
+                    #ax1.plot(times, runs_sum, label = lymph_series[0].idx_cell, c = (min(1, color/color_lim), 0, 0))
+                    ax1.plot(times, runs_sum, label = lymph_series[0].idx_cell, c = lymph_series[0].color)
+                    labeled.append(lymph_series[0].idx_cell)
+                else:
+                    ax1.plot(times, runs_sum, c =(min(1, color/color_lim), 0, 0))
+
+
+
+            for ax, attribute, norm_bool in zip(axes, attributes, norm_bools):
+
+
+                all_lists = utils_general.split_by_consecutive_frames(lymph_series, attribute='run_uropod', and_nan = True)
+
+                for i in all_lists:
+                    runs = [getattr(lymph, attribute) for  lymph in i]
+                    if norm_bool:
+                        runs = [np.linalg.norm(i) if i is not None else None for i in runs]
+                    runs = [i if i is not None else np.nan for i in runs]
+
+                    runs_sum = np.nancumsum(runs)
+                    times = [t_res*i for i,j in enumerate(runs_sum)]
+                    #ax.plot(times, runs_sum, c = (min(1, color/color_lim), 0, 0))
+                    ax.plot(times, runs_sum, c = i[0].color)
+
+
+
+        ax1.legend(bbox_to_anchor=(0, 1), loc='upper left')
+        plt.show()
+
+
+
+
+    def alignments(self, min_length, max_diff, min_time_either_side = 50):
+        """
+        Find which axis cells follow when both uropod & centroid move with similar vector
+        """
+
+        for idx_cell in self.cells.keys():
+            self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = max(min_time_either_side, self.cells[idx_cell][0].mean_time_diff/2))
+
+        self._set_run()
+        self._set_centroid_attributes('searching', time_either_side = None,  time_either_side_2 = None)
+
+        diffs = []
+        UC_uropod_angles = []
+        ellipsoid_uropod_angles = []
 
         for lymph in utils_general.list_all_lymphs(self):
 
-            surf = pv.PolyData(lymph.vertices, lymph.faces)
+            if lymph.delta_uropod is not None and lymph.delta_centroid is not None and lymph.ellipsoid_vecs is not None:
+                if not np.isnan(lymph.mean_uropod[0]):
+                    if np.linalg.norm(lymph.delta_uropod) > min_length: # if it's moving enough
+                        if np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid) < max_diff: # if uropod & centroid are moving in same direction
 
-            surf = surf.smooth(n_iter=5000)
-            surf = surf.decimate(0.98)
-            curvature = surf.curvature()
-            #surf_tree = KDTree(surf.points.astype(np.double))
-            #dist, idx = surf_tree.query(np.array([[lymph.uropod[0], lymph.uropod[1], lymph.uropod[2]]]))
+                            diffs.append(np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid))
 
-            curvatures = surf.curvature('Minimum')
+                            vec1 = lymph.delta_uropod
+                            vec2 = lymph.mean_centroid - lymph.mean_uropod
 
+                            cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                            if cos_angle < 0:
+                                vec1 = - lymph.delta_uropod
+                                cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                            UC_uropod_angle = (360/6.283)*np.arccos(cos_angle)
+                            UC_uropod_angles.append(UC_uropod_angle)
 
-            plotter = pv.Plotter()
-            plotter.add_mesh(surf, scalars = curvatures, clim = [-0.5, 1])
+                            vec1 = lymph.delta_uropod
+                            vec2 = lymph.ellipsoid_vecs[0]
+                            cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                            if cos_angle < 0:
+                                vec1 = - lymph.delta_uropod
+                                cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                            ellipsoid_uropod_angle = (360/6.283)*np.arccos(cos_angle)
+                            ellipsoid_uropod_angles.append(ellipsoid_uropod_angle)
 
-            idxs = surf.find_closest_point(lymph.uropod, n = 10)
-            mean_curvature = np.mean([curvatures[idx] for idx in idxs])
-            points = [surf.points[idx] for idx in idxs]
-            for point in points:
-                plotter.add_mesh(pv.Sphere(radius=0.1, center=point), color = (0, 0, 1))
-
-
-            plotter.add_lines(np.array([lymph.uropod, lymph.uropod + np.array([0, 0, 0.5/mean_curvature])]), color = (0, 0, 0))
-
-            #uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(lymph.idx_cell), "rb"))
-            #for uropod in uropods.values():
-            #    plotter.add_mesh(pv.Sphere(radius=0.3, center=uropod), color = (0, 1, 0))
-
-            plotter.add_mesh(pv.Sphere(radius=0.3, center=lymph.uropod), color = (1, 0, 0))
-            plotter.add_text("{}".format(mean_curvature), font_size=10)
-            plotter.show()
-
-
-
-    def rear_orientations(self):
-
-        def _plane(num_points, plotter, color):
-            idxs = surf.find_closest_point(lymph.uropod, n = num_points)
-            vertices = [lymph.vertices[idx, :] for idx in idxs]
-
-            pca_obj = PCA(n_components = 2)
-            pca_obj.fit(np.array(vertices))
-            normal = np.cross(pca_obj.components_[0, :], pca_obj.components_[1, :])
-
-            plane = pv.Plane(center=lymph.uropod, direction=normal, i_size=4, j_size=4)
-            plotter.add_mesh(plane, opacity = 0.5, color = color)
-
-            points = [surf.points[idx] for idx in idxs]
-            for point in points:
-                plotter.add_mesh(pv.Sphere(radius=0.1, center=point), color = color)
+                            """
+                            plotter = pv.Plotter()
+                            plotter.add_lines(np.array([[0, 0, 0], lymph.delta_uropod]), color = (1, 0, 0))
+                            plotter.add_lines(np.array([[0, 0, 0], lymph.delta_centroid]), color = (0, 1, 0))
+                            plotter.add_mesh(pv.Sphere(radius=max_diff, center=lymph.delta_uropod), color = (1, 0, 0), opacity = 0.5)
+                            plotter.show()
+                            """
 
 
-        for lymph in utils_general.list_all_lymphs(self):
-            surf = pv.PolyData(lymph.vertices, lymph.faces)
+        """
+        fig = plt.figure()
+        ax1 = fig.add_subplot(131)
+        ax2 = fig.add_subplot(132)
+        ax3 = fig.add_subplot(133)
+        ax1.hist(diffs, bins = 30)
+        ax2.hist(UC_uropod_angles, bins = 30)
+        ax3.hist(ellipsoid_uropod_angles, bins = 30)
+        plt.show()
+        """
 
-            plotter = pv.Plotter()
-
-            _plane(num_points=10, plotter=plotter, color = (0, 0, 1))
-
-            _plane(num_points=50, plotter=plotter, color = (0, 1, 0))
-
-            plotter.add_mesh(surf, clim = [-0.5, 1])
-            plotter.add_mesh(pv.Sphere(radius=0.15, center=lymph.uropod), color = (1, 0, 0))
-
-
-
-            plotter.show()
-
+        plt.hist([UC_uropod_angles, ellipsoid_uropod_angles], bins=20, color = ['red', 'blue'])
+        plt.show()
 
 
 
     def scatter_run_running_means(self):
+
+
+        self._set_centroid_attributes('run')
+
         fig_scat = plt.figure()
-        axes = [fig_scat.add_subplot(5, 1, i+1) for i in range(5)]
-        width_points = [[] for _ in range(5)]
+        axes = [fig_scat.add_subplot(7, 1, i+1) for i in range(7)]
+        width_points = [[] for _ in range(7)]
         for lymph_series in self.cells.values():
             print(lymph_series[0].idx_cell)
-            color = np.random.rand(3,)
-            for idx_width, width in enumerate([7, 50, 100, 150, 200]):
+            color = lymph_series[0].color
+            for idx_width, width in enumerate([-1, 20, 40, 60, 80, 100, 120]):
 
-                self._set_centroid_attributes_to_NONE()
-                self.attributes_set = []
-                self._set_centroid_attributes('run', time_either_side = width, idx_cell = lymph_series[0].idx_cell)
 
-                runs = [lymph.run if lymph.run is not None else np.nan for lymph in lymph_series]
-                print(np.nanmax(runs))
+                self._set_run_uropod_running_means(idx_cell = lymph_series[0].idx_cell, time_either_side = width)
+
+                run_uropod_running_means = [lymph.run_uropod_running_mean if lymph.run_uropod_running_mean is not None else np.nan for lymph in lymph_series]
                 times = [lymph.frame*lymph.t_res for lymph in lymph_series]
-                axes[idx_width].scatter(times, runs, s = 5, c = color)
-                width_points[idx_width] += runs
+                axes[idx_width].scatter(times, run_uropod_running_means, s = 5, c = color)
+                #axes[idx_width].set_ylim(bottom=0)
+                width_points[idx_width] += run_uropod_running_means
+
+
+
+
         fig_hist = plt.figure()
         for idx, i in enumerate(width_points):
             i = [j for j in i if not np.isnan(j)]
-            ax = fig_hist.add_subplot(5, 1, idx+1)
-            ax.hist(i, bins = 10, orientation = 'horizontal')
+            ax = fig_hist.add_subplot(7, 1, idx+1)
+            ax.hist(i, bins = 15, orientation = 'horizontal')
+            #ax.set_ylim(bottom=0)
             #plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
 
@@ -221,7 +339,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         for idx_attribute, attribute in enumerate(attributes):
             if attribute[:3] == 'pca':
                 self._set_pca(n_components=3)
-            if attribute == 'delta_centroid' or attribute == 'delta_sensing_direction':
+            if attribute == 'delta_centroid':
                 self._set_centroid_attributes(attribute)
             if attribute == 'morph_deriv':
                 self._set_morph_derivs()
@@ -278,72 +396,6 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
 
-    def plot_centroids(self,  plot_every):
-        idx_cells = []
-        mean_centroids = []
-        plotter = pv.Plotter()
-        colors = [(0, 0, 1), (0, 1, 0), (1, 0, 0), (0, 0, 0), (1, 1, 0), (1, 0, 1), (0, 1, 1)]
-        for idx, lymph_series in enumerate(self.cells.values()):
-            idx_cells.append(lymph_series[0].idx_cell)
-
-            lymphs_plot = lymph_series[::plot_every]
-            for idx_plot, lymph in enumerate(lymphs_plot):
-                plotter.add_mesh(pv.Sphere(radius=0.1, center=lymph.centroid), color = colors[idx])
-
-            mean_centroid = np.mean(np.array([lymph.centroid for lymph in lymph_series]), axis = 0)
-            mean_centroids.append(mean_centroid)
-
-        poly = pv.PolyData(np.vstack(mean_centroids))
-        poly["My Labels"] = idx_cells
-        plotter.add_point_labels(poly, "My Labels")
-        plotter.show()
-
-
-
-
-
-    def plot_mean_directions_and_spin_vecs(self, time_either_side, time_either_side_2):
-        self._set_centroid_attributes('searching', time_either_side = time_either_side, time_either_side_2 = time_either_side_2, idx_cell = None)
-        plotter = pv.Plotter(shape = (2, len(list(self.cells.values()))))
-
-        for idx, lymph_series in enumerate(self.cells.values()):
-            print('h',lymph_series[0].idx_cell)
-
-            lymphs_plot = lymph_series[::7]
-            plotter.subplot(0, idx)
-            plotter.add_text("{}".format(lymphs_plot[0].idx_cell), font_size=10)
-            for idx_plot, lymph in enumerate(lymphs_plot):
-                if lymph.direction_mean is not None:
-                    plotter.add_lines(np.array([[0, 0, 0], lymph.direction_mean]), color = (1, idx_plot/(len(lymphs_plot)-1), 1))
-            plotter.add_axes()
-            plotter.add_lines(np.array([[-0.5, 0, 0], [0.5, 0, 0]]), color = (0, 0, 0))
-            plotter.add_lines(np.array([[0, -0.5, 0], [0, 0.5, 0]]), color = (0, 0, 0))
-            plotter.add_lines(np.array([[0, 0, -0.5], [0, 0, 0.5]]), color = (0, 0, 0))
-
-            plotter.subplot(1, idx)
-            plotter.add_text("{}".format(lymphs_plot[0].idx_cell), font_size=10)
-            for idx_plot, lymph in enumerate(lymphs_plot):
-                if lymph.spin_vec_2 is not None:
-                    plotter.add_lines(np.array([[0, 0, 0], lymph.spin_vec_2]), color = (1, idx_plot/(len(lymphs_plot)-1), 1))
-            plotter.add_axes()
-
-            plotter.add_lines(np.array([[-0.001, 0, 0], [0.001, 0, 0]]), color = (0, 0, 0))
-            plotter.add_lines(np.array([[0, -0.001, 0], [0, 0.001, 0]]), color = (0, 0, 0))
-            plotter.add_lines(np.array([[0, 0, -0.001], [0, 0, 0.001]]), color = (0, 0, 0))
-
-            spin_vec_2_list = [lymph.spin_vec_2 for lymph in lymph_series if lymph.spin_vec_2 is not None]
-            num = len(spin_vec_2_list)
-            print('mean', np.mean([np.linalg.norm(i) for i in spin_vec_2_list]))
-            print('std', np.sum(np.std(np.array(spin_vec_2_list), axis = 0))/num)
-            print('var', np.sum(np.var(np.array(spin_vec_2_list), axis = 0))/num)
-
-
-
-
-        plotter.show()
-
-
-
 
     def line_plot_3D(self, centroid_uropod_pca, color_by):
         """
@@ -357,7 +409,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         [min0, min1, min2] = [i-0.1 for i in [min0, min1, min2]]
         [max0, max1, max2] = [i+0.1 for i in [max0, max1, max2]]
 
-        if color_by == 'delta_centroid' or color_by == 'delta_sensing_direction':
+        if color_by == 'delta_centroid':
             self._set_centroid_attributes(color_by)
             vmin, vmax = utils_general.get_color_lims(self, color_by = color_by)
 
@@ -369,9 +421,8 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
             for lymphs in lymphsNested:
                 for idx in range(len(lymphs)-1):
-                    if color_by == 'delta_centroid' or color_by == 'delta_sensing_direction':
+                    if color_by == 'delta_centroid':
                         color = utils_general.get_color(lymphs[idx], color_by = color_by, vmin = vmin, vmax = vmax)
-                        print('h', getattr(lymphs[idx], centroid_uropod_pca)[0], getattr(lymphs[idx+1], centroid_uropod_pca)[0])
                     ax.plot((getattr(lymphs[idx], centroid_uropod_pca)[0], getattr(lymphs[idx+1], centroid_uropod_pca)[0]), (getattr(lymphs[idx], centroid_uropod_pca)[1],  getattr(lymphs[idx+1], centroid_uropod_pca)[1]), (getattr(lymphs[idx], centroid_uropod_pca)[2],  getattr(lymphs[idx+1], centroid_uropod_pca)[2]), c = color)
                     #ax.scatter(getattr(lymphs[idx], centroid_uropod_pca)[0], getattr(lymphs[idx], centroid_uropod_pca)[1], getattr(lymphs[idx], centroid_uropod_pca)[2], c = color)
                     ax.plot([min0, min0], (getattr(lymphs[idx], centroid_uropod_pca)[1],  getattr(lymphs[idx+1], centroid_uropod_pca)[1]), (getattr(lymphs[idx], centroid_uropod_pca)[2],  getattr(lymphs[idx+1], centroid_uropod_pca)[2]), c = color, alpha = 0.1)
@@ -430,36 +481,42 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
 
+    def histogram(self):
 
-    def plot_2D_embeddings(self, pca, components):
-        """
-        Plot the meshes at their embeddings for 2 components
-        """
+        def filter(list):
+            return [i for i in list if i < 0 and i > -0.04]
+
+
+        for idx_cell in self.cells.keys():
+            self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = self.cells[idx_cell][0].mean_time_diff/2)
+        self._set_run()
+
+
+
         lymphs = utils_general.list_all_lymphs(self)
-        if pca:
-            self._set_pca(n_components = 3)
+        run_uropods = [lymph.run_uropod for lymph in lymphs if lymph.run_uropod is not None]
+        run_centroids = [lymph.run_centroid for lymph in lymphs if lymph.run_centroid is not None]
 
 
-        random.shuffle(lymphs)
-
-        plotter = pv.Plotter()
-        for lymph in lymphs:
-            if random.randint(1, 5) == 3:
-                lymph._uropod_align(axis = np.array([1, 0, 0]))
-
-                lymph.vertices *= 0.002
-
-                if pca:
-                    vector = np.take(lymph.pca, components)
-                else:
-                    vector = np.take(lymph.RI_vector, components)
-                vector = np.append(vector, 0)
-                lymph.vertices += vector
-
-                lymph.surface_plot(plotter=plotter, uropod_align=False)
+        plt.hist([filter(run_uropods), filter(run_centroids)], bins=30, color = ['red', 'blue'])
+        plt.show()
 
 
-        plotter.show()
+        min_time_either_side = 50
+        for idx_cell in self.cells.keys():
+            self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = max(min_time_either_side, self.cells[idx_cell][0].mean_time_diff/2))
+        self._set_run()
+
+
+        lymphs = utils_general.list_all_lymphs(self)
+        run_uropods = [lymph.run_uropod for lymph in lymphs if lymph.run_uropod is not None]
+        run_centroids = [lymph.run_centroid for lymph in lymphs if lymph.run_centroid is not None]
+
+
+        plt.hist([filter(run_uropods), filter(run_centroids)], bins=30, color = ['red', 'blue'])
+        plt.show()
+
+
 
 
 
@@ -469,7 +526,6 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         Get pearson correlation coefficient between independent and dependent variable
         """
         for width in widths:
-            self.attributes_set = []
             self._set_centroid_attributes_to_NONE()
 
             fig_scatt, fig_r, fig_p = plt.figure(figsize = (5, 6)), plt.figure(), plt.figure()
@@ -489,7 +545,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                             self._set_pca(n_components=3)
                         if independent == 'delta_centroid' or dependent == 'delta_centroid' or independent == 'delta_uropod' or dependent == 'delta_uropod':
                             self._set_centroid_attributes('delta_centroid_uropod')
-                        if independent[:4] == 'spin' or dependent[:4] == 'spin' or  independent[:3] == 'dir' or dependent[:3] == 'dir':
+                        if independent[:4] == 'spin' or dependent[:4] == 'spin' or  independent == 'angle' or dependent == 'angle':
                             self._set_centroid_attributes('searching', time_either_side = width)
                         if independent[:3] == 'run' or dependent[:3] == 'run':
                             self._set_centroid_attributes('run', time_either_side = width)
@@ -546,9 +602,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
             self._set_pca(n_components=3)
         if independent == 'delta_centroid' or dependent == 'delta_centroid' or independent == 'delta_uropod' or dependent == 'delta_uropod':
             self._set_centroid_attributes('delta_centroid_uropod')
-        if independent == 'delta_sensing_direction' or dependent == 'delta_sensing_direction':
-            self._set_centroid_attributes('delta_sensing_direction')
-        if independent[:4] == 'spin' or dependent[:4] == 'spin' or  independent[:3] == 'dir' or dependent[:3] == 'dir':
+        if independent[:4] == 'spin' or dependent[:4] == 'spin' or  independent == 'angle' or dependent == 'angle':
             self._set_centroid_attributes('searching', time_either_side = None)
         if independent[:3] == 'run' or dependent[:3] == 'run':
             self._set_centroid_attributes('run', time_either_side = 7)
@@ -580,27 +634,9 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                     arrowprops=dict(arrowstyle="->"))
         annot.set_visible(False)
 
-        def update_annot(ind):
-            pos = sc.get_offsets()[ind["ind"][0]]
-            annot.xy = pos
-            text = "{}".format(" ".join([names[n] for n in ind["ind"]]))
-            annot.set_text(text)
-            #annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
-            annot.get_bbox_patch().set_alpha(0.4)
-        def hover(event):
-            vis = annot.get_visible()
-            if event.inaxes == ax:
-                cont, ind = sc.contains(event)
-                if cont:
-                    update_annot(ind)
-                    annot.set_visible(True)
-                    fig.canvas.draw_idle()
-                else:
-                    if vis:
-                        annot.set_visible(False)
-                        fig.canvas.draw_idle()
 
-        fig.canvas.mpl_connect("motion_notify_event", hover)
+
+        fig.canvas.mpl_connect("motion_notify_event", utils_general.hover)
         fig2 = plt.figure()
         i = [j for j in i if not np.isnan(j)]
         ax = fig2.add_subplot(1, 1, 1)
@@ -608,68 +644,6 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
         plt.show()
 
-
-    def rigid_motions(self):
-        """
-        See where in PCA space are a) rigid rotations b) rigid translations with no rotation
-        """
-
-        """
-        # temp, visualise distributions for setting thresholds
-        self._set_morph_derivs()
-        lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if lymph.morph_deriv is not None]
-        plt.scatter([random.randint(0, 5) for lymph in lymphs], [lymph.morph_deriv for lymph in lymphs])
-        plt.show()
-
-        self._set_centroid_attributes('delta_sensing_direction')
-        lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if lymph.delta_sensing_direction is not None]
-        plt.scatter([random.randint(0, 5) for lymph in lymphs], [lymph.delta_sensing_direction for lymph in lymphs])
-        plt.show()
-        """
-
-        morph_deriv_thresh_low = 0.025
-        delta_sensing_direction_thresh_low = 0.01
-        delta_sensing_direction_thresh_high = 0.03
-        self._set_pca(n_components=3)
-
-        self._set_morph_derivs()
-        self._set_centroid_attributes('delta_sensing_direction')
-        self._set_centroid_attributes('delta_centroid')
-
-        fig = plt.figure()
-        lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if lymph.morph_deriv is not None and lymph.delta_sensing_direction is not None and lymph.delta_centroid is not None]
-
-
-        for idx_pc, pc in enumerate(['pca0', 'pca1', 'pca2']):
-
-            ax = fig.add_subplot(1, 3, idx_pc+1)
-            for lymph in lymphs:
-                if lymph.morph_deriv < morph_deriv_thresh_low:
-                    if lymph.delta_sensing_direction < delta_sensing_direction_thresh_low:
-                        ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'o', s = 5, alpha = 0.5, linewidths = 0)
-            for lymph in lymphs:
-                if lymph.morph_deriv < morph_deriv_thresh_low and lymph.delta_sensing_direction > delta_sensing_direction_thresh_low:
-                    ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'x', s = 15)
-            ax.tick_params(axis="both",direction="in")
-            if idx_pc != 0:
-                ax.set_yticks([])
-            #ax.set_xticks([])
-
-            """
-            ax = fig.add_subplot(2, 3, 3+idx_pc+1)
-            for lymph in lymphs:
-                if lymph.morph_deriv > morph_deriv_thresh_low or lymph.delta_sensing_direction > delta_sensing_direction_thresh_low and lymph.delta_centroid < 0.15:
-                    ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'o', s = 5, alpha = 0.5, linewidths = 0)
-            for lymph in lymphs:
-                if lymph.morph_deriv < morph_deriv_thresh_low and lymph.delta_sensing_direction < delta_sensing_direction_thresh_low and lymph.delta_centroid > 0.15:
-                    ax.scatter(getattr(lymph, pc), lymph.morph_deriv,  color = lymph.color, marker = 'x', s = 15)
-            ax.tick_params(axis="both",direction="in")
-            if idx_pc != 0:
-                ax.set_yticks([])
-            """
-
-        plt.subplots_adjust(hspace = 0, wspace = 0)
-        plt.show()
 
 
 
@@ -682,16 +656,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
         self._set_pca(n_components=3)
-        self._set_centroid_attributes('delta_centroid')
-        self._set_centroid_attributes('delta_sensing_direction')
-        self._set_centroid_attributes('run', time_either_side = 7)
-        self._set_centroid_attributes('run_mean', time_either_side = 200)
-        self._set_centroid_attributes('searching', time_either_side = 50,  time_either_side_2 = 50)
-
-        """
-        for lymph in utils_general.list_all_lymphs(self):
-            lymph.pca = lymph.RI_vector
-        """
+        self._set_centroid_attributes('run')
 
 
         all_consecutive_frames = []
@@ -705,12 +670,12 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
             prev_values = [None, None, None, None, None, None, None, None, None, None, None, None, None]
             for idx_lymph, lymph in enumerate(lymph_series):
                 if idx_lymph == 0 or lymph.frame-prev_values[0] == 1:
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.RI_vector0, lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.run_mean, lymph.spin_vec_magnitude, lymph.spin_vec_magnitude_mean, lymph.spin_vec_std, lymph.direction_std)
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2],  lymph.run_uropod)
                 elif lymph.frame-prev_values[0] == 2: #linear interpolation if only 1 frame missing
 
 
                     staged_list = []
-                    for attribute in ['delta_centroid', 'delta_sensing_direction', 'run', 'run_mean', 'spin_vec_magnitude', 'spin_vec_magnitude_mean', 'spin_vec_std', 'direction_std']:
+                    for attribute in ['run_uropod']:
                         attribute_list = attribute + '_list'
                         if getattr(consecutive_frames, attribute_list)[-1] is None or getattr(lymph, attribute) is None:
                             staged = None
@@ -719,17 +684,16 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                         staged_list.append(staged)
 
 
-
-                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2, (consecutive_frames.RI_vector0_list[-1]+lymph.RI_vector0)/2, *staged_list)
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.RI_vector0, lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.run_mean, lymph.spin_vec_magnitude, lymph.spin_vec_magnitude_mean, lymph.spin_vec_std, lymph.direction_std)
+                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2, *staged_list)
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2],  lymph.run_uropod)
 
                 else:
                     consecutive_frames.interpolate()
                     all_consecutive_frames.append(consecutive_frames)
                     count += 1
                     consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.RI_vector0, lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.run_mean, lymph.spin_vec_magnitude, lymph.spin_vec_magnitude_mean, lymph.spin_vec_std, lymph.direction_std)
-                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.RI_vector0, lymph.delta_centroid, lymph.delta_sensing_direction, lymph.run, lymph.run_mean, lymph.spin_vec_magnitude, lymph.spin_vec_magnitude_mean, lymph.spin_vec_std, lymph.direction_std]
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.run_uropod)
+                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2],  lymph.run_uropod]
 
             consecutive_frames.interpolate()
             all_consecutive_frames.append(consecutive_frames)

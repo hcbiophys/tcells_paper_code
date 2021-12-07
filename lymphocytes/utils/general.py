@@ -5,6 +5,60 @@ import pyvista as pv
 import random
 
 
+
+
+
+def split_by_consecutive_frames(lymph_series, attribute, and_nan = False):
+    all_lists = []
+    new_list = [lymph_series[0]]
+    prev_frame = lymph_series[0].frame
+    for lymph in lymph_series[1:]:
+        if lymph.frame - prev_frame == 1:
+            new_list.append(lymph)
+        else:
+            all_lists.append(new_list)
+            new_list = [lymph]
+        prev_frame = lymph.frame
+    all_lists.append(new_list)
+
+    if and_nan:
+        all_lists_2 = []
+
+        for lymph_series in all_lists:
+
+            for idx in range(len(lymph_series)):
+                if getattr(lymph_series[idx], attribute) is not None and not np.isnan(getattr(lymph_series[idx], attribute)):
+                    new_list = [lymph_series[idx]]
+                    idx_start = idx
+                    break
+            for lymph in lymph_series[idx_start+1:]:
+                if getattr(lymph, attribute) is not None and not np.isnan(getattr(lymph, attribute)):
+                    new_list.append(lymph)
+                else:
+                    all_lists_2.append(new_list)
+                    new_list = []
+            if len(new_list) != 0:
+                all_lists_2.append(new_list)
+
+        all_lists = all_lists_2
+
+    all_lists = [i for i in all_lists if len(i) != 0]
+    return all_lists
+
+
+
+
+def get_frame_dict(lymph_series):
+    """
+    self.cells[idx_cell] is a list of lymphs, ordered by frame
+    this function returns a dict so lymphs can easily be acccessed by frame, like dict[frame] = lymphs
+    """
+    frames = [lypmh.frame for lypmh in lymph_series]
+    dict = {}
+    for frame, lymph in zip(frames, lymph_series):
+        dict[frame] = lymph
+    return dict
+
 def get_nestedList_connectedLymphs(lymph_series):
     """
     Return a nested list in which each sub list has no gaps in the frames
@@ -56,7 +110,9 @@ def get_color_lims(cells, color_by):
     """
     lymphs = list_all_lymphs(cells)
     scalars = [getattr(lymph, color_by) for lymph in lymphs if getattr(lymph, color_by) is not None]
-    return min(scalars), max(scalars)
+
+
+    return np.nanmin(scalars), np.nanmax(scalars)
 
 def get_color(lymph, color_by, vmin, vmax):
     """
@@ -112,3 +168,29 @@ def del_whereNone(cells, attribute):
                     new_values.append(lymph)
         new_dict[key] = new_values
     return new_dict
+
+
+
+
+
+
+def update_annot(ind):
+    pos = sc.get_offsets()[ind["ind"][0]]
+    annot.xy = pos
+    text = "{}".format(" ".join([names[n] for n in ind["ind"]]))
+    annot.set_text(text)
+    #annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
+    annot.get_bbox_patch().set_alpha(0.4)
+
+def hover(event):
+    vis = annot.get_visible()
+    if event.inaxes == ax:
+        cont, ind = sc.contains(event)
+        if cont:
+            update_annot(ind)
+            annot.set_visible(True)
+            fig.canvas.draw_idle()
+        else:
+            if vis:
+                annot.set_visible(False)
+                fig.canvas.draw_idle()

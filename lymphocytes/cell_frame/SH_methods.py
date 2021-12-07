@@ -113,6 +113,7 @@ class SH_Methods:
                     clm = self._get_clm(coord, l, m)
                     clm /= np.cbrt(self.volume) # from LBS particles and LBS fragments
                     l_energy += clm*np.conj(clm)
+
             if math.isnan(np.sqrt(l_energy.real)):
                 print(self.frame, clm)
 
@@ -120,10 +121,6 @@ class SH_Methods:
 
 
         self.RI_vector = np.array(self.RI_vector) # scale invariance
-        self.RI_vector0 = self.RI_vector[0]
-        self.RI_vector1 = self.RI_vector[1]
-        self.RI_vector2 = self.RI_vector[2]
-        self.RI_vector3 = self.RI_vector[3]
 
 
 
@@ -148,20 +145,19 @@ class SH_Methods:
                     for m in np.arange(0, l+1):
                         clm = self._get_clm(coord_idx, l, m)
                         func_value += clm*sph_harm(m, l, p, t)
-                    
+
                 list.append(func_value.real)
 
 
         if self.idx_cell[:2] == 'zm':
 
-
             xs = [x + np.min(self.vertices[:, 0]) for x in xs]
             ys = [y + np.min(self.vertices[:, 1]) for y in ys]
             zs = [z + np.min(self.vertices[:, 2]) for z in zs]
 
-
-
         return xs, ys, zs, phis, thetas
+
+
 
     def _get_vertices_faces_plotRecon_singleDeg(self, max_l = None, uropod_align = False, horizontal_align = False):
 

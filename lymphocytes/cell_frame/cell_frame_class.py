@@ -40,6 +40,7 @@ class Cell_Frame(Raw_Methods, SH_Methods):
 
 
         self.mat_filename = mat_filename
+        self.coeffPathFormat = coeffPathFormat
         self.frame = frame
         self.idx_cell = idx_cell
         self.voxels = voxels
@@ -50,31 +51,30 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.uropod = uropod
 
 
+        self.vertices = None
+        self.faces = None
+        if vertices is not None:
+            surf = pv.PolyData(vertices, faces)
+            surf = surf.connectivity(largest=True) # in case there are a) holes b) floating artefacts
 
+            self.vertices = surf.points
+            self.faces = surf.faces
 
-        surf = pv.PolyData(vertices, faces)
-        surf = surf.connectivity(largest=True)
+            self.centroid = surf.center_of_mass()
+            self.volume = surf.volume
 
-        self.vertices = surf.points
-        self.faces = surf.faces
-
-
-        self.centroid = surf.center_of_mass()
-        self.volume = surf.volume
 
         self.coeff_array = None
         self.vector = None
         self.RI_vector = None
-        self.RI_vector0 = None
-        self.RI_vector1 = None
-        self.RI_vector2 = None
-        self.RI_vector3 = None
 
 
-        self._set_spharm_coeffs(coeffPathFormat.format(int(frame)))
-        self._set_vector()
-        self._set_RIvector()
 
+
+        if coeffPathFormat is not None and uropod is not None:
+            self._set_spharm_coeffs(coeffPathFormat.format(int(frame)))
+            self._set_vector()
+            self._set_RIvector()
 
 
 
@@ -82,40 +82,37 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.morph_deriv_low = None
         self.morph_deriv_high = None
 
-        self.run = None
-        self.run_mean = None
+        self.run_uropod = None
         self.run_centroid = None
         self.run_theta = None
 
-
+        self.delta_uropod = None
+        self.delta_centroid= None
 
         self.spin_vec = None
-        self.direction = None
 
-        self.spin_vec_magnitude = None
+        self.angle = None
         self.spin_vec_std = None
-        self.spin_vec_magnitude_mean = None
-        self.direction_mean = None
-        self.direction_std = None
+        self.angle_mean = None
+
 
         self.spin_vec_2 = None
-        self.spin_vec_magnitude_2 = None
+        self.angle_2 = None
         self.spin_vec_std_2 = None
-        self.spin_vec_magnitude_mean_2 = None
-        self.direction_std_2 = None
-
+        self.angle_mean_2 = None
 
         self.mean_uropod = None
+        self.run_uropod_running_mean = None
         self.mean_centroid = None
 
-        self.delta_centroid = None
-        self.delta_uropod = None
-        self.delta_sensing_direction = None
         self.pca = None
         self.pca0 = None
         self.pca1 = None
         self.pca2 = None
 
-
+        self.ellipsoid_lengths = None
+        self.ellipsoid_vecs = None
 
         self.uropod_aligned = False # not yet aligned by uropod-centroid vector
+
+        self.is_interpolation = False

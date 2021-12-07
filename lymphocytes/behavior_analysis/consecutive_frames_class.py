@@ -14,15 +14,8 @@ class Consecutive_Frames():
         self.pca0_list = []
         self.pca1_list = []
         self.pca2_list = []
-        self.RI_vector0_list = []
-        self.delta_centroid_list = []
-        self.delta_sensing_direction_list = []
-        self.run_list = []
-        self.run_mean_list = []
-        self.spin_vec_magnitude_list = []
-        self.spin_vec_magnitude_mean_list = []
-        self.spin_vec_std_list = []
-        self.direction_std_list = []
+        self.run_uropod_list = []
+
 
         self.spectrogram = None
         self.embeddings = None
@@ -30,22 +23,15 @@ class Consecutive_Frames():
         self.orig_frame_list = []
         self.closest_frames = []
 
+        self.PC_uncertainties = None
 
-    def add(self, frame, pca0, pca1, pca2, RI_vector0, delta_centroid, delta_sensing_direction, run, run_mean,  spin_vec_magnitude, spin_vec_magnitude_mean, spin_vec_std, direction_std):
+
+    def add(self, frame, pca0, pca1, pca2, run_uropod):
         self.orig_frame_list.append(frame)
         self.pca0_list.append(pca0)
         self.pca1_list.append(pca1)
         self.pca2_list.append(pca2)
-        self.RI_vector0_list.append(RI_vector0)
-        self.delta_centroid_list.append(delta_centroid)
-        self.delta_sensing_direction_list.append(delta_sensing_direction)
-        self.run_list.append(run)
-        self.run_mean_list.append(run_mean)
-
-        self.spin_vec_magnitude_list.append(spin_vec_magnitude)
-        self.spin_vec_magnitude_mean_list.append(spin_vec_magnitude_mean)
-        self.spin_vec_std_list.append(spin_vec_std)
-        self.direction_std_list.append(direction_std)
+        self.run_uropod_list.append(run_uropod)
 
 
     def interpolate(self):
@@ -63,12 +49,8 @@ class Consecutive_Frames():
             closest_frame = self.orig_frame_list[dists.index(min(dists))]
             self.closest_frames.append(closest_frame)
 
-        for attribute in ['pca0_list', 'pca1_list', 'pca2_list', 'RI_vector0_list', 'delta_centroid_list', 'delta_sensing_direction_list', 'run_list', 'run_mean_list', 'spin_vec_magnitude_list', 'spin_vec_magnitude_mean_list', 'spin_vec_std_list', 'direction_std_list']:
+        for attribute in ['pca0_list', 'pca1_list', 'pca2_list', 'run_uropod_list']:
 
             f = interpolate.interp1d(frame_times, getattr(self, attribute))
             y_new = f(new_frame_times)
-
-            #plt.plot(frame_times, getattr(self, attribute), color = 'red')
             setattr(self, attribute, y_new)
-            #plt.plot(new_frame_times, getattr(self, attribute), color = 'blue')
-            #plt.show()
