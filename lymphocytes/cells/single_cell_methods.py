@@ -127,7 +127,7 @@ class Single_Cell_Methods:
 
 
 
-    def plot_orig_series(self, idx_cell, uropod_align, color_by = None, plot_every = 1):
+    def plot_orig_series(self, idx_cell, uropod_align, color_by = None, plot_every = 1, plot_flat = True):
         """
         Plot original mesh series, with point at the uropods
         """
@@ -136,7 +136,7 @@ class Single_Cell_Methods:
         lymphs_plot = self.cells[idx_cell][::plot_every]
         #num_cols=int(len(lymphs_plot)/3)+1
         #plotter = pv.Plotter(shape=(3, num_cols), border=False)
-        #plotter = pv.Plotter(shape=(1, len(lymphs_plot)), border=False)
+
 
 
 
@@ -150,19 +150,26 @@ class Single_Cell_Methods:
             elif color_by[:3] == 'run':
                 self._set_centroid_attributes('run', time_either_side = -1)
             elif color_by[:4] == 'spin' or color_by == 'angle':
-                self._set_centroid_attributes('searching', time_either_side = 50,  time_either_side_2 = 150)
+                self._set_centroid_attributes('searching', time_either_side = -1)
             vmin, vmax = utils_general.get_color_lims(self, color_by)
+
 
 
         num_per = 40
         for idx_start in range(len(lymphs_plot)//num_per + 1):
             lymphs_plot_section = lymphs_plot[idx_start*num_per:idx_start*num_per + num_per]
             num_cols=int(len(lymphs_plot_section)/3)+1
-            plotter = pv.Plotter(shape=(3, num_cols), border=False)
+            if plot_flat:
+                plotter = pv.Plotter(shape=(1, len(lymphs_plot)), border=False)
+            else:
+                plotter = pv.Plotter(shape=(3, num_cols), border=False)
 
             for idx_plot, lymph in enumerate(lymphs_plot_section):
-                plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
-                #plotter.subplot(0, idx_plot)
+
+                if plot_flat:
+                    plotter.subplot(0, idx_plot)
+                else:
+                    plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
 
                 plotter.add_text("{}".format((lymph.frame-lymphs_plot[0].frame)*lymph.t_res), font_size=10)
                 #plotter.add_text("{}".format(lymph.frame), font_size=10)
@@ -175,36 +182,20 @@ class Single_Cell_Methods:
 
                 mins, maxs = np.min(self.cells[idx_cell][0].vertices, axis = 0), np.max(self.cells[idx_cell][0].vertices, axis = 0)
                 box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
-                lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box, opacity = 0.5)
+                lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box)
 
 
-                #lymph.plotRecon_singleDeg(plotter=plotter, max_l = 2, opacity = 0.5)
+                #lymph.plotRecon_singleDeg(plotter=plotter, max_l = 1, opacity = 0.5)
 
-                if lymph.delta_uropod is not None:
-                    print('lymph.delta_uropod', np.linalg.norm(lymph.delta_uropod))
-                    if np.linalg.norm(lymph.delta_uropod) > 1/1000:
-                        plotter.add_lines(np.array([lymph.mean_uropod, lymph.mean_uropod+10000*lymph.delta_uropod]), color = (1, 0, 0))
-                    else:
-                        plotter.add_lines(np.array([lymph.mean_uropod, lymph.mean_uropod+10000*lymph.delta_uropod]), color = (0, 0, 0))
+                #if lymph.ellipsoid_vec_smoothed is not None:
+                    #plotter.add_lines(np.array([lymph.centroid, lymph.centroid+10*lymph.ellipsoid_vec_smoothed]), color = (1, 0, 0))
 
-                if lymph.delta_centroid is not None:
-                    plotter.add_lines(np.array([lymph.mean_centroid, lymph.mean_centroid+10000*lymph.delta_centroid]), color = (0, 1, 0))
 
-                #plotter.add_lines(np.array([lymph.centroid+lymph.ellipsoid_vecs[0], lymph.centroid-lymph.ellipsoid_vecs[0]]), color = (0, 0, 0))
 
 
 
             plotter.show(cpos=[1, 0, 0])
             #plotter.show(cpos=[0, 0, 1])
-
-
-
-
-
-        #plt.plot([lymph.delta_uropod if lymph.delta_uropod is not None else np.nan for lymph in self.cells[idx_cell]], c = 'red')
-        #plt.plot([lymph.delta_centroid if lymph.delta_centroid is not None else np.nan for lymph in self.cells[idx_cell]], c = 'red')
-        #plt.show()
-
 
 
 

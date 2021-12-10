@@ -26,6 +26,11 @@ class Raw_Methods:
         - uropod_align: whether or not to shift centroid to origin and rotate to align ellipsoid with an axis.
         - scalars: color each face differently (?)
         """
+
+        if box is not None:
+            plotter.add_mesh(box, style='wireframe', opacity = opacity)
+
+
         if self.vertices is None:
             return
 
@@ -35,8 +40,9 @@ class Raw_Methods:
             surf = pv.PolyData(vertices, self.faces)
         else:
             if self.uropod is not None and with_uropod:
-                plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
-                plotter.add_mesh(pv.Sphere(radius=1, center=self.centroid), color = (0, 0, 0))
+                pass
+                #plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
+                #plotter.add_mesh(pv.Sphere(radius=1, center=self.centroid), color = (0, 0, 0))
 
             surf = pv.PolyData(self.vertices, self.faces)
 
@@ -48,8 +54,7 @@ class Raw_Methods:
         else:
             plotter.add_mesh(surf, color = color, scalars = scalars, opacity = opacity)
 
-        if box is not None:
-            plotter.add_mesh(box, style='wireframe', opacity = 0.5)
+
 
 
         """

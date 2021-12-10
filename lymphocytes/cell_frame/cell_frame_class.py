@@ -89,17 +89,7 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.delta_uropod = None
         self.delta_centroid= None
 
-        self.spin_vec = None
 
-        self.angle = None
-        self.spin_vec_std = None
-        self.angle_mean = None
-
-
-        self.spin_vec_2 = None
-        self.angle_2 = None
-        self.spin_vec_std_2 = None
-        self.angle_mean_2 = None
 
         self.mean_uropod = None
         self.run_uropod_running_mean = None
@@ -110,8 +100,12 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.pca1 = None
         self.pca2 = None
 
-        self.ellipsoid_lengths = None
-        self.ellipsoid_vecs = None
+        self.ellipsoid_length = None
+        self.ellipsoid_vec = None
+        self.ellipsoid_smoothed = None
+        self.spin_vec = None
+        self.turning = None
+
 
         self.uropod_aligned = False # not yet aligned by uropod-centroid vector
 

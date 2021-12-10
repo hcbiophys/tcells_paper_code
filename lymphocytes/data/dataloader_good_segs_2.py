@@ -50,9 +50,9 @@ stack_attributes_2 = [('2_0', mat_filename_2_0, coeffPathFormat_2_0,  [5*i for i
 
                     ('2_1', mat_filename_2_1, coeffPathFormat_2_1, [5*i for i in [0.103, 0.103, 0.211]], (0.7, 0.7, 0), 2.5),
                     ('2_2', mat_filename_2_2, coeffPathFormat_2_2, [5*i for i in [0.103, 0.103, 0.211]], (0.5, 1, 0), 2.5),
-                    ('2_3', mat_filename_2_3, coeffPathFormat_2_3,  [5*i for i in [0.103, 0.103, 0.211]], (1, 1, 0), 2.5),
+                    ('2_3', mat_filename_2_3, coeffPathFormat_2_3,  [5*i for i in [0.103, 0.103, 0.211]], (0, 0.4, 0.1), 2.5),
                     ('2_4', mat_filename_2_4, coeffPathFormat_2_4,  [5*i for i in [0.103, 0.103, 0.211]], (0.3, 1, 0.3), 2.5),
-                    ('2_5', mat_filename_2_5, coeffPathFormat_2_5, [5*i for i in [0.103, 0.103, 0.211]], (1, 1, 0.2), 2.5),
+                    ('2_5', mat_filename_2_5, coeffPathFormat_2_5, [5*i for i in [0.103, 0.103, 0.211]], (1, 0, 0.2), 2.5),
 
                     ('2_6', mat_filename_2_6, coeffPathFormat_2_6,  [5*i for i in [0.103, 0.103, 0.211]], (0.7, 0.7, 0), 2.5),
                     ('2_7', mat_filename_2_7, coeffPathFormat_2_7,  [5*i for i in [0.103, 0.103, 0.211]], (0, 1, 0), 2.5),

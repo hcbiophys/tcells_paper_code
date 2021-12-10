@@ -25,7 +25,6 @@ import itertools
 from scipy.optimize import curve_fit
 from scipy import interpolate
 from matplotlib import colors as mpl_colors
-from scipy.linalg import eig
 from scipy import signal
 import lymphocytes.utils.utils_cwt as utils_cwt
 import lymphocytes.utils.general as utils_general
@@ -40,47 +39,8 @@ filename = sys.argv[1]
 load_or_save_or_run = sys.argv[2]
 
 
-
-def get_scales(dyadic = False):
-    if dyadic:
-        scale_orig_bys = [2**j for j in range(10)]
-    else:
-        scale_orig_bys = range(1, 10)
-
-    mexh_scales = [0.5*scale_orig_by for scale_orig_by in scale_orig_bys]
-    gaus1_scales = [0.4*scale_orig_by for scale_orig_by in scale_orig_bys]
-
-
-
-    return mexh_scales, gaus1_scales
-
-"""
-def get_scales(freq_step_size = 0.05, num_steps = 10):
-    target_freqs = [0.5 - i*freq_step_size for i in range(num_steps)]
-    mexh_scales = []
-    mexh_scales_all = [0.5*i for i in range(40)]
-    for i in target_freqs:
-        dists = [abs(i-pywt.scale2frequency(wavelet='mexh', scale = j)) for j in mexh_scales_all]
-        mexh_scales.append(mexh_scales_all[dists.index(min(dists))])
-
-
-    gaus1_scales = []
-    gaus1_scales_all = [0.4*i for i in range(40)]
-    for i in target_freqs:
-        dists = [abs(i-pywt.scale2frequency(wavelet='gaus1', scale = j)) for j in gaus1_scales_all]
-        gaus1_scales.append(gaus1_scales_all[dists.index(min(dists))])
-
-    plt.plot([pywt.scale2frequency(wavelet='mexh', scale = j) for j in mexh_scales])
-    plt.show()
-
-    return mexh_scales, gaus1_scales
-"""
-
-
-
-
 # s,b
-thresh_params_dict = {'50': (13, 25), '150': (15, 25), '150_PC2': (13, 35), '150_PC1': (9, 25)}
+thresh_params_dict = { '150': (7, 20)}
 
 
 
@@ -105,7 +65,6 @@ class CWT():
         self.chop = chop
 
 
-
         if filename[-3:] == 'run':
             self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
         elif filename[-4:] == 'stop':
@@ -115,27 +74,42 @@ class CWT():
 
 
 
+
         if not idx_segment == 'all':
             self.all_consecutive_frames = [i for i in self.all_consecutive_frames if i.name == idx_segment]
+
+        idxs_keep = [i for i,j in enumerate(self.all_consecutive_frames) if len(j.pca0_list) > min_length]
+        self.all_consecutive_frames = [j for i,j in enumerate(self.all_consecutive_frames) if i in idxs_keep]
 
         PC_uncertainties = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/PC_uncertainties.pickle', 'rb'))
         for cfs in self.all_consecutive_frames:
             cfs.PC_uncertainties = PC_uncertainties[cfs.name[:-1]]
+            cfs.names_list = [cfs.name + '-' + str(i) for i in cfs.closest_frames]
             print(cfs.name, cfs.PC_uncertainties)
 
 
 
+        self.spectograms = None
+        self.all_embeddings = None
+        self.all_consecutive_frames_dict = {cfs.name: cfs for cfs in self.all_consecutive_frames}
+
+    def names_to_colors(self, names):
+        names = [i.split('-')[0][:-1] for i in names]
+        idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_1_{}'.format(i) for i in range(6) if i != 0] + ['zm_3_3_{}'.format(i) for i in range(8)] + ['zm_3_4_{}'.format(i) for i in range(4)] + ['zm_3_5_2', 'zm_3_6_0']
+        colors_dict = {i:np.random.rand(3,) for i in idx_cells}
+        colors = []
+        for name in names:
+            colors.append(colors_dict[name])
+        return colors
 
 
-        """
 
 
 
-
+    def plot_series(self):
         fig = plt.figure()
         count = 0
         for cfs in self.all_consecutive_frames:
-            print(cfs.name, len(cfs.pca0_list) ,count)
             if len(cfs.pca0_list) > 100 and count < 4:
                 print(cfs.name)
                 ax = fig.add_subplot(4, 1, count+1)
@@ -147,32 +121,11 @@ class CWT():
                     ax.plot([i*5 for i,j in enumerate(var_list)], var_list, c = color)
                     ax.set_title(cfs.name)
                     #ax.set_ylim([-1, 1])
-
-
                 count += 1
 
         plt.show()
         plt.subplots_adjust(hspace = 0)
         sys.exit()
-        """
-
-
-
-
-
-        #DO KDE WITH SMALLER TIME SCALES TO VALIDATE THAT (low number of) MOTIFS STRUCTURE IS AT ~50s
-        idxs_keep = [i for i,j in enumerate(self.all_consecutive_frames) if len(j.pca0_list) > min_length]
-        self.all_consecutive_frames = [j for i,j in enumerate(self.all_consecutive_frames) if i in idxs_keep]
-
-
-
-        self.spectograms = None
-        self.num_features = None
-
-        self.all_embeddings = None
-
-
-        self.all_consecutive_frames_dict = {cfs.name: cfs for cfs in self.all_consecutive_frames}
 
 
     def interpolate_list(self, l):
@@ -239,7 +192,7 @@ class CWT():
             #ax2.scatter([i[0] for i in points_fit], [np.exp(i[1]) for i in points_fit])
             #ax2.plot(xs_show, _exp_model(xs_show,  k = k))
             tau = 1./k
-            taus.append(tau)
+            taus.append(tau[0])
             print('idx_attribute', idx_attribute, 'tau', tau)
             #plt.show()
 
@@ -248,10 +201,6 @@ class CWT():
 
 
     def ACF(self):
-
-
-
-
 
 
         acfs1 = [[], [], [], []]
@@ -315,6 +264,14 @@ class CWT():
         taus = self.fit_exponentials(acfs2)
         print('taus', taus)
 
+        fig_taus = plt.figure()
+        ax_taus = fig_taus.add_subplot(111)
+        xs_bars = [1, 2, 3, 4]
+        taus_stop = [125.09645584939082, 151.2182899779405, 223.22233724328925, 127.652516621403]
+        ax_taus.bar([i+0.2 for i in xs_bars], taus_stop, width=0.4, color = 'blue')
+        ax_taus.bar([i-0.2 for i in xs_bars], taus, width=0.4, color = 'red')
+
+
 
         ax1.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
         ax2.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
@@ -342,14 +299,18 @@ class CWT():
         plt.show()
         sys.exit()
 
-    def edge_effect_size(self, wavelet, scales):
+    def edge_effect_size(self):
+        fig = plt.figure()
+        ax1 = fig.add_subplot(121)
+        ax2 = fig.add_subplot(122)
+        fake_series = [100 for i in range(40)]
+        coef, _ = pywt.cwt(fake_series, mexh_scales, 'mexh')
 
-        fake_series = [1 for i in range(40)]
-
-        coef, freqs = pywt.cwt(fake_series, scales, wavelet)
-        #coef = abs(coef)
-
-        plt.imshow(coef)
+        ax1.imshow(coef)
+        ax1.set_title('mexh')
+        coef, _ = pywt.cwt(fake_series, gaus1_scales, 'gaus1')
+        ax2.imshow(coef)
+        ax2.set_title('gaus1')
         plt.show()
         sys.exit()
 
@@ -359,19 +320,7 @@ class CWT():
         fig = plt.figure()
         ax = fig.add_subplot(2, 1, 1)
         for idx_scale, scale in enumerate(scales):
-
-
             t_ = Symbol('t_')
-            """
-            if self.wavelet[:4] == 'cmor':
-                func = (1/sqrt(morB*pi))*exp((-((t_-5)/scale)**2)/morB)*exp(2*pi*1.j*morC*((t_-5)/scale))
-                func +=  (scale-min(self.scales)) + (scale-min(self.scales))*I
-            elif self.wavelet[:4] == 'cgau':
-                func = exp(-1.j*((t_-5)/scale))*exp(-((t_-5)/scale)**2)  # t_-scale*2 for plotting each shifted horizontally
-                for _ in range(int(self.wavelet[4])):
-                    func = func.diff(t_)
-                func +=  (scale-min(self.scales)) + (scale-min(self.scales))*I
-            """
             if wavelet[:4] == 'mexh':
                 func = (1-(((t_)/scale)**2))*exp(-0.5*(((t_)/scale)**2))
             elif wavelet[:4] == 'gaus':
@@ -412,17 +361,11 @@ class CWT():
 
 
         features = ['pca0_list', 'pca1_list', 'pca2_list']
-        self.num_features = len(features)
 
 
         for consecutive_frames in self.all_consecutive_frames:
             spectogram = []
             for idx_attribute, attribute in enumerate(features):
-                """
-                coef, freqs = pywt.cwt(getattr(consecutive_frames, attribute), self.scales, self.wavelet)
-                #coef = abs(coef)
-                spectogram.append(coef)
-                """
 
                 coef, _ = pywt.cwt(getattr(consecutive_frames, attribute), mexh_scales, 'mexh')
                 spectogram.append(coef)
@@ -437,10 +380,13 @@ class CWT():
                 consecutive_frames.pca0_list = consecutive_frames.pca0_list[self.chop :-self.chop]
                 consecutive_frames.pca1_list = consecutive_frames.pca1_list[self.chop :-self.chop]
                 consecutive_frames.pca2_list = consecutive_frames.pca2_list[self.chop :-self.chop]
-                consecutive_frames.run_uropod_uropod_list = consecutive_frames.run_uropod_uropod_list[self.chop :-self.chop]
-                consecutive_frames.angle_list = consecutive_frames.angle_list[self.chop :-self.chop]
-                consecutive_frames.angle_mean_list = consecutive_frames.angle_mean_list[self.chop :-self.chop]
-                consecutive_frames.spin_vec_std_list = consecutive_frames.spin_vec_std_list[self.chop :-self.chop]
+                consecutive_frames.run_uropod_list = consecutive_frames.run_uropod_list[self.chop :-self.chop]
+                consecutive_frames.run_uropod_running_mean_list = consecutive_frames.run_uropod_running_mean_list[self.chop :-self.chop]
+                consecutive_frames.turning_list = consecutive_frames.turning_list[self.chop :-self.chop]
+                consecutive_frames.names_list = consecutive_frames.names_list[self.chop :-self.chop]
+
+
+
 
             consecutive_frames.spectogram = spectogram
 
@@ -448,15 +394,12 @@ class CWT():
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        # CHANGED
-        #ax.imshow(spectogram, vmin = -0.6, vmax = 0.6)
+
         ax.imshow(spectogram, vmin = -0.25, vmax = 0.25)
 
-        # CHANGED
         for ins in inserts:
             spectogram = np.insert(spectogram, ins, np.zeros(shape = (spectogram.shape[1],)), 0)
-        # CHANGED
-        #ax.imshow(spectogram, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
+
         ax.imshow(spectogram, cmap = 'PiYG', vmin = -0.25, vmax = 0.25)
         ax.axis('off')
 
@@ -464,7 +407,6 @@ class CWT():
     def plot_wavelet_series_spectogram(self, name = 'all'):
         for cfs in self.all_consecutive_frames:
             if name == 'all' or cfs.name == name:
-                # CHANGED
 
                 self._plot_wavelets(frames_plot = cfs, wavelet = 'mexh', scales = mexh_scales)
                 self._plot_wavelets(frames_plot = cfs, wavelet = 'gaus1', scales = gaus1_scales)
@@ -484,13 +426,17 @@ class CWT():
     def set_tsne_embeddings(self, load_or_save_or_run, filename):
 
         if load_or_save_or_run == 'load':
-            data = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename), 'rb'))
-            colors = data['colors']
-            xs = data['xs']
-            ys = data['ys']
-            names = data['names']
 
+            data = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename), 'rb'))
+            colors, xs, ys, names = data['colors'], data['xs'], data['ys'], data['names']
             self.all_embeddings = np.array(list(zip(xs, ys)))
+
+
+
+
+
+
+
 
         elif load_or_save_or_run == 'save' or load_or_save_or_run == 'run':
             concat = np.concatenate([i.spectogram for i in self.all_consecutive_frames], axis = 1).T
@@ -517,54 +463,26 @@ class CWT():
     def _set_embedding_colors(self, xs, ys):
 
 
-        run_all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
-        run_all_consecutive_frames_dict = {cfs.name: cfs for cfs in run_all_consecutive_frames}
-        run_idx_cells = list([i[:-1] for i in run_all_consecutive_frames_dict.keys()])
-        stop_all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_stop.pickle',"rb"))
-        stop_all_consecutive_frames_dict = {cfs.name: cfs for cfs in stop_all_consecutive_frames}
-        stop_idx_cells = list([i[:-1] for i in stop_all_consecutive_frames_dict.keys()])
-
-
         colors_pc = []
         colors_run_uropod = []
         colors_mode = []
+        colors_turning = []
         for cfs in self.all_consecutive_frames:
-            """
-            x_list = np.array([k*5 for k,j in enumerate(i.run_uropod_list)])
-            y_list = np.array(i.run_uropod_list)
-            x_list2 = np.arange(min(x_list), max(x_list), 0.1)
-            #plt.plot(x_list, y_list,  c = 'black')
-            spl = UnivariateSpline(x_list, y_list, s = 1e-4)
-            plt.plot(x_list2, spl(x_list2), c = 'blue')
-            plt.plot(x_list2, [0 for _ in x_list2], c = 'blue')
-            plt.plot(x_list2, 30*spl(x_list2, 1), c = 'red')
-            plt.plot(x_list2, 100*spl(x_list2, 2), c = 'red', linestyle = '--')
-            plt.show()
-            sys.exit()
-            """
-
-
 
             colors_run_uropod += list(cfs.run_uropod_list)
             colors_pc += list(cfs.pca0_list)
+            colors_turning += list(cfs.turning_list)
 
-            if cfs.name[:-1] in run_idx_cells:
+            new_colors_mode = []
+            for i in cfs.run_uropod_running_mean_list:
+                if i > 0.005:
+                    new_colors_mode.append('red')
+                elif i < 0.002:
+                    new_colors_mode.append('blue')
+                else:
+                    new_colors_mode.append('grey')
+            colors_mode += new_colors_mode
 
-                for j in cfs.closest_frames:
-                    if j in run_all_consecutive_frames_dict[cfs.name].closest_frames:
-                        colors_mode.append('red')
-                    else:
-                        colors_mode.append('grey')
-
-            elif cfs.name[:-1] in stop_idx_cells:
-                for j in cfs.closest_frames:
-                    if j in stop_all_consecutive_frames_dict[cfs.name].closest_frames:
-                        colors_mode.append('blue')
-                    else:
-                        colors_mode.append('grey')
-            else:
-                for j in cfs.closest_frames:
-                    colors_mode.append('grey')
 
 
         colors_2d = colors_mode
@@ -618,7 +536,6 @@ class CWT():
 
         if load_or_save_or_run == 'load':
             data = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename), 'rb'))
-            colors = data['colors']
             xs = data['xs']
             ys = data['ys']
             names = data['names']
@@ -626,13 +543,12 @@ class CWT():
 
         elif load_or_save_or_run == 'save' or load_or_save_or_run == 'run':
             data = {}
-            xs, ys, zs, colors, names = [], [], [], [], []
+            xs, ys, zs, names = [], [],  [], []
             for consecutive_frames in self.all_consecutive_frames:
-                colors += [np.random.rand(3,)]*consecutive_frames.embeddings.shape[0]
                 xs += list(consecutive_frames.embeddings[:, 0])
                 ys += list(consecutive_frames.embeddings[:, 1])
-                names += [consecutive_frames.name + '-' + str(i) for i in consecutive_frames.closest_frames]
-            data['colors'] = colors
+                names +=  list(consecutive_frames.names_list)
+
             data['xs'] = xs
             data['ys'] = ys
             data['names'] = names
@@ -640,12 +556,12 @@ class CWT():
                 pickle.dump(data, open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename), 'wb'))
 
 
-
         #all = np.concatenate([i.spectogram for i in self.all_consecutive_frames], axis = 1)
         #colors = np.max(abs(all), axis = 0)
 
 
-        xs, ys, colors_2d, colors_3d = self._set_embedding_colors(xs, ys)
+        #xs, ys, colors_2d, colors_3d = self._set_embedding_colors(xs, ys)
+        colors_2d = self.names_to_colors(names)
 
 
         """
@@ -664,33 +580,37 @@ class CWT():
             sc = ax.scatter(xs, ys, c = colors_2d, vmax = 0.015, cmap = 'Blues')
 
 
+            def update_annot(ind):
+                pos = sc.get_offsets()[ind["ind"][0]]
+                annot.xy = pos
+                text = "{}".format(" ".join([names[n] for n in ind["ind"]]))
+                annot.set_text(text)
+                #annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
+                annot.get_bbox_patch().set_alpha(0.4)
 
+            def hover(event):
+                vis = annot.get_visible()
+                if event.inaxes == ax:
+                    cont, ind = sc.contains(event)
+                    if cont:
+                        update_annot(ind)
+                        annot.set_visible(True)
+                        fig.canvas.draw_idle()
+                    else:
+                        if vis:
+                            annot.set_visible(False)
+                            fig.canvas.draw_idle()
             annot = ax.annotate("", xy=(0,0), xytext=(20,20),textcoords="offset points",
                         bbox=dict(boxstyle="round", fc="w"),
                         arrowprops=dict(arrowstyle="->"))
             annot.set_visible(False)
 
 
-
-            fig.canvas.mpl_connect("motion_notify_event", utils_general.hover)
-
+            fig.canvas.mpl_connect("motion_notify_event", hover)
 
 
 
-    def k_means_clustering(self, n_clusters, plot = False):
-
-        kmeans = KMeans(n_clusters=n_clusters)
-        self.clusters = kmeans.fit_predict(self.all_embeddings)
-
-        if plot:
-            fig_kmeans = plt.figure()
-            ax = fig_kmeans.add_subplot(111)
-            colors = ['red', 'blue', 'green', 'black', 'cyan', 'magenta', 'brown', 'gray', 'orange', 'pink']
-            for idx, cluster in enumerate(self.clusters):
-                ax.scatter(self.all_embeddings[idx, 0], self.all_embeddings[idx, 1], color = colors[cluster])
-            plt.show()
-
-    def kde(self, load_or_save_or_run = 'load', filename = 'mexh_kde.pickle'):
+    def kde(self, load_or_save_or_run = 'load', filename = None):
 
 
         if load_or_save_or_run == 'load':
@@ -713,17 +633,16 @@ class CWT():
 
         self.pdf_array = pdf_array
         plt.imshow(self.pdf_array[::-1, :])
-        plt.show()
         return pdf_array
 
 
     def _get_contours(self, pdf, s, b):
 
         if s is None and b is None:
-            plt.imshow(pdf)
+            plt.imshow(pdf[::-1, :])
             plt.show()
-            s_list = [ 9, 11, 13, 15, 17, 19] # ROWS
-            b_list = [15, 20, 25, 30, 35] # COLUMNS
+            s_list = [ 5, 7, 9, 11, 13, 15, ] # ROWS
+            b_list = [20, 25, 30, 35, 40] # COLUMNS
             b_list = [b*(np.nanmax(pdf)/255) for b in b_list]
 
             fig_kde = plt.figure()
@@ -737,10 +656,17 @@ class CWT():
                         for col in range(pdf.shape[1]):
                             surrounding = pdf[int(row-(s/2)):int(row+(s/2)), int(col-(s/2)):int(col+(s/2))]
                             if pdf[row, col] > np.nanmean(surrounding) + b:
-                                pdf_new[row, col] = 1
+                                pdf_new[row, col] = 255
                             else:
                                 pdf_new[row, col] = 0
-                    ax.imshow(pdf_new)
+                    contours, hierarchy = cv2.findContours(pdf_new.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    ax.imshow(pdf[::-1, :])
+                    contours = self.clean_contours(contours)
+
+
+                    for contour in contours:
+                        ax.plot(contour[:, 0].flatten(), 49-contour[:,1].flatten(), c = 'black', linewidth = 3)
+
                     ax.set_xlabel('b')
                     ax.set_ylabel('s')
             plt.show()
@@ -760,252 +686,94 @@ class CWT():
                     pdf_borders[row, col] = 0
 
         contours, hierarchy = cv2.findContours(pdf_borders.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        im = np.zeros_like(pdf)
-        #cv2.drawContours(im, [cnt], 0, (255), 3)
+        contours = self.clean_contours(contours)
+
+
+
+        return contours
+
+
+    def clean_contours(self, contours):
         contours = [np.squeeze(i) for i in contours]
+        contours_new = []
+        for idx, i in enumerate(contours):
+            if len(i.shape) == 1:
+                i = np.expand_dims(i, axis=0)
+            i = np.vstack([i, i[0, :]])
+            contours_new.append(i)
 
-        return contours, pdf_borders
+        contours_new = [c for c in contours_new if cv2.contourArea(c) > 5]
 
-
-
-
-
-
-
-
-    def transition_matrix(self, s, b, grid):
-
-        def _entropy(T):
-            vals, vecs, _ = eig(T,left=True)
-            for i,j in enumerate(vals):
-                if abs(j.real-1) <  1e-6 and j.imag == 0:
-                    idx_1 = i
-                    break
-            vec = vecs[:, idx_1]
-            normalized = vec/sum(vec)
+        return contours_new
 
 
-            total = 0
-            for row in range(T.shape[0]):
-                entropy = 0
-                for col in range(T.shape[1]):
-                    el = T[row, col]
-                    if el > 0:
-                        entropy += el*np.log2(el)
-                entropy = -entropy
 
-                total += normalized[row]*entropy
-
-            print('total', total)
+    def transition_matrix(self, s, b, grid, stop_run_over_all = None):
+        if stop_run_over_all is not None:
+            run_all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_run.pickle',"rb"))
+            run_names = []
+            for cfs in run_all_consecutive_frames:
+                run_names += [cfs.name + '-' + str(i) for i in cfs.closest_frames]
 
 
+            stop_all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series_stop.pickle',"rb"))
+            stop_names = []
+            for cfs in stop_all_consecutive_frames:
+                stop_names += [cfs.name + '-' + str(i) for i in cfs.closest_frames]
 
 
 
         pdf = copy.deepcopy(self.pdf_array)
 
-        pdf[self.pdf_array<8e-5] = np.nan
-
-
-
-
-
-
+        pdf[self.pdf_array<3e-5] = np.nan
 
 
         fig_both = plt.figure()
         ax = fig_both.add_subplot(1, 3, 1)
+        ax.imshow(pdf[::-1, :], cmap = 'Reds')
+
+
+        if grid:
+            contours = []
+            for i in np.linspace(0, 50, 6)[1:-1]:
+                for j in np.linspace(0, 50, 6)[1:-1]:
+                    contours.append(np.array([[i, j]]))
+        else:
+            contours = self._get_contours(pdf, s = s, b = b)
+            for contour in contours:
+                ax.plot(contour[:, 0].flatten(), 49-contour[:,1].flatten(), c = 'black', linewidth = 3)
 
         sequences = []
         for cfs in self.all_consecutive_frames:
-            if grid:
-                contours = []
-                for i in np.linspace(0, 50, 6)[1:-1]:
-                    for j in np.linspace(0, 50, 6)[1:-1]:
-                        contours.append(np.array([[i, j]]))
-                sequence = utils_cwt.get_idx_contours(contours, list(self.all_embeddings[:, 0]), list(self.all_embeddings[:, 1]), list(cfs.embeddings[:, 0]), list(cfs.embeddings[:, 1]))
+            xs = list(cfs.embeddings[:, 0])
+            ys = list(cfs.embeddings[:, 1])
+            if stop_run_over_all == 'stop':
+                idxs_keep = [i for i in range(len(xs)) if cfs.names_list[i] in stop_names]
+                xs = [j for i,j in enumerate(xs) if i in idxs_keep]
+                ys = [j for i,j in enumerate(ys) if i in idxs_keep]
 
-            else:
-                contours, pdf_borders = self._get_contours(pdf, s = s, b = b)
-                ax.imshow(pdf_borders[::-1, :])
-                sequence = utils_cwt.get_idx_contours(contours, list(self.all_embeddings[:, 0]), list(self.all_embeddings[:, 1]), list(cfs.embeddings[:, 0]), list(cfs.embeddings[:, 1]))
+            elif stop_run_over_all == 'run':
+                idxs_keep = [i for i in range(len(xs)) if cfs.names_list[i] in run_names]
+                xs = [j for i,j in enumerate(xs) if i in idxs_keep]
+                ys = [j for i,j in enumerate(ys) if i in idxs_keep]
+
+            sequence = utils_cwt.get_idx_contours(contours, list(self.all_embeddings[:, 0]), list(self.all_embeddings[:, 1]), xs, ys)
+
             sequences.append(sequence)
 
         ax = fig_both.add_subplot(1, 3, 2)
         T = utils_cwt.get_tm(contours, sequences)
-        _entropy(T)
+        utils_cwt.entropy(T)
         ax.imshow(T, cmap = 'Blues')
         ax = fig_both.add_subplot(1, 3, 3)
         sequences_no_duplicates = []
         for sequence in sequences:
             sequences_no_duplicates.append([key for key, grp in itertools.groupby(sequence)])
         T = utils_cwt.get_tm(contours, sequences_no_duplicates)
-        _entropy(T)
+        utils_cwt.entropy(T)
         ax.imshow(T, cmap = 'Blues')
         plt.show()
 
-
-
-
-    def motif_hierarchies(self, filename1, filename2):
-
-        pdf1_orig = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_kde.pickle'.format(filename1), 'rb'))
-        pdf2_orig = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_kde.pickle'.format(filename2), 'rb'))
-        pdf1, pdf2 = copy.deepcopy(pdf1_orig), copy.deepcopy(pdf2_orig)
-        pdf1[pdf1<8e-5] = np.nan
-        pdf2[pdf2<8e-5] = np.nan
-
-        contours1, pdf_borders1 = self._get_contours(pdf1, s = thresh_params_dict[filename1][0], b = thresh_params_dict[filename1][1])
-
-        contours2, pdf_borders2 = self._get_contours(pdf2, s = thresh_params_dict[filename2][0], b = thresh_params_dict[filename2][1])
-
-        data1 = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename1), 'rb'))
-        names1 = data1['names']
-        xs1 = data1['xs']
-        ys1 = data1['ys']
-        data2 = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename2), 'rb'))
-        names2  = data2['names']
-        xs2  = data2['xs']
-        ys2 = data2['ys']
-
-        def remove_duplicate_names(names_temp, xs_temp, ys_temp):
-
-            names, xs, ys = [], [], []
-            for idx in range(len(names_temp)):
-                if names_temp[idx] not in names:
-                    names.append(names_temp[idx])
-                    xs.append(xs_temp[idx])
-                    ys.append(ys_temp[idx])
-            return names, xs, ys
-
-        names2, xs2, ys2 = remove_duplicate_names(names2, xs2, ys2)
-        names1, xs1, ys1 = remove_duplicate_names(names1, xs1, ys1)
-
-
-
-
-
-        idxs_keep = [i for i,j in enumerate(names1) if j in names2]
-        names1 = [j for i,j in enumerate(names1) if i in idxs_keep]
-        xs1 = [j for i,j in enumerate(xs1) if i in idxs_keep]
-        ys1 = [j for i,j in enumerate(ys1) if i in idxs_keep]
-
-
-        dict1 = {names1[idx]: (xs1[idx], ys1[idx]) for idx in range(len(names1))}
-        dict2 = {names2[idx]: (xs2[idx], ys2[idx]) for idx in range(len(names2))}
-
-
-
-        idx_contours1 = []
-        idx_contours2 = []
-        xs2_name_ordered = []
-        ys2_name_ordered = []
-        for name in dict1.keys():
-            idx_contours1.append(utils_cwt.get_idx_contours(contours1, xs1, ys1, [dict1[name][0]], [dict1[name][1]])[0])
-            idx_contours2.append(utils_cwt.get_idx_contours(contours2, xs1, ys1, [dict1[name][0]], [dict1[name][1]])[0])
-            xs2_name_ordered.append(dict2[name][0])
-            ys2_name_ordered.append(dict2[name][1])
-
-        colors = ['black', 'green', 'red', 'blue', 'indigo', 'violet', 'grey', 'aqua', 'maroon']
-        fig = plt.figure()
-        ax = fig.add_subplot(221)
-        ax.imshow(pdf1_orig[::-1, :])
-        ax.axis('off')
-        for idx, i in enumerate(contours1):
-            i = np.vstack([i, i[0, :]])
-            plt.plot(i[:, 0].flatten(), pdf1.shape[0]-1-i[:, 1].flatten(), c = colors[idx])
-
-        ax = fig.add_subplot(223)
-
-        for idx, i in enumerate(contours1):
-            i = np.vstack([i, i[0, :]])
-            to_plot_x, to_plot_y = utils_cwt.coords_to_kdes(xs1, ys1, i[:, 0].flatten(), i[:,1].flatten(), inverse = True)
-            plt.plot(to_plot_x, to_plot_y, c = colors[idx], linewidth = 3)
-        ax.scatter(xs1, ys1, c = [colors[i] for i in idx_contours1], s = 5)
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-        ax = fig.add_subplot(222)
-        ax.imshow(pdf2_orig[::-1, :])
-        ax.axis('off')
-        for idx, i in enumerate(contours2):
-            i = np.vstack([i, i[0, :]])
-            plt.plot(i[:, 0].flatten(), pdf2.shape[0]-1-i[:, 1].flatten(), c = colors[idx])
-        ax = fig.add_subplot(224)
-
-        for idx, i in enumerate(contours2):
-            i = np.vstack([i, i[0, :]])
-            to_plot_x, to_plot_y = utils_cwt.coords_to_kdes(xs2_name_ordered, ys2_name_ordered , i[:, 0].flatten(), i[:,1].flatten(), inverse = True)
-            plt.plot(to_plot_x, to_plot_y, c = 'black', linewidth = 3)
-        ax.scatter(xs2_name_ordered, ys2_name_ordered, c = [colors[i] for i in idx_contours1], s = 5)
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-        for idx in range(len(idx_contours2)):
-            if idx_contours2[idx] == 0:
-                print(idx_contours1[idx])
-
-
-        fig_matrix1 = plt.figure()
-        ax = fig_matrix1.add_subplot(111)
-        T = [[0]*len(contours1) for _ in range(len(contours2))]
-        for (i,j) in zip(idx_contours2,idx_contours1):
-            T[i][j] += 1
-        for row in T:
-            n = sum(row)
-            if n > 0:
-                row[:] = [f/sum(row) for f in row]
-        T = np.array(T)
-        ax.imshow(T)
-
-
-
-        arr = np.zeros(shape = (4, *T.shape))
-        arr[3, :, :] = T
-        #arr[3, :, :] = np.full(arr.shape[1:], 1)
-        for idx_col in range(T.shape[1]):
-            for idx_row in range(T.shape[0]):
-                arr[:3, idx_row, idx_col] = mpl_colors.to_rgba(colors[idx_col])[:-1]
-        print(arr.shape)
-        arr = np.swapaxes(arr, 1, 2)
-        arr = np.swapaxes(arr, 0, 2)
-        print(arr.shape)
-
-        fig_matrix2 = plt.figure()
-        ax = fig_matrix2.add_subplot(111)
-        ax.imshow(arr)
-
-        plt.show()
-
-
-        data2 = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename2), 'rb'))
-        xs2 = data2['xs']
-        ys2 = data2['ys']
-        names2 = data2['names']
-
-
-
-    def plot_time_series(self, color_by_split = None):
-        if color_by_split is not None:
-            vmin, vmax = np.min(np.concatenate(color_by_split)), np.max(np.concatenate(color_by_split))
-            cmap = plt.cm.PiYG
-            norm = plt.Normalize(vmin, vmax)
-        all_features = {'frame': [], 'PC0':[], 'PC1':[], 'PC2':[]}
-        for dict2 in dict1.values():
-            for name, list in dict2.items():
-                all_features[name] = all_features[name] + list
-
-        for idx_series, (series_code, dict2) in enumerate(self.dict1.items()):
-            fig = plt.figure()
-            for idx_list, (name, list) in enumerate(dict2.items()):
-                if name != 'frame':
-                    ax = fig.add_subplot(5, 1, idx_list)
-                    ax.plot(list)
-                    if color_by_split is not None:
-                        ax.scatter([i for i in range(len(list))], list, c = cmap(norm(color_by_split[idx_series])), vmin = vmin, vmax = vmax)
-
-                    ax.set_ylim(min(all_features[name]), max(all_features[name]))
-            plt.show()
 
 
 
@@ -1070,99 +838,6 @@ class CWT():
         plt.show()
 
 
-    def longer_motifs(self, plot_full = False):
-
-
-        from matplotlib.patches import Rectangle
-
-        pca0_all = []
-        pca1_all = []
-        pca2_all = []
-
-        time_series = []
-
-        for cfs in self.all_consecutive_frames:
-            time_series.append(cfs.embeddings)
-            time_series.append(np.array([[np.nan, np.nan]]))
-        time_series = np.concatenate(time_series, axis = 0).T
-
-
-        m = 50
-
-        i_j_pairs = []
-        diffs = []
-        for i in np.arange(0, time_series.shape[1], 1):
-            for j in np.arange(0, time_series.shape[1], 1):
-                slice1 = time_series[:, i:i+m]
-                slice2 = time_series[:, j:j+m]
-                if slice1.shape[1] == m and slice2.shape[1] == m:
-                    #diff = np.linalg.norm(slice1-slice2)
-                    diff = np.sqrt(np.mean(np.square(slice1-slice2))) # RMSD like in Andre's paper
-                    if diff != 0 and not np.isnan(diff) and abs(i-j) > 20:
-                        diffs.append(diff)
-                        i_j_pairs.append((i,j))
-                        #LOOK INTO THE SIMILARITY METRIC - IT IS COMPARING THE WRONG THINGS
-
-
-
-
-        ymin, ymax = np.nanmin(time_series), np.nanmax(time_series)
-
-        while len(diffs) > 0:
-            idx_min = diffs.index(min(diffs))
-            i, j = i_j_pairs[idx_min][0], i_j_pairs[idx_min][1]
-            print(i, j, diffs[idx_min])
-
-            fig = plt.figure()
-            ax = fig.add_subplot(221)
-            ax.set_ylim([ymin, ymax])
-            ax.set_title('i')
-            if plot_full:
-                ax.plot(time_series[0, :], c = 'red')
-                plt.axvspan(i, i+m, color='pink', alpha=0.5)
-            else:
-                ax.plot(time_series[0, i:i+m], c = 'red')
-
-            ax = fig.add_subplot(223)
-            ax.set_ylim([ymin, ymax])
-            if plot_full:
-                ax.plot(time_series[1, :], c = 'red')
-                plt.axvspan(i, i+m, color='pink', alpha=0.5)
-            else:
-                ax.plot(time_series[1, i:i+m], c = 'blue')
-
-
-            ax = fig.add_subplot(222)
-            ax.set_ylim([ymin, ymax])
-            if plot_full:
-                ax.plot(time_series[0, :], c = 'red')
-                plt.axvspan(j, j+m, color='purple', alpha=0.5)
-            else:
-                ax.plot(time_series[0, j:j+m], c = 'red')
-
-            ax.set_title('j')
-            ax = fig.add_subplot(224)
-            ax.set_ylim([ymin, ymax])
-            if plot_full:
-                ax.plot(time_series[1, :], c = 'blue')
-                plt.axvspan(j, j+m, color='purple', alpha=0.5)
-            else:
-                ax.plot(time_series[1, j:j+m], c = 'blue')
-
-
-            plt.show()
-
-
-            for p in range(i-10,i+10):
-                for q in range(j-10, j+10):
-                    if (p,q) in i_j_pairs:
-                        idx1 = i_j_pairs.index((p,q))
-                        del diffs[idx1]
-                        del i_j_pairs[idx1]
-                    if (q,p) in i_j_pairs:
-                        idx2 = i_j_pairs.index((q,p))
-                        del diffs[idx2]
-                        del i_j_pairs[idx2]
 
 
 
@@ -1175,34 +850,31 @@ class CWT():
 
 
 
-def show_cell_series_clustered(idx_segments, center_frames):
+def show_cell_series_clustered(codes):
     alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
     cwt = CWT(chop = None)
     cwt.set_spectograms()
 
-    for idx_segment, center_frame in zip(idx_segments, center_frames):
+
+    for code in codes:
+        idx_segment = code.split('-')[0]
+        center_frame = int(code.split('-')[1])
 
         idx_cell, letter_keep = idx_segment[:-1], idx_segment[-1]
-        cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = [idx_cell], max_l = 15)
-        cells._set_centroid_attributes('searching', time_either_side = 7)
-        for lymph_series in cells.cells.values():
-            dict = {}
-            prev_frame = None
-            count = 0
-            keep = []
+        cells = Cells(stack_attributes_2 + stack_attributes_3, cells_model = [idx_cell], max_l = 15, uropods_bool = True)
+        lymph_series = cells.cells[idx_cell]
+        lymph_t_res = lymph_series[0].t_res
 
-            for idx_lymph, lymph in enumerate(lymph_series):
-                if prev_frame is not None and lymph.frame-prev_frame > 2:
-                    count +=1
-                letter = alphabet[count]
-                # CHANGED
-                if letter == letter_keep and abs(lymph.frame*lymph.t_res - center_frame*lymph.t_res) < time_either_side:
-                    keep.append(lymph)
-                    lymph_t_res = lymph.t_res
-                prev_frame = lymph.frame
+        keep = []
+
+        for lymph in lymph_series:
+            if  abs((lymph.frame-center_frame)*lymph_t_res) < time_either_side:
+                keep.append(lymph)
+
         cells.cells[idx_cell] = keep
-        cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = 1)
+        plot_every = int(len(keep)/4)
+        cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = plot_every, plot_flat = True)
 
 
 
@@ -1213,8 +885,7 @@ def show_cell_series_clustered(idx_segments, center_frames):
         fig = plt.figure()
         gs = gridspec.GridSpec(2, 2)
         ax1, ax2, ax3 = fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, :])
-        # CHANGED
-        idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs(j*lymph_t_res-center_frame*lymph_t_res) < time_either_side]
+        idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs((j-center_frame)*lymph_t_res) < time_either_side]
 
         ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], color = 'red')
         ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca1_list) if i in idxs_plot], color = 'blue')
@@ -1233,53 +904,27 @@ def show_cell_series_clustered(idx_segments, center_frames):
             vert = np.insert(vert, ins, empty.fill(np.nan), 0)
         vert = np.vstack([vert.T]*4)
 
-        # CHANGED
-        #ax2.imshow(spect, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
-        #ax3.imshow(vert, cmap = 'PiYG', vmin = -0.6, vmax = 0.6)
+
         ax2.imshow(spect, cmap = 'PiYG', vmin = -0.25, vmax = 0.25)
         ax3.imshow(vert, cmap = 'PiYG', vmin = -0.25, vmax = 0.25)
-        ax2.axis('off')
-        ax3.axis('off')
+
         plt.show()
 
 
 
-
-
-
-
-# COMPLEX
-#wavelets = ['cgau1', 'cgau2', 'cgau3',  'cgau8', 'cmor{}-{}'.format(morB, morC)]
-#scales_lists = [[0.6*i for i in range(1, 5)], [0.8*i for i in range(1, 5)], [1*i for i in range(1, 5)], [1.4*i for i in range(1, 5)], [0.65*i for i in range(1, 5)]]
-
-# REAL
-wavelets = ['mexh', 'gaus1', 'gaus2', 'gaus3']
-scales_lists = [[0.5*i for i in range(2, 5)], [0.4*i for i in range(2, 9, 2)], [0.6*i for i in range(2, 5)], [0.8*i for i in range(2, 4)]]
-
-# f_nyquist = 0.5
-
-
-
-
-
-
-
-#['2_1', 'zm_3_4_0', 'zm_3_3_3', 'zm_3_6_0']
-# CHANGED
 cwt = CWT(idx_segment = 'all', chop = chop)
 #cwt.ACF()
 
 
 
-#show_cell_series_clustered(idx_segments = ['zm_3_4_1a', 'zm_3_3_5a'],
-#                                center_frames = [7, 163])
+#show_cell_series_clustered(codes = ['3_1_4a-25', '3_1_3a-48', 'zm_3_3_4a-24'])
 
 
 
 
-for attribute_list in ['run_uropod_list', 'pca0_list', 'pca1_list', 'pca2_list']:
-    cwt.run_power_spectrum(attribute_list = attribute_list)
-sys.exit()
+#for attribute_list in ['pca0_list', 'pca1_list', 'pca2_list', 'run_uropod_list']:
+#    cwt.run_power_spectrum(attribute_list = attribute_list)
+#sys.exit()
 
 
 #cwt.print_freqs()
@@ -1298,18 +943,306 @@ cwt.set_spectograms()
 
 
 cwt.set_tsne_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename)
+cwt.kde(load_or_save_or_run = load_or_save_or_run, filename = filename)
+cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = None)
 #cwt.longer_motifs()
 
 
 
-cwt.kde(load_or_save_or_run = load_or_save_or_run, filename = filename)
 
-#cwt.transition_matrix(s = None, b = None, grid = True)
-#cwt.transition_matrix(s = thresh_params_dict[filename][0], b = thresh_params_dict[filename][1], grid = True)
+
+#cwt.transition_matrix(s = None, b = None, grid = False)
+cwt.transition_matrix(s = thresh_params_dict[filename][0], b = thresh_params_dict[filename][1], grid = False, stop_run_over_all = 'run')
 
 
 #for name in ['zm_3_3_5a', 'zm_3_3_2a', 'zm_3_3_4a', 'zm_3_4_1a']:
-for cfs in cwt.all_consecutive_frames:
-    cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = cfs.name)
+#for cfs in cwt.all_consecutive_frames:
+#    cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = cfs.name)
 
 plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+def motif_hierarchies(self, filename1, filename2):
+
+    pdf1_orig = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_kde.pickle'.format(filename1), 'rb'))
+    pdf2_orig = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_kde.pickle'.format(filename2), 'rb'))
+    pdf1, pdf2 = copy.deepcopy(pdf1_orig), copy.deepcopy(pdf2_orig)
+    pdf1[pdf1<8e-5] = np.nan
+    pdf2[pdf2<8e-5] = np.nan
+
+    contours1, pdf_borders1 = self._get_contours(pdf1, s = thresh_params_dict[filename1][0], b = thresh_params_dict[filename1][1])
+
+    contours2, pdf_borders2 = self._get_contours(pdf2, s = thresh_params_dict[filename2][0], b = thresh_params_dict[filename2][1])
+
+    data1 = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename1), 'rb'))
+    names1 = data1['names']
+    xs1 = data1['xs']
+    ys1 = data1['ys']
+    data2 = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename2), 'rb'))
+    names2  = data2['names']
+    xs2  = data2['xs']
+    ys2 = data2['ys']
+
+    def remove_duplicate_names(names_temp, xs_temp, ys_temp):
+
+        names, xs, ys = [], [], []
+        for idx in range(len(names_temp)):
+            if names_temp[idx] not in names:
+                names.append(names_temp[idx])
+                xs.append(xs_temp[idx])
+                ys.append(ys_temp[idx])
+        return names, xs, ys
+
+    names2, xs2, ys2 = remove_duplicate_names(names2, xs2, ys2)
+    names1, xs1, ys1 = remove_duplicate_names(names1, xs1, ys1)
+
+
+
+
+
+    idxs_keep = [i for i,j in enumerate(names1) if j in names2]
+    names1 = [j for i,j in enumerate(names1) if i in idxs_keep]
+    xs1 = [j for i,j in enumerate(xs1) if i in idxs_keep]
+    ys1 = [j for i,j in enumerate(ys1) if i in idxs_keep]
+
+
+    dict1 = {names1[idx]: (xs1[idx], ys1[idx]) for idx in range(len(names1))}
+    dict2 = {names2[idx]: (xs2[idx], ys2[idx]) for idx in range(len(names2))}
+
+
+
+    idx_contours1 = []
+    idx_contours2 = []
+    xs2_name_ordered = []
+    ys2_name_ordered = []
+    for name in dict1.keys():
+        idx_contours1.append(utils_cwt.get_idx_contours(contours1, xs1, ys1, [dict1[name][0]], [dict1[name][1]])[0])
+        idx_contours2.append(utils_cwt.get_idx_contours(contours2, xs1, ys1, [dict1[name][0]], [dict1[name][1]])[0])
+        xs2_name_ordered.append(dict2[name][0])
+        ys2_name_ordered.append(dict2[name][1])
+
+    colors = ['black', 'green', 'red', 'blue', 'indigo', 'violet', 'grey', 'aqua', 'maroon']
+    fig = plt.figure()
+    ax = fig.add_subplot(221)
+    ax.imshow(pdf1_orig[::-1, :])
+    ax.axis('off')
+    for idx, i in enumerate(contours1):
+        i = np.vstack([i, i[0, :]])
+        plt.plot(i[:, 0].flatten(), pdf1.shape[0]-1-i[:, 1].flatten(), c = colors[idx])
+
+    ax = fig.add_subplot(223)
+
+    for idx, i in enumerate(contours1):
+        i = np.vstack([i, i[0, :]])
+        to_plot_x, to_plot_y = utils_cwt.coords_to_kdes(xs1, ys1, i[:, 0].flatten(), i[:,1].flatten(), inverse = True)
+        plt.plot(to_plot_x, to_plot_y, c = colors[idx], linewidth = 3)
+    ax.scatter(xs1, ys1, c = [colors[i] for i in idx_contours1], s = 5)
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    ax = fig.add_subplot(222)
+    ax.imshow(pdf2_orig[::-1, :])
+    ax.axis('off')
+    for idx, i in enumerate(contours2):
+        i = np.vstack([i, i[0, :]])
+        plt.plot(i[:, 0].flatten(), pdf2.shape[0]-1-i[:, 1].flatten(), c = colors[idx])
+    ax = fig.add_subplot(224)
+
+    for idx, i in enumerate(contours2):
+        i = np.vstack([i, i[0, :]])
+        to_plot_x, to_plot_y = utils_cwt.coords_to_kdes(xs2_name_ordered, ys2_name_ordered , i[:, 0].flatten(), i[:,1].flatten(), inverse = True)
+        plt.plot(to_plot_x, to_plot_y, c = 'black', linewidth = 3)
+    ax.scatter(xs2_name_ordered, ys2_name_ordered, c = [colors[i] for i in idx_contours1], s = 5)
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    for idx in range(len(idx_contours2)):
+        if idx_contours2[idx] == 0:
+            print(idx_contours1[idx])
+
+
+    fig_matrix1 = plt.figure()
+    ax = fig_matrix1.add_subplot(111)
+    T = [[0]*len(contours1) for _ in range(len(contours2))]
+    for (i,j) in zip(idx_contours2,idx_contours1):
+        T[i][j] += 1
+    for row in T:
+        n = sum(row)
+        if n > 0:
+            row[:] = [f/sum(row) for f in row]
+    T = np.array(T)
+    ax.imshow(T)
+
+
+
+    arr = np.zeros(shape = (4, *T.shape))
+    arr[3, :, :] = T
+    #arr[3, :, :] = np.full(arr.shape[1:], 1)
+    for idx_col in range(T.shape[1]):
+        for idx_row in range(T.shape[0]):
+            arr[:3, idx_row, idx_col] = mpl_colors.to_rgba(colors[idx_col])[:-1]
+    print(arr.shape)
+    arr = np.swapaxes(arr, 1, 2)
+    arr = np.swapaxes(arr, 0, 2)
+    print(arr.shape)
+
+    fig_matrix2 = plt.figure()
+    ax = fig_matrix2.add_subplot(111)
+    ax.imshow(arr)
+
+    plt.show()
+
+
+    data2 = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}_dots.pickle'.format(filename2), 'rb'))
+    xs2 = data2['xs']
+    ys2 = data2['ys']
+    names2 = data2['names']
+"""
+
+
+
+
+
+
+"""
+def longer_motifs(self, plot_full = False):
+
+
+    from matplotlib.patches import Rectangle
+
+    pca0_all = []
+    pca1_all = []
+    pca2_all = []
+
+    time_series = []
+
+    for cfs in self.all_consecutive_frames:
+        time_series.append(cfs.embeddings)
+        time_series.append(np.array([[np.nan, np.nan]]))
+    time_series = np.concatenate(time_series, axis = 0).T
+
+
+    m = 50
+
+    i_j_pairs = []
+    diffs = []
+    for i in np.arange(0, time_series.shape[1], 1):
+        for j in np.arange(0, time_series.shape[1], 1):
+            slice1 = time_series[:, i:i+m]
+            slice2 = time_series[:, j:j+m]
+            if slice1.shape[1] == m and slice2.shape[1] == m:
+                #diff = np.linalg.norm(slice1-slice2)
+                diff = np.sqrt(np.mean(np.square(slice1-slice2))) # RMSD like in Andre's paper
+                if diff != 0 and not np.isnan(diff) and abs(i-j) > 20:
+                    diffs.append(diff)
+                    i_j_pairs.append((i,j))
+                    #LOOK INTO THE SIMILARITY METRIC - IT IS COMPARING THE WRONG THINGS
+
+
+
+
+    ymin, ymax = np.nanmin(time_series), np.nanmax(time_series)
+
+    while len(diffs) > 0:
+        idx_min = diffs.index(min(diffs))
+        i, j = i_j_pairs[idx_min][0], i_j_pairs[idx_min][1]
+        print(i, j, diffs[idx_min])
+
+        fig = plt.figure()
+        ax = fig.add_subplot(221)
+        ax.set_ylim([ymin, ymax])
+        ax.set_title('i')
+        if plot_full:
+            ax.plot(time_series[0, :], c = 'red')
+            plt.axvspan(i, i+m, color='pink', alpha=0.5)
+        else:
+            ax.plot(time_series[0, i:i+m], c = 'red')
+
+        ax = fig.add_subplot(223)
+        ax.set_ylim([ymin, ymax])
+        if plot_full:
+            ax.plot(time_series[1, :], c = 'red')
+            plt.axvspan(i, i+m, color='pink', alpha=0.5)
+        else:
+            ax.plot(time_series[1, i:i+m], c = 'blue')
+
+
+        ax = fig.add_subplot(222)
+        ax.set_ylim([ymin, ymax])
+        if plot_full:
+            ax.plot(time_series[0, :], c = 'red')
+            plt.axvspan(j, j+m, color='purple', alpha=0.5)
+        else:
+            ax.plot(time_series[0, j:j+m], c = 'red')
+
+        ax.set_title('j')
+        ax = fig.add_subplot(224)
+        ax.set_ylim([ymin, ymax])
+        if plot_full:
+            ax.plot(time_series[1, :], c = 'blue')
+            plt.axvspan(j, j+m, color='purple', alpha=0.5)
+        else:
+            ax.plot(time_series[1, j:j+m], c = 'blue')
+
+
+        plt.show()
+
+
+        for p in range(i-10,i+10):
+            for q in range(j-10, j+10):
+                if (p,q) in i_j_pairs:
+                    idx1 = i_j_pairs.index((p,q))
+                    del diffs[idx1]
+                    del i_j_pairs[idx1]
+                if (q,p) in i_j_pairs:
+                    idx2 = i_j_pairs.index((q,p))
+                    del diffs[idx2]
+                    del i_j_pairs[idx2]
+
+"""

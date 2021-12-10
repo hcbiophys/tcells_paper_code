@@ -176,7 +176,7 @@ stack_attributes_3 = [('3_1_0', mat_filename_3_1_0, coeffPathFormat_3_1_0,  [5*i
                         ('zm_3_3_4', mat_filename_zm_3_3_4, coeffPathFormat_zm_3_3_4,  (0.5, 0.5, 0.5), (0.5, 0.9, 0.2), 4.166),
                         ('zm_3_3_5', mat_filename_zm_3_3_5, coeffPathFormat_zm_3_3_5,  (0.5, 0.5, 0.5), (0.8, 0.1, 0.7), 4.166),
                         ('zm_3_3_6', mat_filename_zm_3_3_6, coeffPathFormat_zm_3_3_6,  (0.5, 0.5, 0.5), (1, 0, 0.2), 4.166),
-                        ('zm_3_3_7', mat_filename_zm_3_3_7, coeffPathFormat_zm_3_3_7,  (0.5, 0.5, 0.5), (1, 1, 0.4), 4.166),
+                        ('zm_3_3_7', mat_filename_zm_3_3_7, coeffPathFormat_zm_3_3_7,  (0.5, 0.5, 0.5), (0, 1, 0.4), 4.166),
 
 
                         ('zm_3_4_0', mat_filename_zm_3_4_0, coeffPathFormat_zm_3_4_0,  (0.5, 0.5, 0.5), (0.1, 0.1, 0.3), 4.166),

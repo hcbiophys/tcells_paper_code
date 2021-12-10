@@ -1,10 +1,10 @@
 import numpy as np
+from scipy.linalg import eig
 
 
 
 
-
-def coords_to_kdes(self, all_xs, all_ys, xs, ys, inverse = False):
+def coords_to_kdes(all_xs, all_ys, xs, ys, inverse = False):
     xs_new, ys_new = [], []
 
     min_xs = min(all_xs) - 10
@@ -27,14 +27,15 @@ def coords_to_kdes(self, all_xs, all_ys, xs, ys, inverse = False):
 
     return xs_new, ys_new
 
-def get_idx_contours(self, contours, all_xs, all_ys, xs, ys):
+def get_idx_contours(contours, all_xs, all_ys, xs, ys):
 
-    xs, ys = self._coords_to_kdes(all_xs, all_ys, xs, ys)
+    xs, ys = coords_to_kdes(all_xs, all_ys, xs, ys)
     idx_closests = []
     for x,y in zip(xs, ys):
         point = np.array([x, y])
         dists_all = []
         for i in contours:
+
             dists_contour = np.linalg.norm(i-point, axis = 1)
             min_dist = np.min(dists_contour)
             dists_all.append(min_dist)
@@ -83,6 +84,25 @@ def remove_border_nans(time_series):
 
 
 
+def entropy(T):
+    vals, vecs, _ = eig(T,left=True)
+    for i,j in enumerate(vals):
+        if abs(j.real-1) <  1e-6 and j.imag == 0:
+            idx_1 = i
+            break
+    vec = vecs[:, idx_1]
+    normalized = vec/sum(vec)
+    total = 0
+    for row in range(T.shape[0]):
+        entropy = 0
+        for col in range(T.shape[1]):
+            el = T[row, col]
+            if el > 0:
+                entropy += el*np.log2(el)
+        entropy = -entropy
+        total += normalized[row]*entropy
+    print('total', total)
+
 
 def get_params_from_filename(filename):
 
@@ -122,10 +142,14 @@ def get_params_from_filename(filename):
 
 
     elif filename[:3] == '150':
+        #mexh_scales = [0.5*i for i in range(2, 14, 2)]
+        #gaus1_scales = [0.4*i for i in range(2, 24, 4)]
         mexh_scales = [0.5*i for i in range(2, 14, 2)]
-        gaus1_scales = [0.4*i for i in range(2, 24, 4)]
+        gaus1_scales = [0.4*i for i in range(2, 30, 5)]
+        print('lengths', len(mexh_scales), len(gaus1_scales))
         chop = 15
-        inserts = [7+6*i for i in range(6)]
+        scales_per_wave = len(mexh_scales)
+        inserts = [scales_per_wave+1+scales_per_wave*i for i in range(scales_per_wave)]
         time_either_side = 75
         min_length = 15
 

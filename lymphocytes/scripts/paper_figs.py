@@ -5,7 +5,6 @@ from mayavi import mlab
 from scipy.special import sph_harm
 import pyvista as pv
 pv.set_plot_theme("document")
-from lymphocytes.data.dataloader_good_segs_1 import stack_attributes_1
 from lymphocytes.data.dataloader_good_segs_2 import stack_attributes_2
 from lymphocytes.cells.cells_class import Cells
 import lymphocytes.utils.general as utils_general
@@ -29,7 +28,7 @@ def visualise_spherical_harmonics():
             s = sph_harm(m, l, theta, phi).real
 
             mlab.mesh(x - l + 0.3*l, y - m + 0.3*m, z, scalars=s, colormap='jet')
-
+    mlab.colorbar()
     mlab.view(90, 0)
     mlab.show()
 
@@ -91,6 +90,6 @@ def justify_extra_descriptor_var():
 
 
 if __name__ == '__main__':
-    #visualise_spherical_harmonics()
+    visualise_spherical_harmonics()
     #cell_mapping_to_sphere()
-    justify_extra_descriptor_var()
+    #justify_extra_descriptor_var()

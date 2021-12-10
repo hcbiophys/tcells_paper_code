@@ -19,15 +19,19 @@ class Centroid_Variable_Methods:
 
 
 
-    def _set_centroid_attributes(self, attribute, time_either_side = None, time_either_side_2 = 50, idx_cell = None):
+    def _set_centroid_attributes(self, attribute, time_either_side = None,  idx_cell = None):
 
         if attribute[:3] == 'run':
             self._set_run(idx_cell = idx_cell)
         elif attribute == 'searching':
-             self._set_searching(time_either_side, time_either_side_2)
+             self._set_searching(time_either_side)
 
 
-    def _set_mean_uropod_and_centroid(self, idx_cell, time_either_side):
+    def _set_mean_uropod_and_centroid(self, idx_cell, time_either_side, max_time_either_side = 50):
+        time_either_side = min(time_either_side, max_time_either_side) # lower bound of 100s either side (for e.g. cases when stationary then launches off)
+
+
+
         lymph_series = self.cells[idx_cell]
 
         times = [(lymph.frame-lymph_series[0].frame)*lymph.t_res for lymph in lymph_series]
@@ -116,6 +120,9 @@ class Centroid_Variable_Methods:
 
 
 
+
+
+
     def _set_run_uropod_running_means(self, idx_cell = None, time_either_side = None):
 
         for lymph_series in self.cells.values():
@@ -124,7 +131,6 @@ class Centroid_Variable_Methods:
 
         for lymph_series in self.cells.values():
             if lymph_series[0].idx_cell == idx_cell or idx_cell is None:
-
                 dict = utils_general.get_frame_dict(lymph_series)
                 frames = list(dict.keys())
                 for lymph in lymph_series:
@@ -144,45 +150,23 @@ class Centroid_Variable_Methods:
 
 
 
+    def unit_vector(self, vec):
+        return vec/np.linalg.norm(vec)
 
+    def _set_searching(self, time_either_side):
 
-    def _set_searching(self, time_either_side, time_either_side_2):
-
-        """
-        for lymph_series in self.cells.values():
-            ellipsoids_dict = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/ellipsoids_all_3/cell_{}.pickle'.format(lymph_series[0].idx_cell), "rb"))
-            for lymph in lymph_series:
-                lymph.ellipsoid = ellipsoids_dict[lymph.frame][0]
-                lymph.ellipsoid_all_3 = ellipsoids_dict[lymph.frame]
-        """
 
 
         for lymph_series in self.cells.values():
             ellipsoids_dict = {}
+            latest_vec0 = None
             for lymph in lymph_series:
 
                 if lymph.coeffPathFormat is not None:
-
                     #lymph.surface_plot(plotter=plotter, opacity = 0.5) # plot cell surface
                     #lymph.plotRecon_singleDeg(plotter=plotter, max_l = 1, opacity = 0.5) # plot ellipsoid (i.e. l_max = 1)
 
                     x, y, z, = 0, 1, 2
-
-                    """
-                    neg_coeff_x = -lymph._get_clm(x, 1, 1).real + 1j*lymph._get_clm(x, 1, 1).imag
-                    neg_coeff_y = -lymph._get_clm(y, 1, 1).real + 1j*lymph._get_clm(y, 1, 1).imag
-                    neg_coeff_z = -lymph._get_clm(z, 1, 1).real + 1j*lymph._get_clm(z, 1, 1).imag
-
-
-                    A = np.array([[neg_coeff_x-lymph._get_clm(x, 1, 1), 1j*(neg_coeff_x+lymph._get_clm(x, 1, 1)), np.sqrt(2)*lymph._get_clm(x, 1, 0)],
-                                        [neg_coeff_y-lymph._get_clm(y, 1, 1), 1j*(neg_coeff_y+lymph._get_clm(y, 1, 1)), np.sqrt(2)*lymph._get_clm(y, 1, 0)],
-                                    [neg_coeff_z-lymph._get_clm(z, 1, 1), 1j*(neg_coeff_z+lymph._get_clm(z, 1, 1)), np.sqrt(2)*lymph._get_clm(z, 1, 0)]])
-
-                    A *= np.sqrt(3)/(2*np.sqrt(2*math.pi))
-                    A = A.real # imaginary part is zero anyway
-
-                    print('A1', A)
-                    """
 
 
                     A = np.array([[lymph._get_clm(x, 1, 0), lymph._get_clm(y, 1, 0), lymph._get_clm(z, 1, 0)],
@@ -199,57 +183,117 @@ class Centroid_Variable_Methods:
                     vals, vecs = np.linalg.eig(to_eig)
                     lambdas = [np.sqrt(i) for i in vals]
                     lengths = np.array([i*2 for i in lambdas])
-                    lengths = lengths[np.argsort(lengths)[::-1]]
-                    vecs = vecs[:, np.argsort(lengths)[::-1]]
 
-                    lymph.ellipsoid_lengths = lengths
-                    lymph.ellipsoid_vecs = [vecs[:, 0], vecs[:, 0], vecs[:, 0]]
+                    new_order = np.argsort(lengths)[::-1]
+                    lengths = lengths[new_order]
+                    vecs = vecs[:, new_order]
 
+
+                    lymph.ellipsoid_length = lengths[0]
+                    lymph.ellipsoid_vec = vecs[:, 0]
+
+
+                    if latest_vec0 is not None:
+                        cos_angle = np.dot(latest_vec0, lymph.ellipsoid_vec)/(np.linalg.norm(latest_vec0)*np.linalg.norm(lymph.ellipsoid_vec))
+                        if cos_angle < 0:
+                            lymph.ellipsoid_vec = -lymph.ellipsoid_vec
+
+
+                    latest_vec0 = lymph.ellipsoid_vec
+
+
+
+            # interpolate if 1 missing
             dict = utils_general.get_frame_dict(lymph_series)
             frames = list(dict.keys())
             for frame in range(int(min(frames)), int(max(frames))):
                 if frame in frames and frame-1 in frames and frame+1 in frames:
-                    if dict[frame].ellipsoid_lengths is None and dict[frame-1].ellipsoid_lengths is not None and dict[frame+1].ellipsoid_lengths is not None:
-                        dict[frame].ellipsoid_lengths = (dict[frame-1].ellipsoid_lengths + dict[frame+1].ellipsoid_lengths)/2
-                        lymph.ellipsoid_vecs = [(dict[frame-1].ellipsoid_vecs[idx] + dict[frame+1].ellipsoid_vecs[idx])/2 for idx in range(3)]
+                    if dict[frame].ellipsoid_length is None and dict[frame-1].ellipsoid_length is not None and dict[frame+1].ellipsoid_length is not None:
+                        dict[frame].ellipsoid_length = (dict[frame-1].ellipsoid_length + dict[frame+1].ellipsoid_length)/2
+                        dict[frame].ellipsoid_vec = (dict[frame-1].ellipsoid_vec + dict[frame+1].ellipsoid_vec)/2
+                        dict[frame].ellipsoid_vec = [self.unit_vector(vec) for vec in dict[frame].ellipsoid_vec]
 
 
 
 
+        if time_either_side == -1:
+            for lymph_series in self.cells.values():
+                for lymph in lymph_series:
+                    lymph.ellipsoid_vec_smoothed = lymph.ellipsoid_vec
+                    """
+                    plotter = pv.Plotter()
+                    plotter.add_lines(np.array([[0, 0, 0], lymph.ellipsoid_vec_smoothed]), color = (1, 0, 0))
+                    plotter.add_lines(np.array([[0, 0, 0], [1, 0, 0]]), color = (0, 0, 0))
+                    plotter.add_lines(np.array([[0, 0, 0], [0, 1, 0]]), color = (0, 0, 0))
+                    plotter.add_lines(np.array([[0, 0, 0], [0, 0, 1]]), color = (0, 0, 0))
+                    plotter.show()
+                    """
+
+        else:
+
+            for lymph_series in self.cells.values():
+                dict = utils_general.get_frame_dict(lymph_series)
+                frames = list(dict.keys())
+
+                for lymph in lymph_series:
+
+                    frame = lymph.frame
+                    fs = [frame-i for i in reversed(range(1, int(time_either_side//lymph.t_res)+1))] + [frame] + [frame+i for i in range(1, int(time_either_side//lymph.t_res)+1)]
+                    ellipsoid_vecs = []
+                    for f in fs:
+                        if f in frames and dict[f].ellipsoid_vec is not None:
+                            ellipsoid_vecs.append(dict[f].ellipsoid_vec)
+
+                    if len(ellipsoid_vecs) == len(fs):
+                        vecs_stacked = np.vstack(ellipsoid_vecs)
+                        vec_mean = np.mean(vecs_stacked, axis = 0)
+                        dict[frame].ellipsoid_vec_smoothed = self.unit_vector(vec_mean)
+
+                    else:
+                        dict[frame].ellipsoid_vec_smoothed = None
 
 
-        """
+
         for lymph_series in self.cells.values():
             dict = utils_general.get_frame_dict(lymph_series)
             frames = list(dict.keys())
 
 
             for lymph in lymph_series:
-
                 frame = lymph.frame
-                fs = [frame-i for i in reversed(range(1, int(time_either_side//lymph.t_res)+1))] + [frame] + [frame+i for i in range(1, int(time_either_side//lymph.t_res)+1)]
-                spin_vecs = []
-                angles = []
-                for idx_f in range(len(fs)-1):
 
-                    if fs[idx_f] in frames and fs[idx_f+1] in frames:
+                if frame+1 in frames and dict[frame].ellipsoid_vec_smoothed is not None and dict[frame+1].ellipsoid_vec_smoothed is not None:
+                    vec1 = dict[frame].ellipsoid_vec_smoothed
+                    vec2 = dict[frame+1].ellipsoid_vec_smoothed
 
-                        vec1 = dict[fs[idx_f]].ellipsoid_vecs[0]
-                        vec2 = dict[fs[idx_f+1]].ellipsoid_vecs[0]
 
-                        cross_norm = np.linalg.norm(np.cross(vec2, vec1))
-                        angle = np.arcsin(cross_norm/(np.linalg.norm(vec1)*np.linalg.norm(vec2)))
-                        angle /= dict[fs[idx_f]].t_res
+                    cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                    if cos_angle < 0:
+                        vec1  = - vec1
 
-                        dict[fs[idx_f]].spin_vec = angle*np.cross(vec2, vec1) /cross_norm
-                        spin_vecs.append(dict[fs[idx_f]].spin_vec)
-                        dict[fs[idx_f]].angle = np.linalg.norm(dict[fs[idx_f]].spin_vec)
-                        angles.append(dict[fs[idx_f]].angle)
 
-                if len(spin_vecs) >= len(fs)-3:
-                    lymph.spin_vec_std = np.sum(np.var(np.array(spin_vecs), axis = 0)) # highlights changes in turning direction & magnitude
-                    lymph.angle_mean = np.mean(angles) # highlights  turning magnitude
-        """
+                    cross_norm = np.linalg.norm(np.cross(vec1, vec2))
+                    angle = np.arcsin(cross_norm/(np.linalg.norm(vec1)*np.linalg.norm(vec2)))
+                    angle /= dict[frame].t_res
+
+                    dict[frame].spin_vec = angle*np.cross(vec1, vec2) /cross_norm
+                    dict[frame].turning = np.linalg.norm(dict[frame].spin_vec)
+
+                    """
+                    plotter = pv.Plotter()
+                    plotter.add_lines(np.array([-vec1, vec1]), color = (1, 0, 0))
+                    plotter.add_lines(np.array([-vec2, vec2]), color = (0, 1, 0))
+                    plotter.add_lines(np.array([np.array([0, 0, 0]), 50*dict[frame].spin_vec]), color = (0, 0, 0))
+
+                    plotter.add_lines(np.array([[0, 0, 0], [0.5, 0, 0]]), color = (0.9, 0.9, 0.9))
+                    plotter.add_lines(np.array([[0, 0, 0], [0, 0.5, 0]]), color = (0.9, 0.9, 0.9))
+                    plotter.add_lines(np.array([[0, 0, 0], [0, 0, 0.5]]), color = (0.9, 0.9, 0.9))
+
+                    plotter.show()
+                    """
+
+
+
 
 
 

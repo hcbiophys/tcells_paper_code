@@ -26,11 +26,6 @@ class PCA_Methods:
     """
 
 
-
-
-
-
-
     def _set_pca(self, n_components):
         """
         Args:
@@ -206,7 +201,7 @@ class PCA_Methods:
 
 
 
-    def plot_component_lymphs(self, grid_size, pca, plot_original):
+    def plot_component_lymphs(self, grid_size, pca, plot_original, max_l):
         """
         Plot seperate sampling of each of the 3 components (meshes and scatter)
         """
@@ -258,7 +253,7 @@ class PCA_Methods:
                 if plot_original:
                     to_plot.surface_plot(plotter, uropod_align=True)
                 else:
-                    to_plot.plotRecon_singleDeg(plotter, max_l = 2, uropod_align = True)
+                    to_plot.plotRecon_singleDeg(plotter, max_l = max_l, uropod_align = True)
 
                 ax = fig_bars.add_subplot(3, grid_size, (idx_component*grid_size)+grid+1)
 
@@ -283,7 +278,7 @@ class PCA_Methods:
         self._scatter_plotted_components(vectors, plotted_points_all)
 
 
-    def plot_PC_space(self, plot_original = True):
+    def plot_PC_space(self, plot_original, max_l):
         """
         Plot a sample of cells in the 3D PCA space
         """
@@ -305,7 +300,7 @@ class PCA_Methods:
         for lymph in lymphs:
             #if random.randint(0, 50) == 0:
             if len([i for i in coords_plotted if np.linalg.norm(lymph.pca_normalized-i) < 0.75]) == 0:
-                vertices, faces, uropod = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = 3, uropod_align = True, horizontal_align = False)
+                vertices, faces, uropod = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = max_l, uropod_align = True, horizontal_align = False)
                 if plot_original:
                     #uropod, centroid, vertices = lymph._uropod_align(axis = np.array([0, 0, -1]))
                     uropod, centroid, vertices = lymph._uropod_and_horizontal_align()

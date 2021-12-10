@@ -151,7 +151,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         labeled = []
 
 
-        fig = plt.figure()
+        fig = plt.figure(figsize = (30, 30))
         ax1 = fig.add_subplot(141)
         ax2 = fig.add_subplot(142)
         ax3 = fig.add_subplot(143)
@@ -164,10 +164,13 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         self._set_centroid_attributes('run')
 
         for lymph_series in self.cells.values():
+            #linestyle = random.choice(['--', '-.', '-', ':'])
+            linestyle = random.choice(['-'])
+            for lymph in lymph_series:
+                lymph.linestyle = linestyle
+
+        for lymph_series in self.cells.values():
             t_res = lymph_series[0].t_res
-            print(lymph_series[0].idx_cell)
-
-
 
             all_lists = utils_general.split_by_consecutive_frames(lymph_series, attribute='run_uropod', and_nan = True)
 
@@ -182,11 +185,12 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                 color_lim = 0.07
 
                 if lymph_series[0].idx_cell not in labeled:
-                    #ax1.plot(times, runs_sum, label = lymph_series[0].idx_cell, c = (min(1, color/color_lim), 0, 0))
-                    ax1.plot(times, runs_sum, label = lymph_series[0].idx_cell, c = lymph_series[0].color)
+                    ax1.plot(times, runs_sum, label = lymph_series[0].idx_cell, c = (0, min(1, color/color_lim), 0), linestyle = lymph_series[0].linestyle)
+                    #ax1.plot(times, runs_sum, label = lymph_series[0].idx_cell, c = lymph_series[0].color, linestyle = lymph_series[0].linestyle)
                     labeled.append(lymph_series[0].idx_cell)
                 else:
-                    ax1.plot(times, runs_sum, c =(min(1, color/color_lim), 0, 0))
+                    ax1.plot(times, runs_sum, c = (0, min(1, color/color_lim), 0), linestyle = lymph_series[0].linestyle)
+                    #ax1.plot(times, runs_sum, c = lymph_series[0].color, linestyle = lymph_series[0].linestyle)
 
 
 
@@ -203,12 +207,12 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
                     runs_sum = np.nancumsum(runs)
                     times = [t_res*i for i,j in enumerate(runs_sum)]
-                    #ax.plot(times, runs_sum, c = (min(1, color/color_lim), 0, 0))
-                    ax.plot(times, runs_sum, c = i[0].color)
+                    ax.plot(times, runs_sum, c = (0, min(1, color/color_lim), 0), linestyle = lymph_series[0].linestyle)
+                    #ax.plot(times, runs_sum, c = i[0].color, linestyle = lymph_series[0].linestyle)
 
 
 
-        ax1.legend(bbox_to_anchor=(0, 1), loc='upper left')
+        #ax1.legend(bbox_to_anchor=(0, 1), loc='upper left')
         plt.show()
 
 
@@ -223,7 +227,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
             self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = max(min_time_either_side, self.cells[idx_cell][0].mean_time_diff/2))
 
         self._set_run()
-        self._set_centroid_attributes('searching', time_either_side = None,  time_either_side_2 = None)
+        self._set_centroid_attributes('searching', time_either_side = -1)
 
         diffs = []
         UC_uropod_angles = []
@@ -231,10 +235,12 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
         for lymph in utils_general.list_all_lymphs(self):
 
-            if lymph.delta_uropod is not None and lymph.delta_centroid is not None and lymph.ellipsoid_vecs is not None:
+            if lymph.delta_uropod is not None and lymph.delta_centroid is not None and lymph.ellipsoid_vec is not None:
                 if not np.isnan(lymph.mean_uropod[0]):
                     if np.linalg.norm(lymph.delta_uropod) > min_length: # if it's moving enough
+
                         if np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid) < max_diff: # if uropod & centroid are moving in same direction
+
 
                             diffs.append(np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid))
 
@@ -249,7 +255,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                             UC_uropod_angles.append(UC_uropod_angle)
 
                             vec1 = lymph.delta_uropod
-                            vec2 = lymph.ellipsoid_vecs[0]
+                            vec2 = lymph.ellipsoid_vec
                             cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
                             if cos_angle < 0:
                                 vec1 = - lymph.delta_uropod
@@ -257,25 +263,14 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                             ellipsoid_uropod_angle = (360/6.283)*np.arccos(cos_angle)
                             ellipsoid_uropod_angles.append(ellipsoid_uropod_angle)
 
-                            """
-                            plotter = pv.Plotter()
-                            plotter.add_lines(np.array([[0, 0, 0], lymph.delta_uropod]), color = (1, 0, 0))
-                            plotter.add_lines(np.array([[0, 0, 0], lymph.delta_centroid]), color = (0, 1, 0))
-                            plotter.add_mesh(pv.Sphere(radius=max_diff, center=lymph.delta_uropod), color = (1, 0, 0), opacity = 0.5)
-                            plotter.show()
-                            """
+                        """
+                        plotter = pv.Plotter()
+                        plotter.add_lines(np.array([[0, 0, 0], lymph.delta_uropod]), color = (1, 0, 0))
+                        plotter.add_lines(np.array([[0, 0, 0], lymph.delta_centroid]), color = (0, 1, 0))
+                        plotter.add_mesh(pv.Sphere(radius=max_diff, center=lymph.delta_uropod), color = (1, 0, 0), opacity = 0.5)
+                        plotter.show()
+                        """
 
-
-        """
-        fig = plt.figure()
-        ax1 = fig.add_subplot(131)
-        ax2 = fig.add_subplot(132)
-        ax3 = fig.add_subplot(133)
-        ax1.hist(diffs, bins = 30)
-        ax2.hist(UC_uropod_angles, bins = 30)
-        ax3.hist(ellipsoid_uropod_angles, bins = 30)
-        plt.show()
-        """
 
         plt.hist([UC_uropod_angles, ellipsoid_uropod_angles], bins=20, color = ['red', 'blue'])
         plt.show()
@@ -287,19 +282,20 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
         self._set_centroid_attributes('run')
 
-        fig_scat = plt.figure()
-        axes = [fig_scat.add_subplot(7, 1, i+1) for i in range(7)]
-        width_points = [[] for _ in range(7)]
+        fig_scat = plt.figure(figsize = (20, 20))
+        axes = [fig_scat.add_subplot(6, 1, i+1) for i in range(6)]
+        width_points = [[] for _ in range(6)]
         for lymph_series in self.cells.values():
             print(lymph_series[0].idx_cell)
             color = lymph_series[0].color
-            for idx_width, width in enumerate([-1, 20, 40, 60, 80, 100, 120]):
+            for idx_width, width in enumerate([-1, 20, 40, 60, 80, 100]):
 
 
                 self._set_run_uropod_running_means(idx_cell = lymph_series[0].idx_cell, time_either_side = width)
 
                 run_uropod_running_means = [lymph.run_uropod_running_mean if lymph.run_uropod_running_mean is not None else np.nan for lymph in lymph_series]
                 times = [lymph.frame*lymph.t_res for lymph in lymph_series]
+                print('run_uropod_running_means', run_uropod_running_means)
                 axes[idx_width].scatter(times, run_uropod_running_means, s = 5, c = color)
                 #axes[idx_width].set_ylim(bottom=0)
                 width_points[idx_width] += run_uropod_running_means
@@ -310,8 +306,8 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         fig_hist = plt.figure()
         for idx, i in enumerate(width_points):
             i = [j for j in i if not np.isnan(j)]
-            ax = fig_hist.add_subplot(7, 1, idx+1)
-            ax.hist(i, bins = 15, orientation = 'horizontal')
+            ax = fig_hist.add_subplot(6, 1, idx+1)
+            ax.hist(i, bins = 15, orientation = 'horizontal', color = 'black')
             #ax.set_ylim(bottom=0)
             #plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
@@ -371,27 +367,6 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
             for ax in fig.axes:
                 ax.set_ylim(bottom=0)
         plt.show()
-
-
-
-    def plot_RIvector_mean_std(self):
-        """
-        Plot the mean and standard deviation of rotationally-invariant shape descriptor
-        """
-        lymphs = utils_general.list_all_lymphs(self)
-        vectors = np.array([lymph.RI_vector for lymph in lymphs])
-
-
-        vars = np.std(vectors, axis = 0)
-
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 2, 1)
-        ax.bar(range(len(means)), means, color = 'red')
-        ax = fig.add_subplot(1, 2, 2)
-        ax.bar(range(len(vars)), vars, color = 'blue')
-
-        plt.show()
-
 
 
 
@@ -494,79 +469,67 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
         lymphs = utils_general.list_all_lymphs(self)
+
         run_uropods = [lymph.run_uropod for lymph in lymphs if lymph.run_uropod is not None]
         run_centroids = [lymph.run_centroid for lymph in lymphs if lymph.run_centroid is not None]
 
 
-        plt.hist([filter(run_uropods), filter(run_centroids)], bins=30, color = ['red', 'blue'])
+        fig = plt.figure(figsize = (10, 10))
+        ax1 = fig.add_subplot(121)
+        ax2 = fig.add_subplot(122)
+        ax1.hist([run_uropods, run_centroids], bins=30, color = ['red', 'blue'])
+        ax2.hist([filter(run_uropods), filter(run_centroids)], bins=30, color = ['red', 'blue'])
         plt.show()
 
-
-        min_time_either_side = 50
-        for idx_cell in self.cells.keys():
-            self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = max(min_time_either_side, self.cells[idx_cell][0].mean_time_diff/2))
-        self._set_run()
-
-
-        lymphs = utils_general.list_all_lymphs(self)
-        run_uropods = [lymph.run_uropod for lymph in lymphs if lymph.run_uropod is not None]
-        run_centroids = [lymph.run_centroid for lymph in lymphs if lymph.run_centroid is not None]
-
-
-        plt.hist([filter(run_uropods), filter(run_centroids)], bins=30, color = ['red', 'blue'])
-        plt.show()
+        print('run_uropods, std:{}, var:{}'.format(np.std(run_uropods), np.var(run_uropods)))
+        print('run_centroids, std:{}, var:{}'.format(np.std(run_centroids), np.var(run_centroids)))
 
 
 
 
 
 
-    def correlation(self,  attributes, widths):
+    def correlation(self,  attributes):
         """
         Get pearson correlation coefficient between independent and dependent variable
         """
-        for width in widths:
-            self._set_centroid_attributes_to_NONE()
 
-            fig_scatt, fig_r, fig_p = plt.figure(figsize = (5, 6)), plt.figure(), plt.figure()
-            r_values = np.empty((len(attributes), len(attributes)))
-            p_values = np.empty((len(attributes), len(attributes)))
-            r_values[:], p_values[:] = np.nan, np.nan
-            for idx_row, dependent in enumerate(attributes):
-                for idx_col, independent in enumerate(attributes):
-                    if dependent != independent and dependent[:3] != 'pca' and idx_col < idx_row:
+        self._set_pca(n_components=3)
+        self._set_morph_derivs()
+        self._set_centroid_attributes('run')
+        self._set_run_uropod_running_means(time_either_side = 80)
+
+
+
+        fig_scatt, fig_r, fig_p = plt.figure(figsize = (20, 20)), plt.figure(), plt.figure()
+        r_values = np.empty((len(attributes), len(attributes)))
+        p_values = np.empty((len(attributes), len(attributes)))
+        r_values[:], p_values[:] = np.nan, np.nan
+        for idx_row, dependent in enumerate(attributes):
+            for idx_col, independent in enumerate(attributes):
+                if dependent != independent and dependent[:3] != 'pca' and idx_col < idx_row:
+                    if independent[:3] != 'run':
 
                         print(independent, dependent)
 
                         ax = fig_scatt.add_subplot(len(attributes), len(attributes), idx_row*len(attributes)+idx_col+1)
-                        ax.set_xlabel(independent)
-                        ax.set_ylabel(dependent)
-                        if independent[:3] == 'pca' or dependent[:3] == 'pca' :
-                            self._set_pca(n_components=3)
-                        if independent == 'delta_centroid' or dependent == 'delta_centroid' or independent == 'delta_uropod' or dependent == 'delta_uropod':
-                            self._set_centroid_attributes('delta_centroid_uropod')
-                        if independent[:4] == 'spin' or dependent[:4] == 'spin' or  independent == 'angle' or dependent == 'angle':
-                            self._set_centroid_attributes('searching', time_either_side = width)
-                        if independent[:3] == 'run' or dependent[:3] == 'run':
-                            self._set_centroid_attributes('run', time_either_side = width)
-                            lymphs = utils_general.list_all_lymphs(self)
-
-
-                        if independent == 'morph_deriv' or dependent == 'morph_deriv':
-                            self._set_morph_derivs()
+                        #ax.set_xlabel(independent)
+                        #ax.set_ylabel(dependent)
 
                         plot_lymphs = [lymph for lymph_series in self.cells.values() for lymph in lymph_series if getattr(lymph, independent) is not None and  getattr(lymph, dependent) is not None]
                         xs = [getattr(lymph, independent) for lymph in plot_lymphs]
                         ys = [getattr(lymph, dependent)  for lymph in plot_lymphs]
 
+
+
+
+
                         colors = [lymph.color  for lymph in plot_lymphs]
                         result = scipy.stats.linregress(np.array(xs), np.array(ys))
                         ax.scatter(xs, ys, s=1, c = colors)
-                        ax.set_title(str(width))
 
                         model_xs = np.linspace(min(list(xs)), max(list(xs)), 50)
-                        ax.plot(model_xs, [result.slope*i+result.intercept for i in model_xs], c = 'red')
-                        print('{}, slope: {}'.format(width, result.slope))
+                        #ax.plot(model_xs, [result.slope*i+result.intercept for i in model_xs], c = 'red')
                         ax.tick_params(axis="both",direction="in")
                         if idx_row != len(attributes)-1:
                             ax.set_xticks([])
@@ -575,23 +538,19 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
                         r_values[idx_row, idx_col] = result.rvalue
                         p_values[idx_row, idx_col] = result.pvalue
-            fig_scatt.subplots_adjust(hspace=0, wspace=0)
-            ax = fig_r.add_subplot(111)
-            ax.set_title(str(width))
-            r = ax.imshow(r_values, cmap = 'Blues')
-            matplotlib.cm.Blues.set_bad(color='white')
-            ax.axis('off')
-            fig_r.colorbar(r, ax=ax, orientation='horizontal')
-            ax = fig_p.add_subplot(111)
-            ax.set_title(str(width))
-            p = ax.imshow(p_values, cmap = 'Reds')
-            matplotlib.cm.Reds.set_bad(color='white')
-            fig_p.colorbar(p, ax=ax, orientation='horizontal')
-            ax.axis('off')
+        fig_scatt.subplots_adjust(hspace=0, wspace=0)
+        ax = fig_r.add_subplot(111)
+        r = ax.imshow(r_values, cmap = 'Blues')
+        matplotlib.cm.Blues.set_bad(color='white')
+        fig_r.colorbar(r, ax=ax, orientation='horizontal')
+        ax = fig_p.add_subplot(111)
+        p = ax.imshow(p_values, cmap = 'Reds')
+        matplotlib.cm.Reds.set_bad(color='white')
+        fig_p.colorbar(p, ax=ax, orientation='horizontal')
 
 
 
-            plt.show()
+        plt.show()
 
 
     def correlation_annotate(self,  independent, dependent):
@@ -629,6 +588,26 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         ax.set_ylabel(dependent)
 
 
+        def update_annot(ind):
+            pos = sc.get_offsets()[ind["ind"][0]]
+            annot.xy = pos
+            text = "{}".format(" ".join([names[n] for n in ind["ind"]]))
+            annot.set_text(text)
+            #annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
+            annot.get_bbox_patch().set_alpha(0.4)
+
+        def hover(event):
+            vis = annot.get_visible()
+            if event.inaxes == ax:
+                cont, ind = sc.contains(event)
+                if cont:
+                    update_annot(ind)
+                    annot.set_visible(True)
+                    fig.canvas.draw_idle()
+                else:
+                    if vis:
+                        annot.set_visible(False)
+                        fig.canvas.draw_idle()
         annot = ax.annotate("", xy=(0,0), xytext=(20,20),textcoords="offset points",
                     bbox=dict(boxstyle="round", fc="w"),
                     arrowprops=dict(arrowstyle="->"))
@@ -636,13 +615,43 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
 
-        fig.canvas.mpl_connect("motion_notify_event", utils_general.hover)
+        fig.canvas.mpl_connect("motion_notify_event", hover)
         fig2 = plt.figure()
         i = [j for j in i if not np.isnan(j)]
         ax = fig2.add_subplot(1, 1, 1)
         ax.hist(i, bins = 10, orientation = 'horizontal')
 
         plt.show()
+
+
+
+
+    def plot_rotations(self,  time_either_side):
+        self._set_centroid_attributes('searching', time_either_side = time_either_side)
+
+
+        plotter = pv.Plotter(shape=(2, 4), border=False)
+
+
+        for idx, lymphs_plot in enumerate(self.cells.values()):
+            plotter.subplot(0, idx)
+            for idx_plot, lymph in enumerate(lymphs_plot):
+
+
+                vec = lymph.spin_vec
+                if vec is not None:
+                    plotter.add_lines(np.array([np.array([0, 0, 0]), vec]), color = (1, idx_plot/(len(lymphs_plot)-1), 1))
+                    plotter.add_lines(np.array([[0, 0, 0], [0.005, 0, 0]]), color = (0.9, 0.9, 0.9))
+                    plotter.add_lines(np.array([[0, 0, 0], [0, 0.005, 0]]), color = (0.9, 0.9, 0.9))
+                    plotter.add_lines(np.array([[0, 0, 0], [0, 0, 0.005]]), color = (0.9, 0.9, 0.9))
+
+            plotter.subplot(1, idx)
+            for idx_plot, lymph in enumerate(lymphs_plot):
+                vec = lymph.ellipsoid_vec_smoothed
+                if vec is not None:
+                    plotter.add_lines(np.array([-vec, vec]), color = (1, idx_plot/(len(lymphs_plot)-1), 1))
+
+        plotter.show()
 
 
 
@@ -657,6 +666,8 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
         self._set_pca(n_components=3)
         self._set_centroid_attributes('run')
+        self._set_run_uropod_running_means(time_either_side = 80)
+        self._set_searching(time_either_side = 75)
 
 
         all_consecutive_frames = []
@@ -667,33 +678,18 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
             count = 0
             consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
-            prev_values = [None, None, None, None, None, None, None, None, None, None, None, None, None]
+            prev_frame = None
             for idx_lymph, lymph in enumerate(lymph_series):
-                if idx_lymph == 0 or lymph.frame-prev_values[0] == 1:
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2],  lymph.run_uropod)
-                elif lymph.frame-prev_values[0] == 2: #linear interpolation if only 1 frame missing
-
-
-                    staged_list = []
-                    for attribute in ['run_uropod']:
-                        attribute_list = attribute + '_list'
-                        if getattr(consecutive_frames, attribute_list)[-1] is None or getattr(lymph, attribute) is None:
-                            staged = None
-                        else:
-                            staged = (getattr(consecutive_frames, attribute_list)[-1]+getattr(lymph, attribute))/2
-                        staged_list.append(staged)
-
-
-                    consecutive_frames.add(lymph.frame, (consecutive_frames.pca0_list[-1]+lymph.pca[0])/2, (consecutive_frames.pca1_list[-1]+lymph.pca[1])/2, (consecutive_frames.pca2_list[-1]+lymph.pca[2])/2, *staged_list)
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2],  lymph.run_uropod)
+                if idx_lymph == 0 or lymph.frame-prev_frame == 1:
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2],  lymph.run_uropod, lymph.run_uropod_running_mean, lymph.turning)
 
                 else:
                     consecutive_frames.interpolate()
                     all_consecutive_frames.append(consecutive_frames)
                     count += 1
                     consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)
-                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.run_uropod)
-                prev_values = [lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2],  lymph.run_uropod]
+                    consecutive_frames.add(lymph.frame, lymph.pca[0], lymph.pca[1], lymph.pca[2], lymph.run_uropod, lymph.run_uropod_running_mean, lymph.turning)
+                prev_frame = lymph.frame
 
             consecutive_frames.interpolate()
             all_consecutive_frames.append(consecutive_frames)
