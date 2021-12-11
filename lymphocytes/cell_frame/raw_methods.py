@@ -40,9 +40,9 @@ class Raw_Methods:
             surf = pv.PolyData(vertices, self.faces)
         else:
             if self.uropod is not None and with_uropod:
-                pass
-                #plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
-                #plotter.add_mesh(pv.Sphere(radius=1, center=self.centroid), color = (0, 0, 0))
+
+                plotter.add_mesh(pv.Sphere(radius=1, center=self.uropod), color = (1, 0, 0))
+                plotter.add_mesh(pv.Sphere(radius=1, center=self.centroid), color = (0, 0, 0))
 
             surf = pv.PolyData(self.vertices, self.faces)
 

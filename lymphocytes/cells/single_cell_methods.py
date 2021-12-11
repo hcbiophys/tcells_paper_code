@@ -182,7 +182,7 @@ class Single_Cell_Methods:
 
                 mins, maxs = np.min(self.cells[idx_cell][0].vertices, axis = 0), np.max(self.cells[idx_cell][0].vertices, axis = 0)
                 box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
-                lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box)
+                lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box, opacity = 0.5)
 
 
                 #lymph.plotRecon_singleDeg(plotter=plotter, max_l = 1, opacity = 0.5)

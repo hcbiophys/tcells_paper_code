@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.linalg import eig
-
+import matplotlib.pyplot as plt
 
 
 
@@ -83,13 +83,28 @@ def remove_border_nans(time_series):
     return idxs_del, time_series2
 
 
+def move_sympyplot_to_axes(p, ax):
+    backend = p.backend(p)
+    backend.ax = ax
+    backend._process_series(backend.parent._series, ax, backend.parent)
+    backend.ax.spines['right'].set_color('none')
+    backend.ax.spines['bottom'].set_position('zero')
+    backend.ax.spines['top'].set_color('none')
+    plt.close(backend.fig)
+
+
 
 def entropy(T):
     vals, vecs, _ = eig(T,left=True)
+    idx_1 = np.nan
     for i,j in enumerate(vals):
         if abs(j.real-1) <  1e-6 and j.imag == 0:
             idx_1 = i
             break
+    if np.isnan(idx_1):
+        print('-'*300)
+        print('NAN HERE')
+        return np.nan
     vec = vecs[:, idx_1]
     normalized = vec/sum(vec)
     total = 0
@@ -101,6 +116,7 @@ def entropy(T):
                 entropy += el*np.log2(el)
         entropy = -entropy
         total += normalized[row]*entropy
+    return total
     print('total', total)
 
 
@@ -142,11 +158,13 @@ def get_params_from_filename(filename):
 
 
     elif filename[:3] == '150':
-        #mexh_scales = [0.5*i for i in range(2, 14, 2)]
-        #gaus1_scales = [0.4*i for i in range(2, 24, 4)]
-        mexh_scales = [0.5*i for i in range(2, 14, 2)]
-        gaus1_scales = [0.4*i for i in range(2, 30, 5)]
-        print('lengths', len(mexh_scales), len(gaus1_scales))
+        mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
+        gaus1_scales = [0.4*i for i in np.linspace(2, 22, 6)]
+
+
+        #mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
+        #gaus1_scales = [0.4*i for i in np.linspace(2, 27, 6)]
+
         chop = 15
         scales_per_wave = len(mexh_scales)
         inserts = [scales_per_wave+1+scales_per_wave*i for i in range(scales_per_wave)]
