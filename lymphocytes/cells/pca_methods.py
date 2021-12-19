@@ -40,7 +40,8 @@ class PCA_Methods:
             RI_vectors = np.array([lymph.RI_vector for lymph in lymphs])
             self.pca_obj = PCA(n_components = n_components)
             self.pca_obj.fit_transform(RI_vectors)
-            print('SETTING PCS; explained variance ratio: ', self.pca_obj.explained_variance_ratio_)
+            print('setting')
+
 
 
         for lymph in lymphs:
@@ -57,6 +58,9 @@ class PCA_Methods:
         all_pcas_normalized = (pcas - means)/stds
         for idx, lymph in enumerate(lymphs):
             lymph.pca_normalized = all_pcas_normalized[idx, :]
+
+
+        print('Explained variance ratio: ', self.pca_obj.explained_variance_ratio_)
 
 
 
@@ -233,12 +237,14 @@ class PCA_Methods:
             range_ = max_ - min_
 
             for grid in range(grid_size):
+
                 grid_vectors = [] # vectors that could be good for this part of the PC
                 grid_lymphs = []
                 for vector, lymph in zip(vectors, lymphs):
                     to_scatter.append( vector[idx_component])
-                    colors.append(all_colors[int((vector[idx_component] - min_) // (range_/grid_size))])
-                    if int((vector[idx_component] - min_) // (range_/grid_size)) == grid:
+
+
+                    if round((vector[idx_component] - min_) // (range_/grid_size)) == grid:
                         grid_vectors.append(vector)
                         grid_lymphs.append(lymph)
 
@@ -269,10 +275,6 @@ class PCA_Methods:
             plotted_points_all.append(plotted_points)
 
 
-            fig_temp = plt.figure()
-            ax = fig_temp.add_subplot(111)
-            ax.scatter([0 for _ in to_scatter], to_scatter, c = colors)
-            ax.set_title(str(idx_component))
 
         plotter.show(cpos=[0, 1, 0])
         self._scatter_plotted_components(vectors, plotted_points_all)
@@ -299,7 +301,8 @@ class PCA_Methods:
         coords_plotted = []
         for lymph in lymphs:
             #if random.randint(0, 50) == 0:
-            if len([i for i in coords_plotted if np.linalg.norm(lymph.pca_normalized-i) < 0.75]) == 0:
+            if len([i for i in coords_plotted if np.linalg.norm(lymph.pca_normalized-i) < 0.75]) == 0 and not lymph.is_interpolation:
+
                 vertices, faces, uropod = lymph._get_vertices_faces_plotRecon_singleDeg(max_l = max_l, uropod_align = True, horizontal_align = False)
                 if plot_original:
                     #uropod, centroid, vertices = lymph._uropod_align(axis = np.array([0, 0, -1]))
@@ -326,9 +329,9 @@ class PCA_Methods:
                 plotter.add_lines(np.array([[0, -3, 0], [0, 3, 0]]), color = (0, 0, 0))
                 plotter.add_lines(np.array([[0, 0, -3], [0, 0, 3]]), color = (0, 0, 0))
 
-                poly = pv.PolyData(np.array([[3, 0, 0], [0, 3, 0], [0, 0, 3]]))
-                poly["My Labels"] = ['PC 1', 'PC 2', 'PC 3']
-                plotter.add_point_labels(poly, "My Labels", point_size=2, font_size=25)
+                #poly = pv.PolyData(np.array([[3, 0, 0], [0, 3, 0], [0, 0, 3]]))
+                #poly["My Labels"] = ['PC 1', 'PC 2', 'PC 3']
+                #plotter.add_point_labels(poly, "My Labels", point_size=2, font_size=25)
 
                 coords_plotted.append(lymph.pca_normalized)
 

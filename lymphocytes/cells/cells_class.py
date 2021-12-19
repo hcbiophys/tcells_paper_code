@@ -83,6 +83,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                 if os.path.isfile(coeffPathFormat.format(frame)): # if it's within arena and SPHARM-PDM worked
 
                     if np.random.randint(0, keep_every_random) == 0:
+                        #if frame*4.166 <= 480:
                         idx = frames_all.index(frame)
                         if self.uropods:
                             snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
@@ -218,13 +219,14 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
 
 
 
-    def alignments(self, min_length, max_diff, min_time_either_side = 50):
+    def alignments(self, min_length, min_time_either_side = 50):
         """
         Find which axis cells follow when both uropod & centroid move with similar vector
         """
 
         for idx_cell in self.cells.keys():
-            self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = max(min_time_either_side, self.cells[idx_cell][0].mean_time_diff/2))
+            #self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = max(min_time_either_side, self.cells[idx_cell][0].mean_time_diff/2))
+            self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = 100)
 
         self._set_run()
         self._set_centroid_attributes('searching', time_either_side = -1)
@@ -238,8 +240,10 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
             if lymph.delta_uropod is not None and lymph.delta_centroid is not None and lymph.ellipsoid_vec is not None:
                 if not np.isnan(lymph.mean_uropod[0]):
                     if np.linalg.norm(lymph.delta_uropod) > min_length: # if it's moving enough
-
+                        max_diff = np.linalg.norm(lymph.delta_uropod) /2
                         if np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid) < max_diff: # if uropod & centroid are moving in same direction
+
+                            print(lymph.idx_cell)
 
 
                             diffs.append(np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid))
@@ -264,11 +268,14 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                             ellipsoid_uropod_angles.append(ellipsoid_uropod_angle)
 
                         """
+                        mins, maxs = np.min(utils_general.list_all_lymphs(self)[0].vertices, axis = 0), np.max(utils_general.list_all_lymphs(self)[0].vertices, axis = 0)
+                        box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
                         plotter = pv.Plotter()
+                        #lymph.surface_plot(plotter = plotter, opacity = 0.5, box = box)
                         plotter.add_lines(np.array([[0, 0, 0], lymph.delta_uropod]), color = (1, 0, 0))
                         plotter.add_lines(np.array([[0, 0, 0], lymph.delta_centroid]), color = (0, 1, 0))
                         plotter.add_mesh(pv.Sphere(radius=max_diff, center=lymph.delta_uropod), color = (1, 0, 0), opacity = 0.5)
-                        plotter.show()
+                        plotter.show(cpos=[1, 0, 0])
                         """
 
 
@@ -283,12 +290,12 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         self._set_centroid_attributes('run')
 
         fig_scat = plt.figure(figsize = (20, 20))
-        axes = [fig_scat.add_subplot(6, 1, i+1) for i in range(6)]
-        width_points = [[] for _ in range(6)]
+        axes = [fig_scat.add_subplot(3, 1, i+1) for i in range(3)]
+        width_points = [[] for _ in range(3)]
         for lymph_series in self.cells.values():
             print(lymph_series[0].idx_cell)
             color = lymph_series[0].color
-            for idx_width, width in enumerate([-1, 20, 40, 60, 80, 100]):
+            for idx_width, width in enumerate([-1, 50, 100]):
 
 
                 self._set_run_uropod_running_means(idx_cell = lymph_series[0].idx_cell, time_either_side = width)
@@ -306,9 +313,9 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         fig_hist = plt.figure()
         for idx, i in enumerate(width_points):
             i = [j for j in i if not np.isnan(j)]
-            ax = fig_hist.add_subplot(6, 1, idx+1)
+            ax = fig_hist.add_subplot(3, 1, idx+1)
             ax.hist(i, bins = 15, orientation = 'horizontal', color = 'black')
-            #ax.set_ylim(bottom=0)
+            ax.set_yticks([])
             #plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
 
@@ -540,7 +547,9 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                         p_values[idx_row, idx_col] = result.pvalue
         fig_scatt.subplots_adjust(hspace=0, wspace=0)
         ax = fig_r.add_subplot(111)
-        r = ax.imshow(r_values, cmap = 'Blues')
+        r_extreme = np.nanmax(abs(r_values))
+        print(r_values, r_extreme)
+        r = ax.imshow(r_values, cmap = 'PiYG', vmin = -r_extreme, vmax = r_extreme)
         matplotlib.cm.Blues.set_bad(color='white')
         fig_r.colorbar(r, ax=ax, orientation='horizontal')
         ax = fig_p.add_subplot(111)

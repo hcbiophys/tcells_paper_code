@@ -52,9 +52,11 @@ class Centroid_Variable_Methods:
                     if f in frames:
                         uropods.append(dict[f].uropod)
                         centroids.append(dict[f].centroid)
-                if len(uropods) >= len(fs)-1:
+
+                if len(uropods) == len(fs):
                     lymph.mean_uropod = np.mean(np.array(uropods), axis = 0)
                     lymph.mean_centroid = np.mean(np.array(centroids), axis = 0)
+
 
         if len([i for i in lymph_series if i.mean_uropod is None]) == len(lymph_series):
             for lymph in lymph_series:

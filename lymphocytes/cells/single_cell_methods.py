@@ -127,7 +127,7 @@ class Single_Cell_Methods:
 
 
 
-    def plot_orig_series(self, idx_cell, uropod_align, color_by = None, plot_every = 1, plot_flat = True):
+    def plot_orig_series(self, idx_cell, uropod_align, color_by = None, plot_every = 1, plot_flat = False):
         """
         Plot original mesh series, with point at the uropods
         """
@@ -136,6 +136,7 @@ class Single_Cell_Methods:
         lymphs_plot = self.cells[idx_cell][::plot_every]
         #num_cols=int(len(lymphs_plot)/3)+1
         #plotter = pv.Plotter(shape=(3, num_cols), border=False)
+
 
 
 
@@ -155,14 +156,14 @@ class Single_Cell_Methods:
 
 
 
-        num_per = 40
+        num_per = 200
         for idx_start in range(len(lymphs_plot)//num_per + 1):
             lymphs_plot_section = lymphs_plot[idx_start*num_per:idx_start*num_per + num_per]
-            num_cols=int(len(lymphs_plot_section)/3)+1
+            num_cols=int(len(lymphs_plot_section)/2)+1
             if plot_flat:
                 plotter = pv.Plotter(shape=(1, len(lymphs_plot)), border=False)
             else:
-                plotter = pv.Plotter(shape=(3, num_cols), border=False)
+                plotter = pv.Plotter(shape=(2, num_cols), border=False)
 
             for idx_plot, lymph in enumerate(lymphs_plot_section):
 
@@ -171,7 +172,7 @@ class Single_Cell_Methods:
                 else:
                     plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
 
-                plotter.add_text("{}".format((lymph.frame-lymphs_plot[0].frame)*lymph.t_res), font_size=10)
+                plotter.add_text("{}".format(round((lymph.frame-lymphs_plot[0].frame)*lymph.t_res)), font_size=10)
                 #plotter.add_text("{}".format(lymph.frame), font_size=10)
 
 
@@ -181,8 +182,8 @@ class Single_Cell_Methods:
                         color = (1-(getattr(lymph, color_by)-vmin)/(vmax-vmin), 1, 1)
 
                 mins, maxs = np.min(self.cells[idx_cell][0].vertices, axis = 0), np.max(self.cells[idx_cell][0].vertices, axis = 0)
-                box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
-                lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, box = box, opacity = 0.5)
+                #box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
+                lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, opacity = 0.5)
 
 
                 #lymph.plotRecon_singleDeg(plotter=plotter, max_l = 1, opacity = 0.5)
@@ -194,7 +195,7 @@ class Single_Cell_Methods:
 
 
 
-            plotter.show(cpos=[1, 0, 0])
+            plotter.show(cpos=[0, 1, 0])
             #plotter.show(cpos=[0, 0, 1])
 
 
@@ -297,7 +298,8 @@ class Single_Cell_Methods:
                 plotter.add_mesh(surf, color = (1, 1, 1), opacity =  0.5)
             else:
                 plotter.add_mesh(surf, color = color, opacity =  0.5)
-            #plotter.add_mesh(pv.Sphere(radius=1, center=lymph.uropod), color = (1, 0, 0))
+            plotter.add_mesh(pv.Sphere(radius=1, center=lymph.uropod), color = (1, 0, 0))
+            plotter.add_mesh(pv.Sphere(radius=1, center=lymph.centroid), color = (0, 0, 0))
         #box = pv.Box(bounds=(0, 92.7, 0, 52.7, 0, 26.4))
         #box = pv.Box(bounds=(0, 92.7, 0, 82.4, 0, 26.4))
         #plotter.add_mesh(box, style='wireframe')

@@ -158,12 +158,12 @@ def get_params_from_filename(filename):
 
 
     elif filename[:3] == '150':
-        mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
-        gaus1_scales = [0.4*i for i in np.linspace(2, 22, 6)]
-
-
         #mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
-        #gaus1_scales = [0.4*i for i in np.linspace(2, 27, 6)]
+        #gaus1_scales = [0.4*i for i in np.linspace(2, 22, 6)]
+
+
+        mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
+        gaus1_scales = [0.4*i for i in np.linspace(2, 27, 6)]
 
         chop = 15
         scales_per_wave = len(mexh_scales)
