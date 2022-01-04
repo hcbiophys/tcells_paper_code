@@ -131,8 +131,8 @@ def save_curvatures(cells, idx_cells_orig):
 
         curvatures_dict[idx_cell] = zip(frames, curvatures)
 
-        #pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/curvatures/cell_{}.pickle'.format(lymph_series[0].idx_cell),'wb')
-        #pickle.dump(curvatures_dict, pickle_out)
+        pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/curvatures/cell_{}.pickle'.format(lymph_series[0].idx_cell),'wb')
+        pickle.dump(curvatures_dict, pickle_out)
 
         del cells.cells[lymph_series[0].idx_cell]
 
@@ -152,15 +152,14 @@ def get_possible_points(lymph, l_cord):
 
 
 
-
-def get_deltaUC_deltaD0(lymph, possible_points):
+def get_D0s(lymph, possible_points):
     UCs = []
     for point in possible_points:
         UC = np.linalg.norm(lymph.centroid - point)
         UCs.append(UC)
 
     D0s = [(3/2)*UC/np.cbrt(lymph.volume) for UC in UCs]
-    return UCs, D0s
+    return D0s
 
 
 
@@ -202,21 +201,21 @@ def get_mean_time_diff(idx_cell, lymph_series):
 
 
 
-def save_PC_uncertainties(cells):
+def save_PC_uncertainties(cells, idx_cells_orig):
+    D0_percentage_uncertainties = []
     angle_half_error = 6.283/16
 
 
     PC_uncertainties_dict = {}
 
-    for lymph_series in cells.cells.values():
+
+    for idx_cell in idx_cells_orig:
+        lymph_series = cells.cells[idx_cell]
         dict = utils_general.get_frame_dict(lymph_series)
         frames = list(dict.keys())
 
 
-        subsample = int(len(lymph_series)/10)
-
-        mean_D0s = []
-        D0_uncertainties = []
+        pc0_uncertainties, pc1_uncertainties, pc2_uncertainties = [], [], []
         for lymph in lymph_series[::10]:
             if not lymph.is_interpolation:
 
@@ -234,34 +233,43 @@ def save_PC_uncertainties(cells):
                 if len(possible_points) == 0:
                     break
 
+
+                D0s = get_D0s(lymph, possible_points)
+
+                print('HERE', 100*np.std(D0s)/np.mean(D0s))
+                D0_percentage_uncertainties.append(100*np.std(D0s)/np.mean(D0s))
+
+                D0_vec = np.zeros(shape = cells.pca_obj.components_[0].shape)
+                D0_vec[0] = 1
+
+                count = 0
+                for pc_vec, pc_uncertainty_list in zip(cells.pca_obj.components_, [pc0_uncertainties, pc1_uncertainties, pc2_uncertainties]):
+
+                    cos_angle = np.dot(D0_vec, pc_vec)/(np.linalg.norm(D0_vec)*np.linalg.norm(pc_vec))
+                    pc_uncertainty = abs(np.std(D0s)*cos_angle)
+                    pc_uncertainty_list.append(pc_uncertainty)
+
+                    print('pc{} uncertainty:'.format(count), pc_uncertainty)
+                    count += 1
+
+
                 """
                 plotter = pv.Plotter()
-                lymph.surface_plot(plotter=plotter, uropod_align=False)
+                lymph.surface_plot(plotter=plotter, uropod_align=False, with_uropod = False)
                 for point in possible_points:
                     plotter.add_mesh(pv.Sphere(radius=0.05, center=point), color = (0, 0, 1))
                 plotter.show()
                 """
 
-                UCs, D0s = get_deltaUC_deltaD0(lymph, possible_points)
-
-                mean_D0s.append(np.mean(D0s))
-                D0_uncertainties.append(np.std(D0s))
-
-        D0_uncertainty = np.mean(D0_uncertainties)
-        D0_vec = np.zeros(shape = cells.pca_obj.components_[0].shape)
-        D0_vec[0] = 1
-
-        PC_uncertainties = []
-        for idx_pc, pc_vec in enumerate(cells.pca_obj.components_):
-
-            cos_angle = np.dot(D0_vec, pc_vec)/(np.linalg.norm(D0_vec)*np.linalg.norm(pc_vec))
-            PC_uncertainty = abs(D0_uncertainty*cos_angle)
-            PC_uncertainties.append(PC_uncertainty)
-            #print('PC {} uncertainty: '.format(idx_pc), abs(D0_uncertainty*cos_angle))
 
 
-        PC_uncertainties_dict[lymph.idx_cell] = PC_uncertainties
 
+        if len(lymph_series) > 0:
+            PC_uncertainties_dict[lymph_series[0].idx_cell] = [np.mean(i) for i in [pc0_uncertainties, pc1_uncertainties, pc2_uncertainties]]
+
+        del cells.cells[lymph_series[0].idx_cell]
+
+    print('np.mean(D0_percentage_uncertainties)', np.mean(D0_percentage_uncertainties))
 
 
     pickle.dump(PC_uncertainties_dict, open('/Users/harry/OneDrive - Imperial College London/lymphocytes/PC_uncertainties.pickle', 'wb'))

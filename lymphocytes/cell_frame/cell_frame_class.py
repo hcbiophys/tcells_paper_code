@@ -69,8 +69,6 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.RI_vector = None
 
 
-
-
         if coeffPathFormat is not None and uropod is not None:
             self._set_spharm_coeffs(coeffPathFormat.format(int(frame)))
             self._set_vector()
@@ -110,3 +108,4 @@ class Cell_Frame(Raw_Methods, SH_Methods):
         self.uropod_aligned = False # not yet aligned by uropod-centroid vector
 
         self.is_interpolation = False
+        self.insignificant_uropod_motion = False

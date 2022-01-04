@@ -40,12 +40,12 @@ filename = sys.argv[1]
 load_or_save_or_run = sys.argv[2]
 
 
-idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_1_{}'.format(i) for i in range(6) if i != 0] + ['zm_3_3_{}'.format(i) for i in range(8)] + ['zm_3_4_{}'.format(i) for i in range(4)] + ['zm_3_5_2', 'zm_3_6_0']
-colors = [np.array([0.57151656, 0.32208642, 0.79325759]), np.array([0.67739055, 0.82755935, 0.77116142]), np.array([0.0952304 , 0.09013385, 0.98938936]), np.array([0.05764147, 0.98641696, 0.75908016]), np.array([0.97425911, 0.48333032, 0.17135435]), np.array([0.43114909, 0.2235878 , 0.8842425 ]), np.array([0.32933019, 0.5921141 , 0.61633489]), np.array([0.07315546, 0.44819796, 0.16833376]), np.array([0.01532791, 0.73857975, 0.69280004]), np.array([0.67843096, 0.6826372 , 0.08518478]), np.array([0.08110285, 0.79746762, 0.908427  ]), np.array([0.30928829, 0.32599009, 0.42407218]), np.array([0.60985161, 0.36160205, 0.35521415]), np.array([0.47062361, 0.25963724, 0.91398498]), np.array([0.00744883, 0.07700202, 0.16986398]), np.array([0.87592732, 0.75720082, 0.17710782]), np.array([0.59714551, 0.40399573, 0.12145515]), np.array([0.26211748, 0.57891925, 0.28847181]), np.array([0.47409021, 0.04009612, 0.37440976]), np.array([0.01394242, 0.40145539, 0.70053317]), np.array([0.28150027, 0.31116461, 0.84870038]), np.array([0.10455617, 0.91580071, 0.53926957]), np.array([0.79352826, 0.12960295, 0.81574088]), np.array([0.46107105, 0.02359315, 0.45115123]), np.array([0.87501311, 0.29718405, 0.75983003]), np.array([0.54075337, 0.33526137, 0.71694272]), np.array([0.75402239, 0.83224114, 0.72639337]), np.array([0.30155334, 0.83126122, 0.14805019]), np.array([0.99656294, 0.70101507, 0.83437361])]
+idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_1_{}'.format(i) for i in range(6) if i != 0] + ['zm_3_3_{}'.format(i) for i in range(8)] + ['zm_3_4_{}'.format(i) for i in range(4)] + ['zm_3_5_2', 'zm_3_6_0'] + ['zm_3_5_1']
+colors = [np.array([0.57151656, 0.32208642, 0.79325759]), np.array([0.67739055, 0.82755935, 0.77116142]), np.array([0.0952304 , 0.09013385, 0.98938936]), np.array([0.05764147, 0.98641696, 0.75908016]), np.array([0.97425911, 0.48333032, 0.17135435]), np.array([0.43114909, 0.2235878 , 0.8842425 ]), np.array([0.32933019, 0.5921141 , 0.61633489]), np.array([0.07315546, 0.44819796, 0.16833376]), np.array([0.01532791, 0.73857975, 0.69280004]), np.array([0.67843096, 0.6826372 , 0.08518478]), np.array([0.08110285, 0.79746762, 0.908427  ]), np.array([0.30928829, 0.32599009, 0.42407218]), np.array([0.60985161, 0.36160205, 0.35521415]), np.array([0.47062361, 0.25963724, 0.91398498]), np.array([0.00744883, 0.07700202, 0.16986398]), np.array([0.87592732, 0.75720082, 0.17710782]), np.array([0.59714551, 0.40399573, 0.12145515]), np.array([0.26211748, 0.57891925, 0.28847181]), np.array([0.47409021, 0.04009612, 0.37440976]), np.array([0.01394242, 0.40145539, 0.70053317]), np.array([0.28150027, 0.31116461, 0.84870038]), np.array([0.10455617, 0.91580071, 0.53926957]), np.array([0.79352826, 0.12960295, 0.81574088]), np.array([0.46107105, 0.02359315, 0.45115123]), np.array([0.87501311, 0.29718405, 0.75983003]), np.array([0.54075337, 0.33526137, 0.71694272]), np.array([0.75402239, 0.83224114, 0.72639337]), np.array([0.30155334, 0.83126122, 0.14805019]), np.array([0.99656294, 0.70101507, 0.83437361]), np.array([0.99656294, 0.70101507, 0])]
 colors_dict = {i:j for i,j in zip(idx_cells, colors)}
 
 # s,b
-thresh_params_dict = { '150': (7, 20), '150_go':(15, 50)}
+thresh_params_dict = { '150': (7, 20), '150_go':(17, 35)}
 
 
 
@@ -70,11 +70,6 @@ class CWT():
         else:
             self.all_consecutive_frames = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/shape_series.pickle',"rb"))
 
-        for cfs in self.all_consecutive_frames:
-            plt.plot(cfs.run_uropod_list)
-            plt.show()
-        sys.exit()
-
 
 
         if not idx_segment == 'all':
@@ -84,18 +79,6 @@ class CWT():
         self.all_consecutive_frames = [j for i,j in enumerate(self.all_consecutive_frames) if i in idxs_keep]
 
         PC_uncertainties = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/PC_uncertainties.pickle', 'rb'))
-        """
-        first, second, third = [], [], []
-        for key, value in PC_uncertainties.items():
-            first.append(value[0])
-            second.append(value[1])
-            third.append(value[2])
-        print(np.max(first))
-        print(np.max(second))
-        print(np.max(third))
-        sys.exit()
-        """
-
 
 
         for cfs in self.all_consecutive_frames:
@@ -163,7 +146,7 @@ class CWT():
 
 
 
-    def fit_exponentials(self, acfs2):
+    def fit_exponentials(self, acfs):
         def _linear_model(x,  k):
             x = np.array(x)
             return -k*x
@@ -171,45 +154,42 @@ class CWT():
             x = np.array(x)
             return np.exp(-k*x)
 
-        taus = []
-        for idx_attribute, acfs in enumerate(acfs2):
+        taus = [[] for _ in acfs]
+        for idx_attribute, acfs in enumerate(acfs):
 
             #fig = plt.figure()
-            #ax1 = fig.add_subplot(121)
-            #ax2 = fig.add_subplot(122)
 
-            points_fit = []
             for acf in acfs:
+                points_fit = []
                 if not np.isnan(acf[0]):
+                    print(idx_attribute)
                     xs = [i*5 for i,j in enumerate(acf)]
-                    #ax2.plot(xs, acf)
+                    #plt.plot(xs, acf)
 
                     points_fit.append((xs[0], np.log(acf[0])))
                     for idx in range(1, len(acf)-2):
                         if  acf[idx] > 0 and acf[idx] > acf[idx-1] and acf[idx] > acf[idx-2] and acf[idx] > acf[idx+1] and acf[idx] > acf[idx+2]:
                             points_fit.append((xs[idx], np.log(acf[idx])))
 
-            xs_fit = [x for x,y in sorted(points_fit)]
-            ys_fit = [y for x,y in sorted(points_fit)]
-            #ax1.scatter([i[0] for i in points_fit], [i[1] for i in points_fit])
 
+                    xs_fit = [x for x,y in sorted(points_fit)]
+                    ys_fit = [y for x,y in sorted(points_fit)]
 
-            p0 = (0.01)
-            #opt, pcov = curve_fit(_linear_model, xs_fit, ys_fit,  sigma = [0.27**y for y in ys_fit], absolute_sigma=True)
-            opt, pcov = curve_fit(_linear_model, xs_fit, ys_fit)
+                    p0 = (0.01)
+                    #opt, pcov = curve_fit(_linear_model, xs_fit, ys_fit,  sigma = [0.27**y for y in ys_fit], absolute_sigma=True)
+                    opt, pcov = curve_fit(_linear_model, xs_fit, ys_fit)
 
-
-
-            k = opt
-            xs_show = np.linspace(min([i[0] for i in points_fit]), max([i[0] for i in points_fit]), 5000)
-            #ax1.plot(xs_show, _linear_model(xs_show,  k = k))
-
-            #ax2.scatter([i[0] for i in points_fit], [np.exp(i[1]) for i in points_fit])
-            #ax2.plot(xs_show, _exp_model(xs_show,  k = k))
-            tau = 1./k
-            taus.append(tau[0])
-            print('idx_attribute', idx_attribute, 'tau', tau)
-            #plt.show()
+                    k = opt
+                    xs_show = np.linspace(min([i[0] for i in points_fit]), max([i[0] for i in points_fit]), 5000)
+                    #plt.plot(xs_show, _linear_model(xs_show,  k = k))
+                    #plt.scatter([i[0] for i in points_fit], [i[1] for i in np.exp(points_fit)])
+                    #plt.scatter([i[0] for i in points_fit], [i[1] for i in points_fit])
+                    #plt.plot(xs_show, _exp_model(xs_show,  k = k))
+                    tau = 1./k
+                    taus[idx_attribute].append(tau[0])
+                    #plt.show()
+                else:
+                    taus[idx_attribute].append(np.nan)
 
         return taus
 
@@ -218,8 +198,7 @@ class CWT():
     def ACF(self):
 
 
-        acfs1 = [[], [], [], []]
-        acfs2 = [[], [], [], []]
+        acfs = [[], [], [], []]
         colors = ['red', 'blue', 'green',  'black']
 
 
@@ -230,22 +209,14 @@ class CWT():
 
 
         fig_series = plt.figure()
-        ax1 = fig_series.add_subplot(211)
-        ax2 = fig_series.add_subplot(212)
+        ax = fig_series.add_subplot(111)
         for cfs in self.all_consecutive_frames:
 
             for idx_attribute, l in enumerate([cfs.pca0_list, cfs.pca1_list, cfs.pca2_list, cfs.run_uropod_list]):
                 if len(l) > 50:
-                    acf = get_acf(l)
-                    acfs1[idx_attribute].append(np.array(acf))
-                    #ax1.plot([i*5 for i in range(len(l))], [i*(1/np.nanmax(l)) for i in l], c = colors[idx_attribute])
-                    ax1.plot([i*5 for i in range(len(l))], l, c = colors[idx_attribute])
-
                     l = self.interpolate_list(l)
                     l_new  = self.butter_highpass_filter(l,1/400,fs=0.2)
-
-                    #ax2.plot([i*5 for i in range(len(l_new))], [i*(1/np.nanmax(l_new)) for i in l_new], c = colors[idx_attribute])
-                    ax2.plot([i*5 for i in range(len(l_new))], l_new, c = colors[idx_attribute])
+                    ax.plot([i*5 for i in range(len(l_new))], l_new, c = colors[idx_attribute])
                     acf = get_acf(l_new)
 
                     if idx_attribute < 3: # if it's a PC
@@ -255,47 +226,50 @@ class CWT():
                         print(cfs.name, 'attr:{}'.format(idx_attribute), 'signal_std', signal_std, 'PC_uncertainty', PC_uncertainty, 'SNR', SNR)
 
                         if SNR > 2.5:
-                            acfs2[idx_attribute].append(np.array(acf))
+                            acfs[idx_attribute].append(np.array(acf))
                         else:
-                            print('Removing')
-                            acfs2[idx_attribute].append([np.nan])
-                    else:
-                        acfs2[idx_attribute].append(np.array(acf))
+                            print('Not adding')
+                            acfs[idx_attribute].append([np.nan])
+                    elif idx_attribute == 3: # if it's run_uropod
 
 
+                        if cfs.name[:-1] not in ['3_1_1', 'zm_3_1_1', 'zm_3_3_7', 'zm_3_4_0']:
+                            acfs[idx_attribute].append(np.array(acf))
+                        else:
+                            print('Not adding run_uropod')
+                            acfs[idx_attribute].append([np.nan])
 
 
         fig_acf = plt.figure()
-        ax1 = fig_acf.add_subplot(211)
-        ax2 = fig_acf.add_subplot(212)
+        ax = fig_acf.add_subplot(111)
 
-        for idx1 in range(len(acfs1)):
-            for idx2 in range(len(acfs1[idx1])):
-                xs = [i*5 for i in range(len(acfs1[idx1][idx2]))]
-                ys = acfs1[idx1][idx2]
-                ax1.plot(xs, ys, c = colors[idx1])
+        for idx1 in range(len(acfs)):
+            for idx2 in range(len(acfs[idx1])):
+                xs = [i*5 for i in range(len(acfs[idx1][idx2]))]
+                ys = acfs[idx1][idx2]
+                ax.plot(xs, ys, c = colors[idx1])
+                ax.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
 
 
-                xs = [i*5 for i in range(len(acfs2[idx1][idx2]))]
-                ys = acfs2[idx1][idx2]
-                ax2.plot(xs, ys, c = colors[idx1])
-
-        taus = self.fit_exponentials(acfs2)
+        taus = self.fit_exponentials(acfs)
         print('taus', taus)
 
-        fig_taus = plt.figure()
-        ax_taus = fig_taus.add_subplot(111)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
         xs_bars = [1, 2, 3, 4]
-        taus_stop = [123.9283085014516, 151.21828998191617, 204.39533614640436, 134.3447929617356]
-        ax_taus.bar([i+0.2 for i in xs_bars], taus_stop, width=0.4, color = 'blue')
-        ax_taus.bar([i-0.2 for i in xs_bars], taus, width=0.4, color = 'red')
+        taus_stop = np.array([[94.95063674255715, np.nan, 219.89129766150137, 202.11024966716346],
+        [119.67880972287459, 135.35817543105247, 255.30734761466599, 190.12325536488083],
+        [209.6203003574912, np.nan, 180.47003089089924, 366.9536914504547],
+        [108.37914216911506, np.nan, 202.96691138520023, 138.34128013699024]])
 
+        for mode, shift, color in zip([taus, taus_stop], [-0.2, 0.2], ['red', 'blue']):
+            ax.bar([i+shift for i in xs_bars], [np.nanmean(i) for i in mode], width=0.4, color = color, zorder = 0)
+            for idx_attribute in range(len(taus)):
+                ys = mode[idx_attribute]
+                ax.scatter([idx_attribute + 1 + shift for _ in ys], ys, zorder = 1, c = 'black')
 
-
-        ax1.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
-        ax2.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
         plt.show()
-
+        sys.exit()
 
 
 
@@ -526,23 +500,10 @@ class CWT():
         #plt.scatter([c[0] for c in contours], [c[1] for c in contours], s =50, c = 'black', zorder = 1)
 
         for idx in range(len(cfs_xs)):
-            if idx % 20 == 0:
+            if idx % 5 == 0:
                 plt.text(cfs_xs[idx], cfs_ys[idx], str(chop*5 + 5*idx), fontsize = 12)
 
-        """
-        for idx_section in range(1+len(cfs_xs)//num_per_section):
-            section_xs = cfs_xs[num_per_section*idx_section:num_per_section*idx_section+num_per_section]
-            section_ys = cfs_ys[num_per_section*idx_section:num_per_section*idx_section+num_per_section]
-            section_closest_frames = closest_frames[num_per_section*idx_section:num_per_section*idx_section+num_per_section]
-            num = len(section_xs)
-            print('num', num)
 
-
-            for idx in range(num-1):
-                plt.plot(section_xs[idx:idx+2], section_ys[idx:idx+2], c = [idx/(num-1), 0, 0])
-                if idx %2 == 0:
-                    plt.text(section_xs[idx], section_ys[idx], str(section_closest_frames[idx]))
-        """
         plt.xlim(np.min(self.all_embeddings[:, 0])-10, np.max(self.all_embeddings[:, 0])+10)
         plt.ylim(np.min(self.all_embeddings[:, 1])-10, np.max(self.all_embeddings[:, 1])+10)
 
@@ -672,7 +633,7 @@ class CWT():
             plt.imshow(pdf[::-1, :])
             plt.show()
             s_list = [ 15, 17, 19, 21, 23, 25] # ROWS
-            b_list = [  45, 50, 55, 60, 65] # COLUMNS
+            b_list = [ 35, 40, 45, 50, 55] # COLUMNS
             b_list = [b*(np.nanmax(pdf)/255) for b in b_list]
 
             fig_kde = plt.figure()
@@ -847,14 +808,15 @@ class CWT():
         for cfs in cfs_stop:
             cfs.PC_uncertainties = PC_uncertainties[cfs.name[:-1]]
 
+        if attribute_list == 'run_uropod_list':
+            cfs_stop = [cfs for cfs in cfs_stop if cfs.name[:-1] not in ['3_1_1', 'zm_3_1_1', 'zm_3_3_7', 'zm_3_4_0']]
+
 
 
         f_max = 0.02
 
 
         fig = plt.figure()
-        ax1 = fig.add_subplot(121)
-        ax2 = fig.add_subplot(122)
 
         for cfs_all, color in zip([cfs_run, cfs_stop], ['red', 'blue']):
             all_fs = []
@@ -879,18 +841,14 @@ class CWT():
                         if SNR < 2.5:
                             print('Removed')
                             break
-                    p = ax1.plot([i*5 for i in range(len(time_series))], time_series, c = color)
-                    ax1.set_xlim([0, 5*230])
-                    ax1.set_ylim([-0.01, 0.04])
-                    if attribute_list[:3] == 'pca':
-                        ax1.set_ylim([-1, 1])
+
 
                     f, Pxx_den = signal.periodogram(time_series, fs = 1/5, scaling = 'spectrum')
                     f, Pxx_den = f[1:] , Pxx_den[1:]
                     all_fs += list(f)
                     all_Ps += list(Pxx_den)
-                    ax2.scatter(f, np.log10(Pxx_den), c = p[0].get_color(), zorder = 1, s = 2, label = cfs.name)
-                    ax2.set_xlim([0, f_max])
+                    plt.scatter(f, np.log10(Pxx_den), c = color, zorder = 1, s = 2, label = cfs.name)
+                    plt.xlim([0, f_max])
 
 
 
@@ -903,7 +861,7 @@ class CWT():
                 digitized_bin = [j for idx,j in enumerate(all_Ps) if digitized[idx] == bin]
                 means.append(np.nanmean(digitized_bin))
                 stds.append(np.nanstd(digitized_bin))
-            ax2.plot(np.linspace(0, f_max, 10), np.log10(means), zorder = 0, c = color)
+            plt.plot(np.linspace(0, f_max, 10), np.log10(means), zorder = 0, c = color)
             #ax3.errorbar(np.linspace(0, f_max, 10), means, yerr = stds, ls = 'none', ecolor = 'red')
             #ax3.set_ylim([0, 0.4e-5])
 
@@ -929,6 +887,9 @@ def show_cell_series_clustered(codes):
     cwt = CWT(chop = None)
     cwt.set_spectograms()
 
+    all_pc0_series = []
+    all_pc1_series = []
+    all_pc2_series = []
 
     for code in codes:
         idx_segment = code.split('-')[0]
@@ -949,24 +910,29 @@ def show_cell_series_clustered(codes):
         plot_every = int(len(keep)/4)
         cells.plot_orig_series(idx_cell=idx_cell, uropod_align = False, color_by = None, plot_every = plot_every, plot_flat = True)
 
-
-
         cfs = [i for i in cwt.all_consecutive_frames if i.name == idx_segment][0]
-
-
 
         fig = plt.figure()
         gs = gridspec.GridSpec(2, 2)
         ax1, ax2, ax3 = fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, :])
         idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs((j-center_frame)*lymph_t_res) < time_either_side]
 
-        ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca0_list) if i in idxs_plot], color = 'red')
-        ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca1_list) if i in idxs_plot], color = 'blue')
-        ax1.plot([j for i,j in enumerate(cfs.closest_frames) if i in idxs_plot], [j for i,j in enumerate(cfs.pca2_list) if i in idxs_plot], color = 'green')
+        pc0s = [j for i,j in enumerate(cfs.pca0_list) if i in idxs_plot]
+        pc1s = [j for i,j in enumerate(cfs.pca1_list) if i in idxs_plot]
+        pc2s = [j for i,j in enumerate(cfs.pca2_list) if i in idxs_plot]
+
+
+        ax1.plot([5*i for i in list(range(len(pc0s)))], pc0s, color = 'red')
+        ax1.plot([5*i for i in list(range(len(pc1s)))], pc1s, color = 'blue')
+        ax1.plot([5*i for i in list(range(len(pc2s)))], pc2s, color = 'green')
         ax1.set_ylim([-1, 1])
+
+
 
         # show spectogram
         spect = cfs.spectogram[:, idxs_plot]
+        print(center_frame)
+        print(cfs.closest_frames)
 
         vert = cfs.spectogram[:, cfs.closest_frames.index(center_frame)][:, None]
         # CHANGED
@@ -984,19 +950,94 @@ def show_cell_series_clustered(codes):
         plt.show()
 
 
+def plot_local_morphodynamics(codes_all):
+    fig = plt.figure(figsize = (20, 20))
+    linestyles = ['-', '--', ':', '-.', ':']
+    num_cols = (len(codes_all) // 4) + 1
+
+
+
+    cwt = CWT(chop = None)
+    cwt.set_spectograms()
+
+    for idx_motif, codes in enumerate(codes_all):
+        ax = fig.add_subplot(4, num_cols, idx_motif+1)
+
+        all_pc0_series, all_pc1_series, all_pc2_series = [], [], []
+        for code in codes:
+            idx_segment = code.split('-')[0]
+            center_frame = int(code.split('-')[1])
+            idx_cell, letter_keep = idx_segment[:-1], idx_segment[-1]
+            cfs = [i for i in cwt.all_consecutive_frames if i.name == idx_segment][0]
+            idxs_plot = [i for i,j in enumerate(cfs.closest_frames) if abs((j-center_frame)*cfs.t_res_initial) < time_either_side]
+
+            pc0s = [j for i,j in enumerate(cfs.pca0_list) if i in idxs_plot]
+            pc1s = [j for i,j in enumerate(cfs.pca1_list) if i in idxs_plot]
+            pc2s = [j for i,j in enumerate(cfs.pca2_list) if i in idxs_plot]
+            all_pc0_series.append(pc0s)
+            all_pc1_series.append(pc1s)
+            all_pc2_series.append(pc2s)
+
+        for idx in range(len(all_pc0_series)):
+            ax.plot([5*i for i in range(len(all_pc0_series[idx]))], all_pc0_series[idx] - all_pc0_series[idx][len(all_pc0_series[idx])//2], c = 'red', linestyle = linestyles[idx], linewidth = 0.5)
+            ax.plot([5*i for i in range(len(all_pc1_series[idx]))], all_pc1_series[idx] - all_pc1_series[idx][len(all_pc1_series[idx])//2], c = 'blue',  linestyle = linestyles[idx], linewidth = 0.5)
+            ax.plot([5*i for i in range(len(all_pc2_series[idx]))], all_pc2_series[idx] - all_pc2_series[idx][len(all_pc2_series[idx])//2], c = 'green',  linestyle = linestyles[idx], linewidth = 0.5)
+
+        if idx_motif%num_cols != 0:
+            ax.set_yticks([])
+    for ax in fig.axes:
+        ax.set_ylim([-0.6, 0.6])
+    plt.subplots_adjust(wspace = 0, hspace = 0)
+    plt.savefig('/Users/harry/Desktop/local_morphodynamics.png')
+
+
 cwt = CWT(idx_segment = 'all', chop = chop)
 #cwt.COI()
-cwt.ACF()
+#cwt.ACF()
+
+
+# 'zm_3_3_5a-', 'zm_3_5_1a-', 'zm_3_3_4a-', 'zm_3_4_1a-'
+
+#show_cell_series_clustered(['zm_3_4_1a-114'])
+
+
+
+
+"""
+plot_local_morphodynamics([['zm_3_3_3a-40', 'zm_3_4_1a-52', 'zm_3_3_5a-121'],
+                            ['zm_3_3_5a-72', 'zm_3_4_1a-191', 'zm_3_3_4a-132'],
+                            ['zm_3_5_2a-148', '3_1_3a-38', 'zm_3_3_6a-158'],
+                            ['3_1_3a-61', 'zm_3_4_0a-96', '2_1a-95'],
+                            ['zm_3_3_3a-152', 'zm_3_3_5a-28', 'zm_3_6_0a-176'],
+                            ['zm_3_3_6a-185', '3_1_2b-31', 'zm_3_5_2a-82'],
+                            ['zm_3_3_4a-26', '2_1a-41', '3_1_4a-29'],
+                            ['zm_3_3_5a-42', 'zm_3_4_1a-26', 'zm_3_3_4a-110'],
+                            ['zm_3_4_2a-26', 'zm_3_4_0a-35', 'zm_3_6_0a-118'],
+                            ['zm_3_3_5a-136', 'zm_3_3_4a-55', 'zm_3_3_1b-65'],
+                            ['zm_3_4_0a-76', 'zm_3_3_2a-126', '2_1a-71']])
 sys.exit()
-#show_cell_series_clustered(codes = [])
+
+"""
+
+
+plot_local_morphodynamics([['zm_3_4_1a-48', 'zm_3_3_5a-121', 'zm_3_3_5a-176'],
+                            ['zm_3_3_4a-86', 'zm_3_3_5a-26', 'zm_3_3_4a-172'],
+                            ['zm_3_3_4a-136', 'zm_3_3_5a-66', 'zm_3_4_1a-190'],
+                            ['zm_3_5_1a-70','zm_3_5_1a-68',  'zm_3_3_5a-92'],
+                            ['zm_3_3_4a-110', 'zm_3_3_5a-46',  'zm_3_4_1a-25'],
+                            ['zm_3_3_4a-190', 'zm_3_3_4a-155', 'zm_3_4_1a-114']])
+sys.exit()
 
 
 
 
+
+
+"""
 for idx_attribute, attribute_list in enumerate(['pca0_list', 'pca1_list', 'pca2_list', 'run_uropod_list']):
     cwt.run_power_spectrum(attribute_list = attribute_list, idx_attribute = idx_attribute)
 sys.exit()
-
+"""
 
 #cwt.print_freqs()
 
@@ -1014,7 +1055,10 @@ cwt.set_spectograms()
 
 cwt.set_tsne_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename)
 cwt.kde(load_or_save_or_run = load_or_save_or_run, filename = filename, plot = True)
-#cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = None)
+cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = None)
+plt.show()
+
+
 
 
 
@@ -1025,18 +1069,11 @@ cwt.kde(load_or_save_or_run = load_or_save_or_run, filename = filename, plot = T
 #cwt.bar_entropy()
 
 
+
 for cfs in cwt.all_consecutive_frames:
-    if cfs.name == 'zm_3_4_1a':
-        cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = cfs.name)
-
-        plt.show()
-
-
-
-
-
-
-
+    print(cfs.name)
+    cwt.plot_embeddings(load_or_save_or_run = load_or_save_or_run, filename = filename, path_of = cfs.name)
+    plt.show()
 
 
 

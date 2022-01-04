@@ -28,96 +28,67 @@ class Centroid_Variable_Methods:
 
 
     def _set_mean_uropod_and_centroid(self, idx_cell, time_either_side, max_time_either_side = 50):
-        time_either_side = min(time_either_side, max_time_either_side) # lower bound of 100s either side (for e.g. cases when stationary then launches off)
-
-
 
         lymph_series = self.cells[idx_cell]
-
-        times = [(lymph.frame-lymph_series[0].frame)*lymph.t_res for lymph in lymph_series]
-
-        if np.isnan(time_either_side):
+        if time_either_side > max_time_either_side or np.isnan(time_either_side): # insignificant uropod motion, label so we can still include where required, e.g. graph of cumulatives
             for lymph in lymph_series:
-                lymph.mean_uropod = np.array([np.nan, np.nan, np.nan])
-                lymph.mean_centroid = np.array([np.nan, np.nan, np.nan])
-        else:
-            dict = utils_general.get_frame_dict(lymph_series)
-            frames = list(dict.keys())
-            for lymph in lymph_series:
-                frame = lymph.frame
-                fs = [frame-i for i in reversed(range(1, int(time_either_side//lymph.t_res)+1))] + [frame] + [frame+i for i in range(1, int(time_either_side//lymph.t_res)+1)]
-                uropods = []
-                centroids = []
-                for f in fs:
-                    if f in frames:
-                        uropods.append(dict[f].uropod)
-                        centroids.append(dict[f].centroid)
-
-                if len(uropods) == len(fs):
-                    lymph.mean_uropod = np.mean(np.array(uropods), axis = 0)
-                    lymph.mean_centroid = np.mean(np.array(centroids), axis = 0)
+                lymph.insignificant_uropod_motion = True
+            time_either_side = max_time_either_side
 
 
-        if len([i for i in lymph_series if i.mean_uropod is None]) == len(lymph_series):
-            for lymph in lymph_series:
-                lymph.mean_uropod = np.array([np.nan, np.nan, np.nan])
-                lymph.mean_centroid = np.array([np.nan, np.nan, np.nan])
+        dict = utils_general.get_frame_dict(lymph_series)
+        frames = list(dict.keys())
+        for lymph in lymph_series:
+            frame = lymph.frame
+            fs = [frame-i for i in reversed(range(1, int(time_either_side//lymph.t_res)+1))] + [frame] + [frame+i for i in range(1, int(time_either_side//lymph.t_res)+1)]
+            uropods = []
+            centroids = []
+            for f in fs:
+                if f in frames:
+                    uropods.append(dict[f].uropod)
+                    centroids.append(dict[f].centroid)
+
+            if len(uropods) == len(fs):
+                lymph.mean_uropod = np.mean(np.array(uropods), axis = 0)
+                lymph.mean_centroid = np.mean(np.array(centroids), axis = 0)
+
 
 
 
     def _set_run(self, idx_cell = None):
 
-        idx_cells_done = []
-        for idx, lymph_series in self.cells.items():
-            for lymph in lymph_series:
-                if lymph.mean_uropod is not None:
-                    if np.isnan(lymph.mean_uropod[0]): # i.e. run_uropod should be set to 0 as there was no significant movement
-                        set_to = 0
-                        idx_cells_done.append(idx)
-                    else:
-                        set_to = None # otherwise reset
-
-                    lymph.run_uropod = set_to
-                    lymph.delta_uropod = set_to
-                    lymph.run_centroid = set_to
-                    lymph.delta_centroid = set_to
-
-        idx_cells_done = list(set(idx_cells_done))
 
 
         for lymph_series in self.cells.values():
-            if lymph_series[0].idx_cell not in idx_cells_done:
-                if lymph_series[0].idx_cell == idx_cell or idx_cell is None:
-                    dict = utils_general.get_frame_dict(lymph_series)
-                    frames = list(dict.keys())
+            if lymph_series[0].idx_cell == idx_cell or idx_cell is None:
+                dict = utils_general.get_frame_dict(lymph_series)
+                frames = list(dict.keys())
+
+                for lymph in lymph_series:
+
+                    if lymph.mean_centroid is not None and lymph.mean_uropod is not None:
+                        frame_1 = lymph.frame
+                        frame_2 = lymph.frame + 1
+                        if frame_2 in frames and dict[frame_2].mean_centroid is not None and dict[frame_2].mean_uropod is not None:
+                            cbrt_vol_times_t_res = np.cbrt(dict[frame_1].volume)*dict[frame_1].t_res
+                            vec2 = dict[frame_1].mean_centroid - dict[frame_1].mean_uropod
+
+                            vec1 = dict[frame_2].mean_uropod - dict[frame_1].mean_uropod
+                            dict[frame_1].delta_uropod = vec1/cbrt_vol_times_t_res
+                            cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                            run = np.linalg.norm(vec1*cos_angle)
+                            run /= cbrt_vol_times_t_res
+                            run *= np.sign(cos_angle)
+                            dict[frame_1].run_uropod = run
 
 
-
-                    for lymph in lymph_series:
-
-                        if lymph.mean_centroid is not None and lymph.mean_uropod is not None:
-                            frame_1 = lymph.frame
-                            frame_2 = lymph.frame + 1
-                            if frame_2 in frames and dict[frame_2].mean_centroid is not None and dict[frame_2].mean_uropod is not None:
-                                cbrt_vol_times_t_res = np.cbrt(dict[frame_1].volume)*dict[frame_1].t_res
-                                vec2 = dict[frame_1].mean_centroid - dict[frame_1].mean_uropod
-
-                                vec1 = dict[frame_2].mean_uropod - dict[frame_1].mean_uropod
-                                dict[frame_1].delta_uropod = vec1/cbrt_vol_times_t_res
-                                cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
-                                run = np.linalg.norm(vec1*cos_angle)
-                                run /= cbrt_vol_times_t_res
-                                run *= np.sign(cos_angle)
-                                dict[frame_1].run_uropod = run
-
-
-                                vec1 = dict[frame_2].mean_centroid - dict[frame_1].mean_centroid
-                                dict[frame_1].delta_centroid = vec1/cbrt_vol_times_t_res
-                                cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
-                                run = np.linalg.norm(vec1*cos_angle)
-                                run /= cbrt_vol_times_t_res
-                                run *= np.sign(cos_angle)
-                                dict[frame_1].run_centroid = run
+                            vec1 = dict[frame_2].mean_centroid - dict[frame_1].mean_centroid
+                            dict[frame_1].delta_centroid = vec1/cbrt_vol_times_t_res
+                            cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                            run = np.linalg.norm(vec1*cos_angle)
+                            run /= cbrt_vol_times_t_res
+                            run *= np.sign(cos_angle)
+                            dict[frame_1].run_centroid = run
 
 
 

@@ -5,6 +5,7 @@ import numpy as np
 import pyvista as pv
 import pickle
 from scipy.interpolate import UnivariateSpline
+import os
 
 import lymphocytes.utils.general as utils_general
 
@@ -84,11 +85,12 @@ class Single_Cell_Methods:
         """
         Select the uropods if only a few frames are missing (e.g. from getting new data)
         """
+        print('HERE')
 
         self.uropod_dict = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
         lymphs = self.cells[idx_cell]
 
-        for frame in range(130, 173):
+        for frame in range(95, 110):
             del self.uropod_dict[frame]
 
         frames_done = list(self.uropod_dict.keys())
@@ -117,7 +119,7 @@ class Single_Cell_Methods:
                            color='pink', point_size=10,
                            use_mesh=True, show_point=True)
                 #plotter.enable_cell_picking(through=False, callback = self._uropod_callback)
-                plotter.show(cpos=[0, 1, 0])
+                plotter.show(cpos=[1, 0, 0])
 
         pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}_updated.pickle'.format(idx_cell),'wb')
         pickle.dump(self.uropod_dict, pickle_out)
@@ -125,6 +127,59 @@ class Single_Cell_Methods:
 
 
 
+    def show_video(self, idx_cell, color_by = None, save = False):
+        extension = ''
+
+        if not os.path.isdir('/Users/harry/Desktop/lymph_vids/{}{}/'.format(idx_cell, extension)):
+            os.mkdir('/Users/harry/Desktop/lymph_vids/{}{}/'.format(idx_cell, extension))
+
+        cpos = [0, 0, 1]
+        if idx_cell == 'zm_3_3_3' or idx_cell == 'zm_3_6_0':
+            cpos = [1, 0, 0]
+
+
+
+
+        lymph_series = self.cells[idx_cell]
+        mins, maxs = np.min(lymph_series[0].vertices, axis = 0), np.max(lymph_series[0].vertices, axis = 0)
+        box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
+
+        if color_by is not None:
+            vmin, vmax = utils_general.get_color_lims(self, color_by)
+        for lymph in lymph_series:
+            if lymph.vertices is not None:
+                if save:
+                    plotter = pv.Plotter(off_screen=True, notebook = False)
+                else:
+                    plotter = pv.Plotter()
+
+                #lymph.surface_plot(plotter=plotter, uropod_align=False, box = box, with_uropod = True, opacity = 0.5)
+
+                color = (1, 1, 1)
+                if color_by is not None:
+                    if getattr(lymph, color_by) is not None  and not np.isnan(getattr(lymph, color_by)):
+                        if color_by == 'pca1':
+                            color = (1-(getattr(lymph, color_by)-vmin)/(vmax-vmin), 1, 1)
+                        elif color_by == 'pca2':
+                            color = (1, 1, 1-(getattr(lymph, color_by)-vmin)/(vmax-vmin))
+
+                surf = pv.PolyData(lymph.vertices, lymph.faces)
+                plotter.add_mesh(surf, opacity = 0.5, color = color)
+
+                plotter.add_mesh(box, style='wireframe', opacity = 0.5)
+                plotter.add_mesh(pv.Sphere(radius=1, center=lymph.uropod), color = (1, 0, 0))
+                plotter.add_mesh(pv.Sphere(radius=1, center=lymph.centroid), color = (0, 0, 0))
+
+                if save:
+                    plotter.show(screenshot='/Users/harry/Desktop/lymph_vids/{}{}/{}.png'.format(idx_cell, extension, lymph.frame), cpos=cpos)
+                    #print('/Users/harry/Desktop/lymph_vids/{}/{}.png'.format(idx_cell, lymph.frame))
+                else:
+                    plotter.show(cpos=cpos)
+
+
+
+                plotter.close()
+                pv.close_all()
 
 
     def plot_orig_series(self, idx_cell, uropod_align, color_by = None, plot_every = 1, plot_flat = False):
@@ -132,13 +187,9 @@ class Single_Cell_Methods:
         Plot original mesh series, with point at the uropods
         """
 
-
         lymphs_plot = self.cells[idx_cell][::plot_every]
         #num_cols=int(len(lymphs_plot)/3)+1
         #plotter = pv.Plotter(shape=(3, num_cols), border=False)
-
-
-
 
 
         if color_by is not None:
@@ -182,8 +233,8 @@ class Single_Cell_Methods:
                         color = (1-(getattr(lymph, color_by)-vmin)/(vmax-vmin), 1, 1)
 
                 mins, maxs = np.min(self.cells[idx_cell][0].vertices, axis = 0), np.max(self.cells[idx_cell][0].vertices, axis = 0)
-                #box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
-                lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, opacity = 0.5)
+                box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
+                lymph.surface_plot(plotter=plotter, uropod_align=uropod_align, color = color, opacity = 0.5, box = box)
 
 
                 #lymph.plotRecon_singleDeg(plotter=plotter, max_l = 1, opacity = 0.5)
@@ -195,7 +246,7 @@ class Single_Cell_Methods:
 
 
 
-            plotter.show(cpos=[0, 1, 0])
+            plotter.show(cpos=[1, 0, 0])
             #plotter.show(cpos=[0, 0, 1])
 
 
@@ -246,6 +297,7 @@ class Single_Cell_Methods:
 
         for idx_plot, lymph in enumerate(lymphs_plot):
             if lymph.mean_uropod is not None and lymph.mean_centroid is not None:
+                print('h', lymph.frame)
                 plotter.add_lines(np.array([lymph.mean_uropod, lymph.mean_centroid]), color = (1, idx_plot/(len(lymphs_plot)-1), 1))
 
                 plotter.add_mesh(pv.Sphere(radius=0.3, center=lymph.mean_uropod), color = (1, 0, 0))
@@ -257,7 +309,7 @@ class Single_Cell_Methods:
         plotter.show(cpos=[0, 1, 0])
 
         self._set_run()
-        plt.plot([i.run_uropod for i in lymphs_plot])
+        plt.plot([i.frame for i in lymphs_plot], [i.run_uropod for i in lymphs_plot])
         plt.show()
 
 

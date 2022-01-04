@@ -45,6 +45,7 @@ class PCA_Methods:
 
 
         for lymph in lymphs:
+            print(lymph.idx_cell, lymph.frame, lymph.RI_vector)
             lymph.pca = self.pca_obj.transform(lymph.RI_vector.reshape(1, -1))
             lymph.pca = np.squeeze(lymph.pca, axis = 0)
             lymph.pca0 = lymph.pca[0]
@@ -57,57 +58,14 @@ class PCA_Methods:
         stds = np.std(pcas, axis = 0)
         all_pcas_normalized = (pcas - means)/stds
         for idx, lymph in enumerate(lymphs):
-            lymph.pca_normalized = all_pcas_normalized[idx, :]
+            lymph.pca_normalized = all_pcas_normalized[idx, :3]
 
 
+        print('Explained variance: ', self.pca_obj.explained_variance_)
         print('Explained variance ratio: ', self.pca_obj.explained_variance_ratio_)
 
+        #pickle.dump(self.pca_obj, open('/Users/harry/OneDrive - Imperial College London/lymphocytes/pca_obj.pickle', 'wb'))
 
-
-    """
-    def add_cells_set_PCs(self, new_stack_attributes, idx_cells_new):
-        max_l = 15
-        new_stack_attributes_dict = {i[0]:i for i in new_stack_attributes}
-
-        self.cells = {}
-
-        for idx_cell in idx_cells_new:
-
-            (idx_cell, mat_filename, coeffPathFormat, xyz_res, color, t_res) = new_stack_attributes_dict[idx_cell]
-
-            print('idx_cell: {}'.format(idx_cell))
-            lymph_series = []
-
-
-            uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
-
-
-            if idx_cell[:2] == 'zs':
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_single')
-            elif idx_cell[:2] == 'zm':
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='zeiss_many', idx_cell = int(idx_cell[-1]), include_voxels = True)
-            else:
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='not_zeiss', include_voxels = True)
-            for frame in range(int(max(frames_all)+1)):
-
-                if os.path.isfile(coeffPathFormat.format(frame)): # if it's within arena and SPHARM-PDM worked
-
-                    idx = frames_all.index(frame)
-                    snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
-                    #snap = Cell_Frame(mat_filename = mat_filename, frame = frame, coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod  = None,  vertices = vertices_all[idx], faces = faces_all[idx])
-
-                    snap.color = color
-                    snap.t_res = t_res
-                    snap.pca = self.pca_obj.transform(snap.RI_vector.reshape(1, -1))
-                    snap.pca = np.squeeze(snap.pca, axis = 0)
-                    snap.pca0 = snap.pca[0]
-                    snap.pca1 = snap.pca[1]
-                    snap.pca2 = snap.pca[2]
-                    lymph_series.append(snap)
-
-
-            self.cells[idx_cell] = lymph_series
-    """
 
 
     def PC_arrows(self):

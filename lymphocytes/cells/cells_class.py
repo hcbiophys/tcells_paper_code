@@ -67,8 +67,10 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
             lymph_series = []
 
 
-            uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
             self.uropods = uropods_bool
+            if self.uropods:
+                uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
+
 
 
             if idx_cell[:2] == 'zs':
@@ -79,12 +81,11 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                 frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type='not_zeiss', include_voxels = False)
 
             for frame in range(int(max(frames_all)+1)):
-
                 if os.path.isfile(coeffPathFormat.format(frame)): # if it's within arena and SPHARM-PDM worked
-
                     if np.random.randint(0, keep_every_random) == 0:
-                        #if frame*4.166 <= 480:
                         idx = frames_all.index(frame)
+
+
                         if self.uropods:
                             snap = Cell_Frame(mat_filename = mat_filename, frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, max_l = max_l, uropod = np.array(uropods[frames_all[idx]]), vertices = vertices_all[idx], faces = faces_all[idx])
                         else:
@@ -96,12 +97,11 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                         lymph_series.append(snap)
 
 
-
             self.cells[idx_cell] = lymph_series
             print('max_frame: {}'.format(max(frames_all)))
 
 
-        if self.uropods:
+        if self.uropods and keep_every_random == 1:
             self.interoplate_SPHARM()
 
             for idx_cell, lymph_series in self.cells.items():
@@ -112,6 +112,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
             for idx_cell in self.cells.keys():
                 print(idx_cell, ' mean_time_diff: {}'.format(self.cells[idx_cell][0].mean_time_diff))
                 self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = self.cells[idx_cell][0].mean_time_diff/2)
+
 
         self.pca_obj = None
 
@@ -124,6 +125,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         for idx_cell, lymph_series in self.cells.items():
             lymph_series_new = []
             dict = utils_general.get_frame_dict(lymph_series)
+
             frames = list(dict.keys())
             for i in range(int(frames[0]), int(max(frames))+1):
                 if i in frames:
@@ -140,6 +142,19 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                     snap.is_interpolation = True
                     lymph_series_new.append(snap)
             self.cells[idx_cell] = lymph_series_new
+
+
+
+    def blebs(self):
+        fig = plt.figure()
+        for idx_vec in range(15):
+            ax = fig.add_subplot(3, 5, idx_vec + 1)
+            for i, lymph_series in enumerate(self.cells.values()):
+                ys = [lymph.RI_vector[idx_vec] for lymph in lymph_series]
+                xs = [i for _ in ys]
+                ax.scatter(xs, ys)
+        plt.show()
+
 
 
 
@@ -238,45 +253,45 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         for lymph in utils_general.list_all_lymphs(self):
 
             if lymph.delta_uropod is not None and lymph.delta_centroid is not None and lymph.ellipsoid_vec is not None:
-                if not np.isnan(lymph.mean_uropod[0]):
-                    if np.linalg.norm(lymph.delta_uropod) > min_length: # if it's moving enough
-                        max_diff = np.linalg.norm(lymph.delta_uropod) /2
-                        if np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid) < max_diff: # if uropod & centroid are moving in same direction
 
-                            print(lymph.idx_cell)
+                if np.linalg.norm(lymph.delta_uropod) > min_length: # if it's moving enough
+                    max_diff = np.linalg.norm(lymph.delta_uropod) /2
+                    if np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid) < max_diff: # if uropod & centroid are moving in same direction
+
+                        print(lymph.idx_cell)
 
 
-                            diffs.append(np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid))
+                        diffs.append(np.linalg.norm(lymph.delta_uropod - lymph.delta_centroid))
 
-                            vec1 = lymph.delta_uropod
-                            vec2 = lymph.mean_centroid - lymph.mean_uropod
+                        vec1 = lymph.delta_uropod
+                        vec2 = lymph.mean_centroid - lymph.mean_uropod
 
+                        cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                        if cos_angle < 0:
+                            vec1 = - lymph.delta_uropod
                             cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
-                            if cos_angle < 0:
-                                vec1 = - lymph.delta_uropod
-                                cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
-                            UC_uropod_angle = (360/6.283)*np.arccos(cos_angle)
-                            UC_uropod_angles.append(UC_uropod_angle)
+                        UC_uropod_angle = (360/6.283)*np.arccos(cos_angle)
+                        UC_uropod_angles.append(UC_uropod_angle)
 
-                            vec1 = lymph.delta_uropod
-                            vec2 = lymph.ellipsoid_vec
+                        vec1 = lymph.delta_uropod
+                        vec2 = lymph.ellipsoid_vec
+                        cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
+                        if cos_angle < 0:
+                            vec1 = - lymph.delta_uropod
                             cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
-                            if cos_angle < 0:
-                                vec1 = - lymph.delta_uropod
-                                cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
-                            ellipsoid_uropod_angle = (360/6.283)*np.arccos(cos_angle)
-                            ellipsoid_uropod_angles.append(ellipsoid_uropod_angle)
+                        ellipsoid_uropod_angle = (360/6.283)*np.arccos(cos_angle)
+                        ellipsoid_uropod_angles.append(ellipsoid_uropod_angle)
 
-                        """
-                        mins, maxs = np.min(utils_general.list_all_lymphs(self)[0].vertices, axis = 0), np.max(utils_general.list_all_lymphs(self)[0].vertices, axis = 0)
-                        box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
-                        plotter = pv.Plotter()
-                        #lymph.surface_plot(plotter = plotter, opacity = 0.5, box = box)
-                        plotter.add_lines(np.array([[0, 0, 0], lymph.delta_uropod]), color = (1, 0, 0))
-                        plotter.add_lines(np.array([[0, 0, 0], lymph.delta_centroid]), color = (0, 1, 0))
-                        plotter.add_mesh(pv.Sphere(radius=max_diff, center=lymph.delta_uropod), color = (1, 0, 0), opacity = 0.5)
-                        plotter.show(cpos=[1, 0, 0])
-                        """
+                    """
+                    mins, maxs = np.min(utils_general.list_all_lymphs(self)[0].vertices, axis = 0), np.max(utils_general.list_all_lymphs(self)[0].vertices, axis = 0)
+                    box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
+                    plotter = pv.Plotter()
+                    #lymph.surface_plot(plotter = plotter, opacity = 0.5, box = box)
+                    plotter.add_lines(np.array([[0, 0, 0], lymph.delta_uropod]), color = (1, 0, 0))
+                    plotter.add_lines(np.array([[0, 0, 0], lymph.delta_centroid]), color = (0, 1, 0))
+                    plotter.add_mesh(pv.Sphere(radius=max_diff, center=lymph.delta_uropod), color = (1, 0, 0), opacity = 0.5)
+                    plotter.show(cpos=[1, 0, 0])
+                    """
 
 
         plt.hist([UC_uropod_angles, ellipsoid_uropod_angles], bins=20, color = ['red', 'blue'])
@@ -303,7 +318,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
                 run_uropod_running_means = [lymph.run_uropod_running_mean if lymph.run_uropod_running_mean is not None else np.nan for lymph in lymph_series]
                 times = [lymph.frame*lymph.t_res for lymph in lymph_series]
                 print('run_uropod_running_means', run_uropod_running_means)
-                axes[idx_width].scatter(times, run_uropod_running_means, s = 5, c = color)
+                axes[idx_width].scatter(times, run_uropod_running_means, s = 1, c = color)
                 #axes[idx_width].set_ylim(bottom=0)
                 width_points[idx_width] += run_uropod_running_means
 
@@ -684,6 +699,7 @@ class Cells(Single_Cell_Methods, PCA_Methods, Centroid_Variable_Methods):
         alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
         for idx_cell, lymph_series in self.cells.items():
+            print('Gathering',  idx_cell)
 
             count = 0
             consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = lymph_series[0].t_res)

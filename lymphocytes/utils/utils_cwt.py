@@ -120,6 +120,9 @@ def entropy(T):
     print('total', total)
 
 
+
+
+
 def get_params_from_filename(filename):
 
     if filename[:2] == '30':
@@ -158,16 +161,16 @@ def get_params_from_filename(filename):
 
 
     elif filename[:3] == '150':
-        #mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
-        #gaus1_scales = [0.4*i for i in np.linspace(2, 22, 6)]
+        gaus1_scales = [0.4*i for i in np.linspace(2, 22, 6)]
+
 
 
         mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
-        gaus1_scales = [0.4*i for i in np.linspace(2, 27, 6)]
+        #gaus1_scales = [0.4*i for i in np.linspace(2, 27, 6)]
 
         chop = 15
         scales_per_wave = len(mexh_scales)
-        inserts = [scales_per_wave+1+scales_per_wave*i for i in range(scales_per_wave)]
+        inserts = [scales_per_wave+(scales_per_wave+1)*i for i in range(scales_per_wave)]
         time_either_side = 75
         min_length = 15
 
