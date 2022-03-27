@@ -39,8 +39,6 @@ all_run_stop = sys.argv[1]
 idx_cell = None
 
 
-print(utils_general.cell_idxs_conversion)
-sys.exit()
 
 
 
