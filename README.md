@@ -3,18 +3,18 @@
 
 # Morphology analysis (Shape descriptor, PCA etc.)
 
-In all cases, run in scripts:\
+In all cases, run the following command, while in the *scripts* folder, and uncomment the required function (details below):\
 *python3 main.py all_run_stop*\
-all_run_stop can be all, run, or stop and these correspond to including all cells, the long videos from the run mode, and the long videos from the stop mode, respectively.
+Note: *all_run_stop* can be all, run, or stop and these correspond to including all cells, the long videos from the run mode, and the long videos from the stop mode, respectively.
 
-Uncomment the required function within main.py to run it
+Uncomment the required function within *main.py* to run it
 
 
 ## Single Cell Functions
 Running functions with a single cell video (for example, plotting its time series)
-For the single cell functions, change *idx_cell = None* in main.py from *None* to the required cell code (the possible codes are shown in main.py)
+For the single cell functions, change *idx_cell = None* in main.py from *None* to the required cell code (the possible codes are shown in *main.py*)
 
-* To plot how increasing the number of spherical harmonics (by including more degrees, l) decreases the smoothing (Fig. 1d), uncomment the function:\
+* (Fig. 1d) To plot how increasing the number of spherical harmonics (by including more degrees, l) decreases the smoothing, uncomment the function:\
 *cells.plot_l_truncations(idx_cell=idx_cell)*
 
 * To plot the subsampled frames in a video, uncomment the function:\
@@ -43,13 +43,13 @@ Running functions using many cell videos (for example, plotting attributes acros
 * To plot the histogram comparing uropod-centroid (UC) axis and ellipsoid axis (Supplementary Fig. 4b), uncomment the function:\
 *cells.alignments(min_length = 0.0025)*
 
-* To plot the histograms of speed_uropod and speed_centroid (Supplementary Fig. 4d), uncomment the function:\
+* (Supplementary Fig. 4d) To plot the histograms of speed_uropod and speed_centroid, uncomment the function:\
 *cells.speeds_histogram()*
 
 * To plot the cumulative retraction speeds (i.e. speed_uropod), as in Fig. 3b, uncomment the function:
 *cells.plot_cumulatives()*
 
-* To plot the figure showing the emergence of bimodal run-and-stop behaviour (Fig. 3d), uncomment the function:\
+* (Fig. 3d) To plot the figure showing the emergence of bimodal run-and-stop behaviour, uncomment the function:\
 *cells.bimodality_emergence()*
 
 * To plot cell surfaces sampled over the PCs, uncomment the function:\
@@ -59,7 +59,7 @@ Here, plot_original = True / False is for Supplementary Fig. 2a (original surfac
 * To sample the min, mean and max along each PC in the spherical harmonic descriptor space (Fig. 2c), uncomment the function:\
 *cells.PC_sampling()*
 
-* To plot cell surfaces at their locations in the 3D PCA shape space (Fig. 2d), or 'morphospace', uncomment the function:\
+* (Fig. 2d) To plot cell surfaces at their locations in the 3D PCA shape space, or 'morphospace', uncomment the function:\
 *cells.plot_PC_space(plot_original = False, max_l = 3)*\
 Here, plot_original = True / False is for Supplementary Fig. 1a (original surfaces) and Fig. 2b (using truncated, i.e. smoothed, representations). max_l gives the degree of truncation for the spherical harmonic descriptor.
 
@@ -75,10 +75,10 @@ Note: pairwise correlations between the PCs will show up blank.
 * To scatter some attributes (e.g. the examples given) such that hovering over a point gives the cell ID and frame number, uncomment the function:\
 *cells.scatter_annotate('speed_uropod', 'speed_centroid')*
 
-* To plot how dimensionality varies along PC 1 (Supplementary Fig. 2d), the transition from spherical to polarised, uncomment the function:\
+* (Supplementary Fig. 2d) To plot how dimensionality varies along PC 1, the transition from spherical to polarised, uncomment the function:\
 *cells.expl_var_bar_plot()*
 
-* To plot the difference in spherical harmonic spectra between subpopulations across PC 1 (Supplementary Fig. 2e), uncomment the function:\
+* (Supplementary Fig. 2e) To plot the difference in spherical harmonic spectra between subpopulations across PC 1, uncomment the function:\
 *#cells.low_high_PC1_vecs()*
 
 
