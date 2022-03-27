@@ -3,16 +3,15 @@
 
 # Morphology analysis (Shape descriptor, PCA etc.)
 
-In all cases, run the following command, while in the *scripts* folder, and uncomment the required function (details below):\
-*python3 main.py all_run_stop*\
+In all cases, run the following command while in the *scripts* folder, and uncomment the required function (details below):\
+*python3 main_morphology.py all_run_stop*\
 Note: *all_run_stop* can be all, run, or stop and these correspond to including all cells, the long videos from the run mode, and the long videos from the stop mode, respectively.
 
-Uncomment the required function within *main.py* to run it
+Uncomment the required function within *main_morphology.py* to run it
 
 
 ## Single Cell Functions
-Running functions with a single cell video (for example, plotting its time series)
-For the single cell functions, change *idx_cell = None* in main.py from *None* to the required cell code (the possible codes are shown in *main.py*)
+Running functions with a single cell video (for example, plotting its time series). Note: for these functions, change *idx_cell = None* in *main_morphology.py* from *None* to the required cell code (the possible codes are shown in *main_morphology.py*).
 
 * (Fig. 1d) To plot how increasing the number of spherical harmonics (by including more degrees, l) decreases the smoothing, uncomment the function:\
 *cells.plot_l_truncations(idx_cell=idx_cell)*
@@ -38,7 +37,7 @@ Here, opacity determines the translucency, and every 40 frames are plotted.
 
 
 ## Many Cell Functions
-Running functions using many cell videos (for example, plotting attributes across all cells)
+Running functions using many cell videos (for example, plotting attributes across all cells).
 
 * To plot the histogram comparing uropod-centroid (UC) axis and ellipsoid axis (Supplementary Fig. 4b), uncomment the function:\
 *cells.alignments(min_length = 0.0025)*
