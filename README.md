@@ -14,8 +14,7 @@ Uncomment the required function within main.py to run it
 Running functions with a single cell video (for example, plotting its time series)
 For the single cell functions, change *idx_cell = None* in main.py from *None* to the required cell code (the possible codes are shown in main.py)
 
-* To plot how increasing the number of spherical harmonics (by including more degrees, l) decreases the smoothing (Fig. 1d), uncomment the function:
-
+* To plot how increasing the number of spherical harmonics (by including more degrees, l) decreases the smoothing (Fig. 1d), uncomment the function:\
 *cells.plot_l_truncations(idx_cell=idx_cell)*
 
 * To plot the subsampled frames in a video, uncomment the function:

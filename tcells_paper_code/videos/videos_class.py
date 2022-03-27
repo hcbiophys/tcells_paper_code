@@ -25,17 +25,17 @@ from sklearn.decomposition import PCA
 from pyvista import examples
 import time
 
-from lymphocytes.videos.pca_methods import PCA_Methods
-from lymphocytes.videos.single_cell_methods import Single_Cell_Methods
-from lymphocytes.videos.motion_methods import Motion_Methods
-from lymphocytes.frames.frame_class import Frame
-from lymphocytes.morphodynamics.consecutive_frames_class import Consecutive_Frames
-from lymphocytes.videos.curvature_lists import all_lists
-from lymphocytes.videos.uncertainties import save_PC_uncertainties, get_tau_sig, save_curvatures
+from tcells_paper_code.videos.pca_methods import PCA_Methods
+from tcells_paper_code.videos.single_cell_methods import Single_Cell_Methods
+from tcells_paper_code.videos.motion_methods import Motion_Methods
+from tcells_paper_code.frames.frame_class import Frame
+from tcells_paper_code.morphodynamics.consecutive_frames_class import Consecutive_Frames
+from tcells_paper_code.videos.curvature_lists import all_lists
+from tcells_paper_code.videos.uncertainties import save_PC_uncertainties, get_tau_sig, save_curvatures
 
-import lymphocytes.utils.disk as utils_disk
-import lymphocytes.utils.plotting as utils_plotting
-import lymphocytes.utils.general as utils_general
+import tcells_paper_code.utils.disk as utils_disk
+import tcells_paper_code.utils.plotting as utils_plotting
+import tcells_paper_code.utils.general as utils_general
 
 
 class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
@@ -72,12 +72,12 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
 
             self.uropods = uropods_bool
             if self.uropods:
-                uropods = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/uropods/cell_{}.pickle'.format(idx_cell), "rb"))
+                uropods = pickle.load(open('../data/uropods/{}.pickle'.format(idx_cell), "rb"))
 
-            if idx_cell[:2] == 'zm':
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, idx_cell = int(idx_cell[-1]), include_voxels = False)
+            if int(idx_cell[4:]) > 15:
+                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type = 'zeiss', idx_cell = int(idx_cell[-1]), include_voxels = False)
             else:
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename,  include_voxels = False)
+                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type = 'not_zeiss',  include_voxels = False)
 
             for idx_frame in range(int(max(frames_all)+1)):
                 if os.path.isfile(coeffPathFormat.format(idx_frame)): # if it's within arena and SPHARM-PDM worked
@@ -624,5 +624,5 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
             consecutive_frames.interpolate()
             all_consecutive_frames.append(consecutive_frames)
 
-        pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/{}.pickle'.format(save_name),'wb')
+        pickle_out = open('../data/time_series/{}.pickle'.format(save_name),'wb')
         pickle.dump(all_consecutive_frames, pickle_out)

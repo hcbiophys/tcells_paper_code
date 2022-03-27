@@ -4,12 +4,3 @@ lymphocytes.egg-info/PKG-INFO
 lymphocytes.egg-info/SOURCES.txt
 lymphocytes.egg-info/dependency_links.txt
 lymphocytes.egg-info/top_level.txt
-lymphocytes/data/__init__.py
-lymphocytes/lymph_serieses/__init__.py
-lymphocytes/lymph_serieses/lymph_serieses_class.py
-lymphocytes/lymph_serieses/pca_methods.py
-lymphocytes/lymph_serieses/single_cell_methods.py
-lymphocytes/lymph_snap/SH_methods.py
-lymphocytes/lymph_snap/__init__.py
-lymphocytes/lymph_snap/lymph_snap_class.py
-lymphocytes/lymph_snap/raw_methods.py

@@ -1,20 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import lymphocytes.utils.general as utils_general
+import tcells_paper_code.utils.general as utils_general
 from sklearn.decomposition import PCA
 import sys
 from sklearn.preprocessing import StandardScaler
 import copy
 import pyvista as pv
 import random
-import lymphocytes.utils.general as utils_general
+import tcells_paper_code.utils.general as utils_general
 import pickle
-import lymphocytes.utils.disk as utils_disk
+import tcells_paper_code.utils.disk as utils_disk
 import os
 from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 
-from lymphocytes.frames.frame_class import Frame
+from tcells_paper_code.frames.frame_class import Frame
 
 np.set_printoptions(threshold=sys.maxsize)
 

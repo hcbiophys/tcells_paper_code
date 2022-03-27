@@ -2,7 +2,21 @@ import numpy as np
 from scipy.linalg import eig
 import matplotlib.pyplot as plt
 
+from scipy import interpolate
 
+
+def _interpolate_list(l):
+    """
+    Linearly interpolate list l
+    """
+
+    if len([i for i in l if np.isnan(i)]) > 0: # if it contains nans
+        f = interpolate.interp1d([i*5  for i,j in enumerate(l) if not np.isnan(j)], [j  for i,j in enumerate(l) if not np.isnan(j)])
+        to_model = [i*5 for i in range(len(l))]
+        idxs_del, _ = remove_border_nans(l)
+        to_model = [j for i,j in enumerate(to_model) if i not in idxs_del]
+        l = f(to_model)
+    return l
 
 def coords_to_kdes(all_xs, all_ys, xs, ys, inverse = False):
     """

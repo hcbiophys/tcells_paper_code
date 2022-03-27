@@ -14,5 +14,6 @@ daryan_videos/
 **/surface_segmentations
 
 
-backup/
+**/*backup*/
 ellipsoids/
+*cell_indices_conversion*

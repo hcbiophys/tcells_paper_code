@@ -5,9 +5,9 @@ from mayavi import mlab
 from scipy.special import sph_harm
 import pyvista as pv
 pv.set_plot_theme("document")
-from lymphocytes.dataloader.all import stack_attributes_all
-from lymphocytes.videos.videos_class import Videos
-import lymphocytes.utils.general as utils_general
+from tcells_paper_code.dataloader.all import stack_attributes_all
+from tcells_paper_code.videos.videos_class import Videos
+import tcells_paper_code.utils.general as utils_general
 
 def visualise_spherical_harmonics():
     """

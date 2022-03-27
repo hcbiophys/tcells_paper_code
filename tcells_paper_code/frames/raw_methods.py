@@ -9,9 +9,9 @@ import pickle
 from scipy.spatial.transform import Rotation
 from scipy.ndimage import measurements
 
-import lymphocytes.utils.disk as utils_disk
-import lymphocytes.utils.plotting as utils_plotting
-import lymphocytes.utils.general as utils_general
+import tcells_paper_code.utils.disk as utils_disk
+import tcells_paper_code.utils.plotting as utils_plotting
+import tcells_paper_code.utils.general as utils_general
 
 class Raw_Methods:
     """

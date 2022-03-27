@@ -6,11 +6,6 @@ import random
 
 
 
-cell_idxs_conversion = {'CELL1':'2_1', 'CELL2':'2_2', 'CELL3':'2_3', 'CELL4':'2_4', 'CELL5':'2_5','CELL6':'2_6', 'CELL7':'2_7',
-                        'CELL8':'2_8', 'CELL9':'2_9', 'CELL10':'3_1_0', 'CELL11':'3_1_1', 'CELL12':'3_1_2',  'CELL13':'3_1_3',
-                        'CELL14':'3_1_4',  'CELL15':'3_1_5', 'CELL16':'zm_3_3_0', 'CELL17':'zm_3_3_1', 'CELL18':'zm_3_3_2', 'CELL19':'zm_3_3_3', 'CELL20':'zm_3_3_4', 'CELL21':'zm_3_3_5',
-                        'CELL22':'zm_3_3_6', 'CELL23':'zm_3_3_7', 'CELL24':'zm_3_4_0', 'CELL25':'zm_3_4_1','CELL26':'zm_3_4_2', 'CELL27':'zm_3_4_3', 'CELL28':'zm_3_5_0', 'CELL29':'zm_3_5_1', 'CELL30':'zm_3_5_2', 'CELL31':'zm_3_6_0'}
-
 
 
 def split_by_consecutive_frames(video, attribute, and_nan = False):

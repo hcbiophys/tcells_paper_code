@@ -10,9 +10,9 @@ import os
 from scipy.linalg import eig
 import math
 
-import lymphocytes.utils.plotting as utils_plotting
-import lymphocytes.utils.general as utils_general
-import lymphocytes.utils.disk as utils_disk
+import tcells_paper_code.utils.plotting as utils_plotting
+import tcells_paper_code.utils.general as utils_general
+import tcells_paper_code.utils.disk as utils_disk
 
 
 class Motion_Methods:

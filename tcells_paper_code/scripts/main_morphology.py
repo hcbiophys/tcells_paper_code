@@ -20,14 +20,14 @@ import pickle
 import random
 
 
-from lymphocytes.dataloader.all import stack_attributes_all
-from lymphocytes.dataloader.stereotypical import stack_attributes_stereotypical
+from tcells_paper_code.dataloader.all import stack_attributes_all
+from tcells_paper_code.dataloader.stereotypical import stack_attributes_stereotypical
 
 
 
-from lymphocytes.videos.videos_class import Videos
-import lymphocytes.utils.general as utils_general
-from lymphocytes.videos.uncertainties import save_PC_uncertainties, save_curvatures
+from tcells_paper_code.videos.videos_class import Videos
+import tcells_paper_code.utils.general as utils_general
+from tcells_paper_code.videos.uncertainties import save_PC_uncertainties, save_curvatures
 
 
 """
@@ -40,16 +40,14 @@ idx_cell = None
 
 
 
-
-
 if all_run_stop == 'all':
-    idx_cells =  ['2_{}'.format(i) for i in range(1, 10)] + ['3_1_{}'.format(i) for i in range(6) if i != 0] + ['zm_3_3_{}'.format(i) for i in range(8)] + ['zm_3_4_{}'.format(i) for i in range(4)] + ['zm_3_5_2', 'zm_3_6_0'] + ['zm_3_5_1']
-    stack_attributes = stack_attributes_2 + stack_attributes_3
+    idx_cells = ['CELL1', 'CELL2', 'CELL3', 'CELL4', 'CELL5', 'CELL6', 'CELL7', 'CELL8', 'CELL9', 'CELL11', 'CELL12', 'CELL13', 'CELL14', 'CELL15', 'CELL16', 'CELL17', 'CELL18', 'CELL19', 'CELL20', 'CELL21', 'CELL22', 'CELL23', 'CELL24', 'CELL25', 'CELL26', 'CELL27',  'CELL29', 'CELL30', 'CELL31']
+    stack_attributes = stack_attributes_all
 elif all_run_stop == 'run':
-    idx_cells = ['zm_3_3_5', 'zm_3_5_1', 'zm_3_3_4', 'zm_3_4_1']
+    idx_cells = ['CELL21', 'CELL29', 'CELL20', 'CELL25']
     stack_attributes = stack_attributes_stereotypical
 elif all_run_stop == 'stop':
-    idx_cells = ['2_1', 'zm_3_4_0', 'zm_3_3_3', 'zm_3_6_0']
+    idx_cells = ['CELL1', 'CELL24', 'CELL19', 'CELL31']
     stack_attributes = stack_attributes_stereotypical
 
 
@@ -59,6 +57,10 @@ cells = Videos(stack_attributes, cells_model = idx_cells, uropods_bool = True)
 
 cells.pca_obj = pca_obj_cells_all # load the PCA object (so can use PCs computed across all cells even if loading only 1 cell)
 cells._set_pca(n_components=3)
+
+
+cells.gather_time_series('shape_series_stop')
+sys.exit()
 
 """
 SINGLE CELL METHODS

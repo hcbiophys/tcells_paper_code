@@ -3,7 +3,6 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import sys
 import pickle
-from scipy import signal
 import pywt
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KernelDensity
@@ -14,15 +13,13 @@ import matplotlib.gridspec as gridspec
 import copy
 import cv2
 import itertools
-from scipy import interpolate
-from scipy import signal
-import lymphocytes.utils.utils_cwt as utils_cwt
-import lymphocytes.utils.general as utils_general
+import tcells_paper_code.utils.utils_cwt as utils_cwt
+import tcells_paper_code.utils.general as utils_general
 
 
 
-from lymphocytes.dataloader.all import stack_attributes_all
-from lymphocytes.videos.videos_class import Videos
+from tcells_paper_code.dataloader.all import stack_attributes_all
+from tcells_paper_code.videos.videos_class import Videos
 
 
 filename = sys.argv[1]
@@ -30,13 +27,14 @@ load_or_save_or_run = sys.argv[2]
 
 
 idx_cells =  ['2_{}'.format(i) for i in range(10)] + ['3_1_{}'.format(i) for i in range(6) if i != 0] + ['zm_3_3_{}'.format(i) for i in range(8)] + ['zm_3_4_{}'.format(i) for i in range(4)] + ['zm_3_5_2', 'zm_3_6_0'] + ['zm_3_5_1']
+
 colors = [np.array([0.57151656, 0.32208642, 0.79325759]), np.array([0.67739055, 0.82755935, 0.77116142]), np.array([0.0952304 , 0.09013385, 0.98938936]), np.array([0.05764147, 0.98641696, 0.75908016]), np.array([0.97425911, 0.48333032, 0.17135435]), np.array([0.43114909, 0.2235878 , 0.8842425 ]), np.array([0.32933019, 0.5921141 , 0.61633489]), np.array([0.07315546, 0.44819796, 0.16833376]), np.array([0.01532791, 0.73857975, 0.69280004]), np.array([0.67843096, 0.6826372 , 0.08518478]), np.array([0.08110285, 0.79746762, 0.908427  ]), np.array([0.30928829, 0.32599009, 0.42407218]), np.array([0.60985161, 0.36160205, 0.35521415]), np.array([0.47062361, 0.25963724, 0.91398498]), np.array([0.00744883, 0.07700202, 0.16986398]), np.array([0.87592732, 0.75720082, 0.17710782]), np.array([0.59714551, 0.40399573, 0.12145515]), np.array([0.26211748, 0.57891925, 0.28847181]), np.array([0.47409021, 0.04009612, 0.37440976]), np.array([0.01394242, 0.40145539, 0.70053317]), np.array([0.28150027, 0.31116461, 0.84870038]), np.array([0.10455617, 0.91580071, 0.53926957]), np.array([0.79352826, 0.12960295, 0.81574088]), np.array([0.46107105, 0.02359315, 0.45115123]), np.array([0.87501311, 0.29718405, 0.75983003]), np.array([0.54075337, 0.33526137, 0.71694272]), np.array([0.75402239, 0.83224114, 0.72639337]), np.array([0.30155334, 0.83126122, 0.14805019]), np.array([0.99656294, 0.70101507, 0.83437361]), np.array([0.99656294, 0.70101507, 0])]
 colors_dict = {i:j for i,j in zip(idx_cells, colors)}
 
 
 gaus1_scales = [0.4*i for i in np.linspace(2, 22, 6)]
-mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
 #gaus1_scales = [0.4*i for i in np.linspace(2, 27, 6)]
+mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
 chop = 15
 scales_per_wave = len(mexh_scales)
 inserts = [scales_per_wave+(scales_per_wave+1)*i for i in range(scales_per_wave)]
@@ -114,7 +112,7 @@ class CWT():
                 print(cfs.name)
                 ax = fig.add_subplot(4, 1, count+1)
                 for var_list, color in zip([cfs.pca0_list, cfs.pca1_list, cfs.pca2_list, cfs.speed_uropod_list], ['red', 'blue', 'green', 'black']):
-                    var_list = self._interpolate_list(var_list)
+                    var_list = utils_cwt._interpolate_list(var_list)
                     if color == 'black':
                         var_list = [i*100 for i in var_list] # scale for visualisation
                     ax.plot([i*5 for i,j in enumerate(var_list)], var_list, c = color)
@@ -125,22 +123,6 @@ class CWT():
         plt.show()
         plt.subplots_adjust(hspace = 0)
         sys.exit()
-
-
-    def _interpolate_list(self, l):
-        """
-        Linearly interpolate list l
-        """
-
-        if len([i for i in l if np.isnan(i)]) > 0: # if it contains nans
-            f = interpolate.interp1d([i*5  for i,j in enumerate(l) if not np.isnan(j)], [j  for i,j in enumerate(l) if not np.isnan(j)])
-            to_model = [i*5 for i in range(len(l))]
-            idxs_del, _ = utils_cwt.remove_border_nans(l)
-            to_model = [j for i,j in enumerate(to_model) if i not in idxs_del]
-            l = f(to_model)
-        return l
-
-
 
     def print_freqs(self):
         """
@@ -232,9 +214,7 @@ class CWT():
         Set the spectrogram attribute
         """
 
-
         features = ['pca0_list', 'pca1_list', 'pca2_list']
-
 
         for consecutive_frames in self.all_consecutive_frames:
             spectrogram = []
@@ -257,9 +237,6 @@ class CWT():
                 consecutive_frames.speed_uropod_running_mean_list = consecutive_frames.speed_uropod_running_mean_list[self.chop :-self.chop]
                 consecutive_frames.turning_list = consecutive_frames.turning_list[self.chop :-self.chop]
                 consecutive_frames.names_list = consecutive_frames.names_list[self.chop :-self.chop]
-
-
-
 
             consecutive_frames.spectrogram = spectrogram
 
@@ -371,43 +348,6 @@ class CWT():
         return xs, ys, colors_2d, colors_3d
 
 
-    def _set_cluster_colors(self, names):
-        """
-        Colour some clusters to see how much they mix under different hyperparameters
-        """
-
-        c1 = ['zm_3_4_1a-{}'.format(i) for i in range(18, 38)] + ['zm_3_3_4a-{}'.format(i) for i in range(101, 121)] + ['zm_3_3_3a-{}'.format(i) for i in range(18, 25)] + \
-             ['zm_3_4_1a-{}'.format(i) for i in range(168, 176)] + ['zm_3_4_1a-{}'.format(i) for i in range(132, 150)] + ['zm_3_3_5a-{}'.format(i) for i in range(35, 51)]
-
-        c2 = ['zm_3_4_0a-{}'.format(i) for i in range(172, 186)] +  ['zm_3_3_3a-{}'.format(i) for i in range(140, 162)] + ['zm_3_3_5a-{}'.format(i) for i in range(25, 32)] + \
-            ['zm_3_6_0a-{}'.format(i) for i in range(165, 183)] + ['zm_3_3_4a-{}'.format(i) for i in range(167, 180)] + ['zm_3_4_2a-{}'.format(i) for i in range(85, 93)]
-
-        c3 = ['3_1_2b-{}'.format(i) for i in range(53, 67)] + ['zm_3_5_2a-{}'.format(i) for i in range(139, 159)] + ['zm_3_5_2a-{}'.format(i) for i in range(22, 36)] + \
-            ['zm_3_5_2a-{}'.format(i) for i in range(49, 60)] + ['3_1_3a-{}'.format(i) for i in range(35, 42)] + ['2_1a-{}'.format(i) for i in range(145, 156)] + \
-            ['zm_3_3_2a-{}'.format(i) for i in range(185, 197)] + ['zm_3_3_6a-{}'.format(i) for i in range(153, 164)]
-
-        c4 = ['zm_3_6_0a-{}'.format(i) for i in range(184, 198)] + ['zm_3_6_0a-{}'.format(i) for i in range(112, 122)] + ['zm_3_4_0a-{}'.format(i) for i in range(28, 43)] + \
-            ['zm_3_4_2a-{}'.format(i) for i in range(18, 38)] + ['zm_3_3_3a-{}'.format(i) for i in range(118, 127)]
-
-
-        colors = []
-        for name in names:
-
-            name = name.split('-')[0] + '-' + '{}'.format(int(float(name.split('-')[1])))
-
-            if name in c1:
-                colors.append('black')
-            elif name in c2:
-                colors.append('red')
-            elif name in c3:
-                colors.append('green')
-            elif name in c4:
-                colors.append('blue')
-
-            else:
-                #colors.append(colors_dict[name.split('-')[0][:-1]])
-                colors.append('grey')
-        return colors
 
 
 
@@ -882,32 +822,6 @@ cwt = CWT(idx_cfs= 'all', chop = chop)
 #sys.exit()
 
 
-"""
-plot_local_morphodynamics([['zm_3_3_3a-40', 'zm_3_4_1a-52', 'zm_3_3_5a-121'],
-                            ['zm_3_3_5a-72', 'zm_3_4_1a-191', 'zm_3_3_4a-132'],
-                            ['zm_3_5_2a-148', '3_1_3a-38', 'zm_3_3_6a-158'],
-                            ['3_1_3a-61', 'zm_3_4_0a-96', '2_1a-95'],
-                            ['zm_3_3_3a-152', 'zm_3_3_5a-28', 'zm_3_6_0a-176'],
-                            ['zm_3_3_6a-185', '3_1_2b-31', 'zm_3_5_2a-82'],
-                            ['zm_3_3_4a-26', '2_1a-41', '3_1_4a-29'],
-                            ['zm_3_3_5a-42', 'zm_3_4_1a-26', 'zm_3_3_4a-110'],
-                            ['zm_3_4_2a-26', 'zm_3_4_0a-35', 'zm_3_6_0a-118'],
-                            ['zm_3_3_5a-136', 'zm_3_3_4a-55', 'zm_3_3_1b-65'],
-                            ['zm_3_4_0a-76', 'zm_3_3_2a-126', '2_1a-71']])
-sys.exit()
-
-
-
-
-plot_local_morphodynamics([['zm_3_4_1a-48', 'zm_3_3_5a-121', 'zm_3_3_5a-176'],
-                            ['zm_3_3_4a-86', 'zm_3_3_5a-26', 'zm_3_3_4a-172'],
-                            ['zm_3_3_4a-136', 'zm_3_3_5a-66', 'zm_3_4_1a-190'],
-                            ['zm_3_5_1a-70','zm_3_5_1a-68',  'zm_3_3_5a-92'],
-                            ['zm_3_3_4a-110', 'zm_3_3_5a-46',  'zm_3_4_1a-25'],
-                            ['zm_3_3_4a-190', 'zm_3_3_4a-155', 'zm_3_4_1a-114']])
-sys.exit()
-
-"""
 
 
 

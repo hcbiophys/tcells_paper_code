@@ -13,10 +13,10 @@ from mayavi import mlab
 import pyvista as pv
 import time
 
-from lymphocytes.frames.raw_methods import Raw_Methods
-from lymphocytes.frames.SH_methods import SH_Methods
+from tcells_paper_code.frames.raw_methods import Raw_Methods
+from tcells_paper_code.frames.SH_methods import SH_Methods
 
-from lymphocytes.utils.voxels import process_voxels
+from tcells_paper_code.utils.voxels import process_voxels
 
 class Frame(Raw_Methods, SH_Methods):
     """

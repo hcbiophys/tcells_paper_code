@@ -8,9 +8,9 @@ import pickle
 from scipy.spatial.transform import Rotation
 import math
 
-import lymphocytes.utils.voxels as utils_voxels
-import lymphocytes.utils.plotting as utils_plotting
-import lymphocytes.utils.general as utils_general
+import tcells_paper_code.utils.voxels as utils_voxels
+import tcells_paper_code.utils.plotting as utils_plotting
+import tcells_paper_code.utils.general as utils_general
 
 class SH_Methods:
     """

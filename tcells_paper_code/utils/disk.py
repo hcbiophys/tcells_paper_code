@@ -21,7 +21,7 @@ def _modify_faces(faces):
     faces = np.concatenate([np.full((faces.shape[0], 1), 3), faces], axis = 1).flatten()
     return faces
 
-def get_attribute_from_mat(mat_filename, idx_cell = None, include_voxels = False):
+def get_attribute_from_mat(mat_filename, zeiss_type, idx_cell = None, include_voxels = False):
     """
     Returns attributes: frames, voxels, vertices, faces
     """
@@ -60,7 +60,7 @@ def get_attribute_from_mat(mat_filename, idx_cell = None, include_voxels = False
         faces_ref = faces[idx]
         if zeiss_type == 'not_zeiss':
             faces = np.array(f[faces_ref[0][0]]) - 1 # note: indexing for these starts at 1, so subtraction of 1 needed
-        elif zeiss_type == 'zeiss_single' or zeiss_type == 'zeiss_many':
+        elif zeiss_type == 'zeiss':
             faces = np.array(f[faces_ref[0][0]])
         faces_all.append(_modify_faces(faces))
 

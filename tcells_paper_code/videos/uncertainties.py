@@ -25,16 +25,16 @@ from sklearn.decomposition import PCA
 from pyvista import examples
 import time
 
-from lymphocytes.videos.pca_methods import PCA_Methods
-from lymphocytes.videos.single_cell_methods import Single_Cell_Methods
-from lymphocytes.videos.motion_methods import Motion_Methods
-from lymphocytes.frames.frame_class import Frame
-from lymphocytes.morphodynamics.consecutive_frames_class import Consecutive_Frames
-from lymphocytes.videos.curvature_lists import all_lists
+from tcells_paper_code.videos.pca_methods import PCA_Methods
+from tcells_paper_code.videos.single_cell_methods import Single_Cell_Methods
+from tcells_paper_code.videos.motion_methods import Motion_Methods
+from tcells_paper_code.frames.frame_class import Frame
+from tcells_paper_code.morphodynamics.consecutive_frames_class import Consecutive_Frames
+from tcells_paper_code.videos.curvature_lists import all_lists
 
-import lymphocytes.utils.disk as utils_disk
-import lymphocytes.utils.plotting as utils_plotting
-import lymphocytes.utils.general as utils_general
+import tcells_paper_code.utils.disk as utils_disk
+import tcells_paper_code.utils.plotting as utils_plotting
+import tcells_paper_code.utils.general as utils_general
 
 
 def deg_to_rad(angle):
@@ -143,7 +143,7 @@ def save_curvatures(cells, idx_cells):
 
         curvatures_dict[idx_cell] = zip(frames, curvatures)
 
-        pickle_out = open('../data/curvatures/cell_{}.pickle'.format(video[0].idx_cell),'wb')
+        pickle_out = open('../data/curvatures/{}.pickle'.format(video[0].idx_cell),'wb')
         pickle.dump(curvatures_dict, pickle_out)
 
         del cells.cells[video[0].idx_cell]
@@ -196,7 +196,7 @@ def get_tau_sig(idx_cell, video):
     dict = utils_general.get_frame_dict(video)
     frames = list(dict.keys())
 
-    curvatures = pickle.load(open('../data/curvatures/cell_{}.pickle'.format(idx_cell), "rb"))
+    curvatures = pickle.load(open('../data/curvatures/{}.pickle'.format(idx_cell), "rb"))
     curvatures = curvatures[idx_cell]
     mean_curvature = np.mean([j for i,j in curvatures])
     l_cord = 2*(1/mean_curvature)*np.sin(angle/2)
@@ -240,7 +240,7 @@ def save_PC_uncertainties(cells, idx_cells):
 
                 print('Doing', frame.idx_cell, frame.frame)
 
-                curvatures = pickle.load(open('/Users/harry/OneDrive - Imperial College London/lymphocytes/curvatures/cell_{}.pickle'.format(frame.idx_cell), "rb"))
+                curvatures = pickle.load(open('../data/curvatures/{}.pickle'.format(frame.idx_cell), "rb"))
                 curvatures = curvatures[frame.idx_cell]
                 mean_curvature = np.mean([j for i,j in curvatures])
                 l_cord = 2*(1/mean_curvature)*np.sin(angle_half_error/2)

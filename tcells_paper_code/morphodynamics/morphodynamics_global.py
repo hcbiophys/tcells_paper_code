@@ -1,3 +1,13 @@
+import numpy as np
+from matplotlib import cm
+import matplotlib.pyplot as plt
+import sys
+import pickle
+from scipy import signal
+import statsmodels.api as sm
+from scipy.optimize import curve_fit
+
+import tcells_paper_code.utils.utils_cwt as utils_cwt
 
 
 def _butter_highpass_filter(data, cutoff, fs, order=5):
@@ -26,11 +36,15 @@ def ACF(all_run_stop):
 
 
     if all_run_stop == 'run':
-        all_consecutive_frames = pickle.load(open('../../data/time_series/shape_series_go.pickle',"rb"))
+        all_consecutive_frames = pickle.load(open('../data/time_series/shape_series_run.pickle',"rb"))
     elif all_run_stop == 'stop':
-        all_consecutive_frames = pickle.load(open('../../data/time_series/shape_series_stop.pickle',"rb"))
+        all_consecutive_frames = pickle.load(open('../data/time_series/shape_series_stop.pickle',"rb"))
     else:
-        all_consecutive_frames = pickle.load(open('../../data/time_series/shape_series.pickle',"rb"))
+        all_consecutive_frames = pickle.load(open('../data/time_series/shape_series.pickle',"rb"))
+
+    PC_uncertainties = pickle.load(open('../data/PC_uncertainties.pickle', 'rb'))
+    for cfs in all_consecutive_frames:
+        cfs.PC_uncertainties = PC_uncertainties[cfs.name[:-1]]
 
     acfs = [[], [], [], []]
     colors = ['red', 'blue', 'green',  'black']
@@ -44,11 +58,11 @@ def ACF(all_run_stop):
 
     fig_series = plt.figure()
     ax = fig_series.add_subplot(111)
-    for cfs in self.all_consecutive_frames:
+    for cfs in all_consecutive_frames:
 
         for idx_attribute, l in enumerate([cfs.pca0_list, cfs.pca1_list, cfs.pca2_list, cfs.speed_uropod_list]):
             if len(l) > 50:
-                l = self.interpolate_list(l)
+                l = utils_cwt._interpolate_list(l)
                 l_new  = _butter_highpass_filter(l,1/400,fs=0.2)
                 ax.plot([i*5 for i in range(len(l_new))], l_new, c = colors[idx_attribute])
                 acf = get_acf(l_new)
@@ -66,7 +80,7 @@ def ACF(all_run_stop):
                         acfs[idx_attribute].append([np.nan])
                 elif idx_attribute == 3: # if it's speed_uropod
 
-                    if cfs.name[:-1] not in ['3_1_1', 'zm_3_1_1', 'zm_3_3_7', 'zm_3_4_0']:
+                    if cfs.name[:-1] not in ['CELL11', 'CELL23', 'CELL24']: #zm_3_1_1
                         acfs[idx_attribute].append(np.array(acf))
                     else:
                         print('Not adding speed_uropod')
@@ -172,7 +186,7 @@ def run_power_spectrum(attribute_list, idx_attribute):
     """
     print('attribute_list', attribute_list)
 
-    cfs_run = pickle.load(open('../data/cwt_saved/shape_series_go.pickle',"rb"))
+    cfs_run = pickle.load(open('../data/cwt_saved/shape_series_run.pickle',"rb"))
     cfs_stop = pickle.load(open('../data/cwt_saved/shape_series_stop.pickle',"rb"))
 
     PC_uncertainties = pickle.load(open('../data/PC_uncertainties.pickle', 'rb'))
@@ -198,7 +212,7 @@ def run_power_spectrum(attribute_list, idx_attribute):
 
             time_series = getattr(cfs, attribute_list)
 
-            time_series = self.interpolate_list(time_series)
+            time_series = utils_cwt._interpolate_list(time_series)
 
             if len(time_series) > 50:
 
@@ -243,7 +257,7 @@ def run_power_spectrum(attribute_list, idx_attribute):
 
 
 
-#cwt.ACF()
+ACF('run')
 
 
 

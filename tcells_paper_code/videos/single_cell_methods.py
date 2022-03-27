@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import lymphocytes.utils.plotting as utils_plotting
+import tcells_paper_code.utils.plotting as utils_plotting
 import sys
 import numpy as np
 import pyvista as pv
@@ -10,7 +10,7 @@ import glob
 from PIL import Image
 from matplotlib.colors import ListedColormap
 
-import lymphocytes.utils.general as utils_general
+import tcells_paper_code.utils.general as utils_general
 
 
 class Single_Cell_Methods:
@@ -75,7 +75,7 @@ class Single_Cell_Methods:
         for frame in frames_none: # linearly linterpolate
             self.uropod_dict[frame] = (self.uropod_dict[frame-1] + self.uropod_dict[frame+1])/2
 
-        pickle_out = open('../data/uropods/cell_{}.pickle'.format(idx_cell),'wb')
+        pickle_out = open('../data/uropods/{}.pickle'.format(idx_cell),'wb')
         pickle.dump(self.uropod_dict, pickle_out)
 
 
@@ -120,7 +120,7 @@ class Single_Cell_Methods:
                 #plotter.enable_cell_picking(through=False, callback = self._uropod_callback)
                 plotter.show(cpos=[1, 0, 0])
 
-        pickle_out = open('../data/uropods/cell_{}_updated.pickle'.format(idx_cell),'wb')
+        pickle_out = open('../data/uropods/{}_updated.pickle'.format(idx_cell),'wb')
         pickle.dump(self.uropod_dict, pickle_out)
 
 
