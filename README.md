@@ -3,11 +3,9 @@
 
 # Morphology analysis (Shape descriptor, PCA etc.)
 
-In all cases, run the following command while in the *scripts* folder, and uncomment the required function (details below):\
+In all cases, run the following command while in the *scripts* folder within *tcells_paper_code*, and uncomment the required function (details below):\
 *python3 main_morphology.py all_run_stop*\
-Note: *all_run_stop* can be all, run, or stop and these correspond to including all cells, the long videos from the run mode, and the long videos from the stop mode, respectively.
-
-Uncomment the required function within *main_morphology.py* to run it
+Note: *all_run_stop* can be *all*, *run*, or *stop* and these correspond to including all cells, the long videos from the run mode, and the long videos from the stop mode, respectively.
 
 
 ## Single Cell Functions
@@ -53,14 +51,14 @@ Running functions using many cell videos (for example, plotting attributes acros
 
 * To plot cell surfaces sampled over the PCs, uncomment the function:\
 *cells.plot_component_frames(bin_size=7, pca=True, plot_original = False, max_l = 3)*\
-Here, plot_original = True / False is for Supplementary Fig. 2a (original surfaces) and Fig. 2b (using truncated, i.e. smoothed, representations), respectively. The bin size gives the number of frames shown, and max_l gives the degree of truncation for the spherical harmonic descriptor.
+Here, *plot_original = True / False* is for Supplementary Fig. 2a (original surfaces) and Fig. 2b (using truncated, i.e. smoothed, representations), respectively. The bin size gives the number of frames shown, and max_l gives the degree of truncation for the spherical harmonic descriptor.
 
 * To sample the min, mean and max along each PC in the spherical harmonic descriptor space (Fig. 2c), uncomment the function:\
 *cells.PC_sampling()*
 
 * (Fig. 2d) To plot cell surfaces at their locations in the 3D PCA shape space, or 'morphospace', uncomment the function:\
 *cells.plot_PC_space(plot_original = False, max_l = 3)*\
-Here, plot_original = True / False is for Supplementary Fig. 1a (original surfaces) and Fig. 2b (using truncated, i.e. smoothed, representations). max_l gives the degree of truncation for the spherical harmonic descriptor.
+Here, *plot_original = True / False* again dermines whether full or smoothed meshes are plotted, and max_l gives the degree of truncation for the spherical harmonic descriptor.
 
 
 * To plot all time series and histograms of attributes across all cells (example attributes given), uncomment the function:\

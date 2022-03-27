@@ -188,36 +188,3 @@ def copy_coefs_into_dir(outDir, idx_cell):
     for file in glob.glob('/Users/harry/Desktop/RUNNING/out/Step3_ParaToSPHARMMesh/{}_*SPHARM.coef'.format(idx_cell)):
         os.rename(file, outDir + os.path.basename(file))
         print(outDir + os.path.basename(file))
-
-
-
-if __name__ == "__main__":
-
-    """
-    path = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/many/cell_0/zoomedVoxels_0.2/0_178.nii.gz'
-    voxels = nib.load(path)
-    voxels = np.array(voxels.dataobj)
-
-    lw, num = measurements.label(voxels)
-    area = measurements.sum(voxels, lw, index=np.arange(lw.max() + 1))
-    print('num', num, 'area', area)
-
-    sys.exit()
-    """
-
-
-
-    #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/210428/'
-    #mat_filename = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/many/20210828_ot1gfp in collagen-01_clean.mat'
-    #mat_filename = '../../good_seg_data_3/ZeissLLS_5/20211112_OT1GFP in collagen-03-deskewed_Export_Multi_Surf.mat'
-
-    for idx_cell in range(5):
-        print('idx_cell', idx_cell)
-        #save_format = '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_5/cell_{}/zoomedVoxels_dist0.5/{}_{{}}.nii.gz'.format(idx_cell, idx_cell)
-        #write_all_zoomed_niigz(mat_filename = mat_filename, save_format = save_format, zoom_factor = None, voxelize = True, zeiss_type = 'zeiss_many', idx_cell = idx_cell, xyz_res = [0.5, 0.5, 0.5])
-        outDir =  '/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS_5/cell_{}/coeffs/'.format(idx_cell)
-        copy_coefs_into_dir(outDir = outDir, idx_cell=idx_cell)
-
-
-
-        #rm_done_from_inDir('/Users/harry/Desktop/RUNNING/STACK2/', '/Users/harry/Desktop/RUNNING/out/Step1_SegPostProcess/')
