@@ -6,6 +6,13 @@ cell_info.docx
 *.pickle
 *.png
 *mp4
-videos/
+daryan_videos/
 
 *series*/
+
+
+**/surface_segmentations
+
+
+backup/
+ellipsoids/

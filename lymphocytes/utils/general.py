@@ -6,35 +6,40 @@ import random
 
 
 
+cell_idxs_conversion = {'CELL1':'2_1', 'CELL2':'2_2', 'CELL3':'2_3', 'CELL4':'2_4', 'CELL5':'2_5','CELL6':'2_6', 'CELL7':'2_7',
+                        'CELL8':'2_8', 'CELL9':'2_9', 'CELL10':'3_1_0', 'CELL11':'3_1_1', 'CELL12':'3_1_2',  'CELL13':'3_1_3',
+                        'CELL14':'3_1_4',  'CELL15':'3_1_5', 'CELL16':'zm_3_3_0', 'CELL17':'zm_3_3_1', 'CELL18':'zm_3_3_2', 'CELL19':'zm_3_3_3', 'CELL20':'zm_3_3_4', 'CELL21':'zm_3_3_5',
+                        'CELL22':'zm_3_3_6', 'CELL23':'zm_3_3_7', 'CELL24':'zm_3_4_0', 'CELL25':'zm_3_4_1','CELL26':'zm_3_4_2', 'CELL27':'zm_3_4_3', 'CELL28':'zm_3_5_0', 'CELL29':'zm_3_5_1', 'CELL30':'zm_3_5_2', 'CELL31':'zm_3_6_0'}
 
 
-def split_by_consecutive_frames(lymph_series, attribute, and_nan = False):
+
+def split_by_consecutive_frames(video, attribute, and_nan = False):
     all_lists = []
-    new_list = [lymph_series[0]]
-    prev_frame = lymph_series[0].frame
-    for lymph in lymph_series[1:]:
-        if lymph.frame - prev_frame == 1:
-            new_list.append(lymph)
+    new_list = [video[0]]
+    prev_frame = video[0].idx_frame
+    for frame in video[1:]:
+        if frame.idx_frame - prev_frame == 1:
+            new_list.append(frame)
         else:
             all_lists.append(new_list)
-            new_list = [lymph]
-        prev_frame = lymph.frame
+            new_list = [frame]
+        prev_frame = frame.idx_frame
     all_lists.append(new_list)
 
     if and_nan:
         all_lists_2 = []
 
-        for lymph_series in all_lists:
+        for video in all_lists:
             idx_start = None
-            for idx in range(len(lymph_series)):
-                if getattr(lymph_series[idx], attribute) is not None and not np.isnan(getattr(lymph_series[idx], attribute)):
-                    new_list = [lymph_series[idx]]
+            for idx in range(len(video)):
+                if getattr(video[idx], attribute) is not None and not np.isnan(getattr(video[idx], attribute)):
+                    new_list = [video[idx]]
                     idx_start = idx
                     break
             if idx_start is not None:
-                for lymph in lymph_series[idx_start+1:]:
-                    if getattr(lymph, attribute) is not None and not np.isnan(getattr(lymph, attribute)):
-                        new_list.append(lymph)
+                for frame in video[idx_start+1:]:
+                    if getattr(frame, attribute) is not None and not np.isnan(getattr(frame, attribute)):
+                        new_list.append(frame)
                     else:
                         all_lists_2.append(new_list)
                         new_list = []
@@ -49,31 +54,31 @@ def split_by_consecutive_frames(lymph_series, attribute, and_nan = False):
 
 
 
-def get_frame_dict(lymph_series):
+def get_frame_dict(video):
     """
-    self.cells[idx_cell] is a list of lymphs, ordered by frame
-    this function returns a dict so lymphs can easily be acccessed by frame, like dict[frame] = lymphs
+    self.cells[idx_cell] is a list of frames, ordered by frame
+    this function returns a dict so frames can easily be acccessed by frame, like dict[frame] = frames
     """
-    frames = [lypmh.frame for lypmh in lymph_series]
+    idxs_frames = [frame.idx_frame for frame in video]
     dict = {}
-    for frame, lymph in zip(frames, lymph_series):
-        dict[frame] = lymph
+    for idx_frame, frame in zip(idxs_frames, video):
+        dict[idx_frame] = frame
     return dict
 
-def get_nestedList_connectedLymphs(lymph_series):
+def get_nestedList_connectedframes(video):
     """
     Return a nested list in which each sub list has no gaps in the frames
     """
     nestedLists = []
-    frames = [lymph_series[0].frame]
-    to_add = [lymph_series[0]]
-    for lymph in lymph_series[1:]:
-        if lymph.frame - frames[-1] != 1:
+    idxs_frames = [video[0].idx_frame]
+    to_add = [video[0]]
+    for frame in video[1:]:
+        if frame.idx_frame - idxs_frames[-1] != 1:
             nestedLists.append(to_add)
-            to_add = [lymph]
+            to_add = [frame]
         else:
-            to_add.append(lymph)
-        frames.append(lymph.frame)
+            to_add.append(frame)
+        idxs_frames.append(frame.idx_frame)
     nestedLists.append(to_add)
 
     return nestedLists
@@ -81,14 +86,14 @@ def get_nestedList_connectedLymphs(lymph_series):
 
 
 
-def list_all_lymphs(cells):
+def list_all_frames(cells):
     """
-    Unpack and list all lymphs in one list
+    Unpack and list all frames in one list
     """
-    lymphs = []
-    for lymph_series in cells.cells.values():
-        lymphs += [lymph for lymph in lymph_series]
-    return lymphs
+    frames = []
+    for video in cells.cells.values():
+        frames += [frame for frame in video]
+    return frames
 
 
 def rotation_matrix_from_vectors(vec1, vec2):
@@ -107,26 +112,26 @@ def rotation_matrix_from_vectors(vec1, vec2):
 
 def get_color_lims(cells, color_by):
     """
-    Get the min and max limits of a lymph attribute (color_by)
+    Get the min and max limits of a frame attribute (color_by)
     """
-    lymphs = list_all_lymphs(cells)
-    scalars = [getattr(lymph, color_by) for lymph in lymphs if getattr(lymph, color_by) is not None]
+    frames = list_all_frames(cells)
+    scalars = [getattr(frame, color_by) for frame in frames if getattr(frame, color_by) is not None]
 
 
     return np.nanmin(scalars), np.nanmax(scalars)
 
-def get_color(lymph, color_by, vmin, vmax):
+def get_color(frame, color_by, vmin, vmax):
     """
-    Get the color based on a lymph attribute (color_by)
+    Get the color based on a frame attribute (color_by)
     - vmin: minimum attribute value
     - vmax: maximum attribute value
     """
     cmap = plt.cm.PiYG
     norm = plt.Normalize(vmin, vmax)
-    if getattr(lymph, color_by) is None:
+    if getattr(frame, color_by) is None:
         color = 'lightgrey'
     else:
-        color = cmap(norm(getattr(lymph, color_by)))
+        color = cmap(norm(getattr(frame, color_by)))
     return color
 
 def faces_from_phisThetas(phis, thetas):
@@ -151,21 +156,21 @@ def subsample_lists(freq, *args):
 
 def del_whereNone(cells, attribute):
     """
-    Remove lymph frames where a certain attribute is None
+    Remove frame frames where a certain attribute is None
     """
     print('series PERMANENTLY EDITED')
     new_dict = {}
     for key, values in cells.items():
         new_values = []
-        for lymph in values:
-            if attribute == 'lymph':
-                if lymph is not None:
-                    new_values.append(lymph)
+        for frame in values:
+            if attribute == 'frame':
+                if frame is not None:
+                    new_values.append(frame)
             if attribute == 'delta_centroid':
-                if lymph.delta_centroid is not None:
-                    new_values.append(lymph)
+                if frame.delta_centroid is not None:
+                    new_values.append(frame)
             elif attribute == 'angle':
-                if lymph.turning is not None:
-                    new_values.append(lymph)
+                if frame.turning is not None:
+                    new_values.append(frame)
         new_dict[key] = new_values
     return new_dict

@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 
 
 def coords_to_kdes(all_xs, all_ys, xs, ys, inverse = False):
+    """
+    Convert morphodynamic space (found from t-SNE) coordinates to indices (row, column) of the kernel density estimate (KDE) grid
+    """
     xs_new, ys_new = [], []
 
     min_xs = min(all_xs) - 10
@@ -28,6 +31,9 @@ def coords_to_kdes(all_xs, all_ys, xs, ys, inverse = False):
     return xs_new, ys_new
 
 def get_idx_contours(contours, all_xs, all_ys, xs, ys):
+    """
+    Get the indices of the contours on a trajectory of {xs, ys} (where index is the closest contour)
+    """
 
     xs, ys = coords_to_kdes(all_xs, all_ys, xs, ys)
     idx_closests = []
@@ -51,6 +57,10 @@ def get_idx_contours(contours, all_xs, all_ys, xs, ys):
 
 
 def get_tm(contours, sequences):
+    """
+    Comput the transition matrix (tm) given the contours and trajectories as contour indices (i.e. sequences)
+    """
+
     T = [[0]*len(contours) for _ in range(len(contours))]
     for sequence in sequences:
         for (i,j) in zip(sequence,sequence[1:]):
@@ -64,6 +74,9 @@ def get_tm(contours, sequences):
 
 
 def remove_border_nans(time_series):
+    """
+    Remove nan values at the beginning and end of a time series
+    """
 
     idxs_del = []
     for idx in range(len(time_series)):
@@ -95,6 +108,9 @@ def move_sympyplot_to_axes(p, ax):
 
 
 def entropy(T):
+    """
+    Calculate the Markov chain entropy of a transition matrix, T
+    """
     vals, vecs, _ = eig(T,left=True)
     idx_1 = np.nan
     for i,j in enumerate(vals):
@@ -118,88 +134,3 @@ def entropy(T):
         total += normalized[row]*entropy
     return total
     print('total', total)
-
-
-
-
-
-def get_params_from_filename(filename):
-
-    if filename[:2] == '30':
-        mexh_scales = [0.5*2]
-        gaus1_scales = [0.4*2]
-        chop = 5
-        inserts = [1, 3, 5, 7, 9]
-        time_either_side = 15
-        min_length = 15
-
-    elif filename[:2] == '50':
-        mexh_scales = [0.5*i for i in range(2, 5)]
-        gaus1_scales = [0.4*i for i in range(2, 9, 2)]
-        chop = 5
-        inserts = [3, 8, 12, 17, 21]
-        time_either_side = 25
-        min_length = 15
-
-
-    elif filename[:2] == '75':
-        filename = '75'
-        mexh_scales = [0.5*i for i in range(2, 7, 2)]
-        gaus1_scales = [0.4*i for i in range(2, 12, 4)]
-        chop = 7
-        inserts = [3, 8, 12, 17, 21]
-        time_either_side = 37.5
-        min_length = 15
-
-    elif filename[:3] == '100':
-        mexh_scales = [0.5*i for i in range(2, 10, 2)]
-        gaus1_scales = [0.4*i for i in range(2, 18, 4)]
-        chop = 10
-        inserts = [4+5*i for i in range(6)]
-        time_either_side = 50
-        min_length = 15
-
-
-    elif filename[:3] == '150':
-        gaus1_scales = [0.4*i for i in np.linspace(2, 22, 6)]
-
-
-
-        mexh_scales = [0.5*i for i in np.linspace(2, 12, 6)]
-        #gaus1_scales = [0.4*i for i in np.linspace(2, 27, 6)]
-
-        chop = 15
-        scales_per_wave = len(mexh_scales)
-        inserts = [scales_per_wave+(scales_per_wave+1)*i for i in range(scales_per_wave)]
-        time_either_side = 75
-        min_length = 15
-
-
-
-    elif filename[:3] == '200':
-        mexh_scales = [0.5*i for i in range(2, 20, 2)]
-        gaus1_scales = [0.4*i for i in range(2, 34, 4)]
-        chop = 20
-        inserts = [10+9*i for i in range(6)]
-        time_either_side = 100
-        min_length = 15
-
-
-    elif filename[:3] == '250':
-        mexh_scales = [0.5*i for i in range(2, 24, 2)]
-        gaus1_scales = [0.4*i for i in range(2, 44, 4)]
-        chop = 25
-        inserts = [12+11*i for i in range(6)]
-        time_either_side = 125
-        min_length = 15
-
-
-    elif filename[:3] == '400':
-        mexh_scales = [0.5*i for i in range(2, 32, 2)]
-        gaus1_scales = [0.4*i for i in range(2, 60, 4)]
-        chop = 25
-        inserts = [16+15*i for i in range(6)]
-        time_either_side = 175
-        min_length = 15
-
-    return mexh_scales, gaus1_scales, chop, inserts, time_either_side, min_length

@@ -21,108 +21,48 @@ def _modify_faces(faces):
     faces = np.concatenate([np.full((faces.shape[0], 1), 3), faces], axis = 1).flatten()
     return faces
 
-def get_attribute_from_mat(mat_filename, zeiss_type, idx_cell = None, include_voxels = False):
+def get_attribute_from_mat(mat_filename, idx_cell = None, include_voxels = False):
     """
-    returns attributes: frames, voxels, vertices, faces
+    Returns attributes: frames, voxels, vertices, faces
     """
     f = h5py.File(mat_filename, 'r')
 
     frames_all, voxels_all, vertices_all, faces_all = [], [], [], []
 
-    if zeiss_type == 'not_zeiss':
-        OUT_group = f.get('OUT')
+    #if zeiss_type == 'not_zeiss':
+    OUT_group = f.get('SURF')
 
-        frames = f['OUT/FRAME']
+    #frames = f['SURF/FRAME']
 
-        frames = OUT_group.get('FRAME')
-        frames = np.array(frames).flatten()
-
-        for frame in frames:
-            frames_all.append(frame)
-            idx = np.where(frames == frame)
-
-            if include_voxels:
-                voxels = OUT_group.get('BINARY_MASK')
-                voxels_ref = voxels[idx]
-                voxels = f[voxels_ref[0][0]] # takes a long time
-                voxels_all.append(voxels)
-            else:
-                voxels_all.append(None)
+    frames = OUT_group.get('FRAME')
+    frames = np.array(frames).flatten()
 
 
-            vertices = OUT_group.get('VERTICES')
-            vertices_ref = vertices[idx]
-            vertices = np.array(f[vertices_ref[0][0]]).T
-            vertices_all.append(vertices)
+    for frame in frames:
+        frames_all.append(frame)
+        idx = np.where(frames == frame)
 
-            faces = OUT_group.get('FACES')
-            faces_ref = faces[idx]
+        if include_voxels:
+            voxels = OUT_group.get('BINARY_MASK')
+            voxels_ref = voxels[idx]
+            voxels = f[voxels_ref[0][0]] # takes a long time
+            voxels_all.append(voxels)
+        else:
+            voxels_all.append(None)
+
+
+        vertices = OUT_group.get('VERTICES')
+        vertices_ref = vertices[idx]
+        vertices = np.array(f[vertices_ref[0][0]]).T
+        vertices_all.append(vertices)
+
+        faces = OUT_group.get('FACES')
+        faces_ref = faces[idx]
+        if zeiss_type == 'not_zeiss':
             faces = np.array(f[faces_ref[0][0]]) - 1 # note: indexing for these starts at 1, so subtraction of 1 needed
-            faces_all.append(_modify_faces(faces))
-
-
-    elif zeiss_type == 'zeiss_single':
-
-        OUT_group = f.get('DataOut')
-        surf_refs = OUT_group.get('Surf')
-        frame_refs = np.array(surf_refs[0, :]).flatten()
-        frames = np.array([np.array(f[frame_ref])[0][0] for frame_ref in frame_refs])
-        max_frame = int(np.max(frames))
-
-        for frame in range(1, max_frame+1):
-            frames_all.append(frame)
-            idx = np.where(frames == frame)[0][0]
-            if include_voxels:
-                voxels = f[surf_refs[2, idx]] # takes a long time
-                voxels_all.append(voxels)
-            else:
-                voxels_all.append(None)
-
-            vertices = f[surf_refs[3, idx]]
-            vertices = np.array(vertices).T
-            vertices_all.append(vertices)
-
-            faces = f[surf_refs[4, idx]]
-            faces = np.array(faces) # note: indexing for these starts at 0, so no subtraction of 1 needed
-            faces_all.append(_modify_faces(faces))
-
-    elif zeiss_type == 'zeiss_many':
-        OUT_group = f.get('DataOut')
-        cell_group = f[OUT_group[idx_cell, 0]]
-
-        dataset = cell_group['Surf']
-
-        vertices = dataset[3, :]
-        num = vertices.shape[0]
-
-
-        for idx2 in range(num):
-            surface_count = dataset[0, idx2]
-            surface_index_imaris = dataset[1, idx2]
-            frames = dataset[2, idx2]
-            vertices = dataset[3, idx2]
-            faces = dataset[4, idx2]
-            if include_voxels:
-                voxels = dataset[5, idx2]
-                voxels_all.append(f[voxels])
-
-            else:
-                voxels_all.append(None)
-            voxel_size = dataset[6, idx2]
-            #print('voxel_size', np.array(f[voxel_size]))
-
-            t_res = dataset[7, idx2]
-            #print(np.array(f[t_res]))
-
-            frames_all.append(int(np.array(f[frames])[0][0]))
-            vertices_all.append(np.array(f[vertices]).T)
-            faces = np.array(f[faces]) # note: indexing for these starts at 0, so no subtraction of 1 needed
-            faces_all.append(_modify_faces(faces))
-
-            #print('surface_count', np.array(f[surface_count]))
-            #print('surface_index_imaris', np.array(f[surface_index_imaris]))
-            #print('voxel_size', np.array(f[voxel_size]))
-            #print('t_res', np.array(f[t_res]))
+        elif zeiss_type == 'zeiss_single' or zeiss_type == 'zeiss_many':
+            faces = np.array(f[faces_ref[0][0]])
+        faces_all.append(_modify_faces(faces))
 
     return frames_all, voxels_all, vertices_all, faces_all
 
@@ -182,7 +122,7 @@ def check_voxels(voxels):
 
 
 def write_all_zoomed_niigz(mat_filename, save_format, voxelize = False, zoom_factor = 0.2, zeiss_type = False, idx_cell = None, xyz_res = None):
-    frames_all, voxels_all, vertices_all, faces_all = get_attribute_from_mat(mat_filename=mat_filename, zeiss_type=zeiss_type, idx_cell=idx_cell, include_voxels = True)
+    frames_all, voxels_all, vertices_all, faces_all = get_attribute_from_mat(mat_filename=mat_filename, idx_cell=idx_cell, include_voxels = True)
 
     for idx in range(len(frames_all)):
 
@@ -195,10 +135,6 @@ def write_all_zoomed_niigz(mat_filename, save_format, voxelize = False, zoom_fac
                 voxels_cleaned = _voxelize(vertices_all[idx], faces_all[idx])
 
                 check_voxels(voxels_cleaned)
-
-
-
-
 
             else:
                 voxels = np.array(voxels_all[idx])
@@ -248,50 +184,10 @@ def copy_voxels_notDone(doneDir, toCopyDir):
 
 
 
-def rm_done_from_inDir():
-
-    for file_path1 in glob.glob('/Users/harry/Desktop/RUNNING/in/*'):
-        base1 = os.path.basename(file_path1)[:-7]
-        for file_path2 in glob.glob('/Users/harry/Desktop/RUNNING/out/Step1_SegPostProcess/*'):
-            base2 = os.path.basename(file_path2)[:-8]
-            if base1 == base2:
-                if os.path.exists(file_path1):
-                    print('Removing: {}'.format(file_path1))
-                    os.remove(file_path1)
-
-
-
 def copy_coefs_into_dir(outDir, idx_cell):
     for file in glob.glob('/Users/harry/Desktop/RUNNING/out/Step3_ParaToSPHARMMesh/{}_*SPHARM.coef'.format(idx_cell)):
         os.rename(file, outDir + os.path.basename(file))
         print(outDir + os.path.basename(file))
-
-
-
-
-
-def save_calibrations(idx_cell, cell_no, xyz_res = (0.145, 0.145, 0.4)):
-    """
-    Save center of masses for zm data where voxels are floating
-    """
-
-
-    files = glob.glob('/Users/harry/OneDrive - Imperial College London/lymphocytes/good_seg_data_3/ZeissLLS/many/cell_{}/voxels_processed/*'.format(cell_no))
-
-
-    calibrations = {}
-
-    for file in files:
-        voxels = nib.load(file)
-        voxels = np.moveaxis(np.moveaxis(voxels.dataobj, 0, -1), 0, 1)
-        coordinates = np.argwhere(voxels == 1)*np.array(xyz_res) + 0.5*np.array(xyz_res)
-        x, y, z = coordinates.sum(0) / np.sum(voxels)
-        voxels_centroid = np.array([x, y, z])
-        calibrations[int(os.path.basename(file).split('_')[1].split('.')[0])] = voxels_centroid # 'centroid' is the mesh one
-
-    pickle_out = open('/Users/harry/OneDrive - Imperial College London/lymphocytes/calibrations/cell_{}.pickle'.format(idx_cell),'wb')
-    pickle.dump(calibrations, pickle_out)
-
 
 
 

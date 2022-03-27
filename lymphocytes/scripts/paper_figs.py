@@ -5,8 +5,8 @@ from mayavi import mlab
 from scipy.special import sph_harm
 import pyvista as pv
 pv.set_plot_theme("document")
-from lymphocytes.data.dataloader_good_segs_2 import stack_attributes_2
-from lymphocytes.cells.cells_class import Cells
+from lymphocytes.dataloader.all import stack_attributes_all
+from lymphocytes.videos.videos_class import Videos
 import lymphocytes.utils.general as utils_general
 
 def visualise_spherical_harmonics():
@@ -35,12 +35,12 @@ def visualise_spherical_harmonics():
 
 def cell_mapping_to_sphere(idx_cell = 2):
 
-    cells = Cells(stack_attributes_1+stack_attributes_2, cells_model = [idx_cell], max_l = 15)
-    lymph = cells.cells[idx_cell][0]
+    cells = Videos(stack_attributes_1+stack_attributes_2, cells_model = [idx_cell], max_l = 15)
+    frame = cells.cells[idx_cell][0]
 
     # reconstruction
     plotter = pv.Plotter()
-    lymph.plotRecon_singleDeg(plotter=plotter)
+    frame.plotRecon_singleDeg(plotter=plotter)
     plotter.show()
     sys.exit()
 
@@ -58,7 +58,7 @@ def cell_mapping_to_sphere(idx_cell = 2):
     for coord_idx, coord_array in zip([0, 1, 2], [xs, ys, zs]):
         for l in np.arange(1, 15 + 1):
             for m in np.arange(0, l+1):
-                clm = lymph._get_clm(coord_idx, l, m)
+                clm = frame._get_clm(coord_idx, l, m)
                 coord_array += clm*sph_harm(m, l, phi, theta)
 
     xs, ys, zs = xs.real, ys.real, zs.real
@@ -71,14 +71,14 @@ def cell_mapping_to_sphere(idx_cell = 2):
     mlab.show()
 
 def justify_extra_descriptor_var():
-    cells = Cells(stack_attributes_1+stack_attributes_2, cells_model = [4], max_l = 15) # I think I have to ignore stack_attributes_2 as these are duplicates?
+    cells = Videos(stack_attributes_1+stack_attributes_2, cells_model = [4], max_l = 15) # I think I have to ignore stack_attributes_2 as these are duplicates?
     lymph1 = cells.cells[4][10]
     lymph2 = cells.cells[4][50]
     fig = plt.figure(figsize = (1.1, 0.9))
-    for idx_lymph, lymph in enumerate([lymph1, lymph2]):
-        ax = fig.add_subplot(2, 1, idx_lymph+1)
-        lymph.RI_vector = lymph.RI_vector[:5]
-        ax.bar(range(lymph.RI_vector.shape[0]), lymph.RI_vector, color = ['red'] + ['blue']*4)
+    for idx, frame in enumerate([lymph1, lymph2]):
+        ax = fig.add_subplot(2, 1, idx+1)
+        frame.RI_vector = frame.RI_vector[:5]
+        ax.bar(range(frame.RI_vector.shape[0]), frame.RI_vector, color = ['red'] + ['blue']*4)
         ax.set_ylim([0, 3.7])
     for ax in fig.axes:
         ax.tick_params(axis='both', which='major', labelsize=6, pad = 1)
