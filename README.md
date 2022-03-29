@@ -13,7 +13,7 @@ scikit-learn==0.23.0\
 matplotlib==3.2.1\
 PyWavelets==1.1.1\
 pyvista==0.32.1\
-scipy==1.7.2\
+scipy==1.7.2
 
 
 * To set up as a package so imports of internal modules work:\
@@ -24,7 +24,7 @@ scipy==1.7.2\
 ## Section 1: Morphology analysis (shape descriptor, PCA etc.)
 
 In all cases, run the following command while in the *scripts* folder within *tcells_paper_code*, and uncomment the required function (details below):\
-*python3 main_morphology.py all_run_stop*\
+*python3 main_morphology.py all_run_stop*
 
 Note: *all_run_stop* can be *all*, *run*, or *stop* and these correspond to including all cells, the long videos from the run mode, and the long videos from the stop mode, respectively.
 
@@ -115,7 +115,7 @@ In all cases, run the following command while in the *scripts* folder within *tc
 ### Section 2b: Continuous wavelet analysis for analysing local behaviours
 
 In all cases, run the following command while in the *scripts* folder within *tcells_paper_code*, and uncomment the required function (details below):\
-*python3 main_morphodynamics_cwt.py filename load_or_save_or_run*\
+*python3 main_morphodynamics_cwt.py filename load_or_save_or_run*
 
 
 Here, *filename* is the name to load or save. Options for loading are (as stored in */data/cwt_saved*): *150* (all PCs), *150_PC1_run* (marginal PC1 dynamics for run mode), *150_PC2_run* (marginal PC2 dynamics for run mode), *150_PC3_run* (marginal PC3 dynamics for run mode). *load_or_save_or_run* is whether to load pre-saved data, save new ones, or simply run without saving.\
