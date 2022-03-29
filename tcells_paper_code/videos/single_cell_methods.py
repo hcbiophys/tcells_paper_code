@@ -1,14 +1,10 @@
 import matplotlib.pyplot as plt
-import tcells_paper_code.utils.plotting as utils_plotting
 import sys
 import numpy as np
 import pyvista as pv
 import pickle
-from scipy.interpolate import UnivariateSpline
 import os
-import glob
 from PIL import Image
-from matplotlib.colors import ListedColormap
 
 import tcells_paper_code.utils.general as utils_general
 
@@ -136,11 +132,11 @@ class Single_Cell_Methods:
         """
         extension = '' # optional extension for the filename to differentiate from previously saved ones
 
-        if not os.path.isdir('/Users/harry/Desktop/lymph_vids/{}{}/'.format(idx_cell, extension)): # make folder to save the frames into
-            os.mkdir('/Users/harry/Desktop/lymph_vids/{}{}/'.format(idx_cell, extension))
+        if not os.path.isdir('../data/lymph_vids/{}{}/'.format(idx_cell, extension)): # make folder to save the frames into
+            os.mkdir('../data/lymph_vids/{}{}/'.format(idx_cell, extension))
 
         cpos = [0, 0, 1] # camera orientation
-        if idx_cell == 'zm_3_3_3' or idx_cell == 'zm_3_6_0':
+        if idx_cell == 'CELL19' or idx_cell == 'CELL31':
             cpos = [1, 0, 0]
 
 
@@ -172,67 +168,12 @@ class Single_Cell_Methods:
                 plotter.add_mesh(pv.Sphere(radius=1, center=frame.centroid), color = (0, 0, 0))
 
                 if save:
-                    plotter.show(screenshot='/Users/harry/Desktop/lymph_vids/{}{}/{}.png'.format(idx_cell, extension, frame.idx_frame), cpos=cpos)
-                    #print('/Users/harry/Desktop/lymph_vids/{}/{}.png'.format(idx_cell, frame.idx_frame))
+                    plotter.show(screenshot='../data/lymph_vids/{}{}/{}.png'.format(idx_cell, extension, frame.idx_frame), cpos=cpos)
                 else:
                     plotter.show(cpos=cpos)
 
                 plotter.close()
                 pv.close_all()
-
-
-
-    def add_colorbar_pic(self, idx_cell, old_frame_dir, new_frame_dir, pc012):
-        from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-        from matplotlib.figure import Figure
-
-        if pc012 == 1:
-            pcs = [i.pca1 for i in self.cells[idx_cell]]
-            text = 'PC 2'
-            rgb = [55, 212, 203]
-        elif pc012 == 2:
-            pcs = [i.pca2 for i in self.cells[idx_cell]]
-            text = 'PC 3'
-            rgb = [193, 192, 87]
-
-        a = np.array([[min(pcs), max(pcs)]])
-        fig = Figure()
-        canvas = FigureCanvas(fig)
-
-        N = 256
-        vals = np.ones((N, 4))
-        vals[:, 0] = np.linspace(rgb[0]/256, 1, N)
-        vals[:, 1] = np.linspace(rgb[1]/256, 1, N)
-        vals[:, 2] = np.linspace(rgb[2]/256, 1, N)
-        new_cmap = ListedColormap(vals[::-1, :])
-
-
-        img = plt.imshow(a, cmap = new_cmap)
-        plt.gca().set_visible(False)
-        cax = plt.axes([0.1, 0.4, 0.8, 0.1])
-        cbar = plt.colorbar(orientation="horizontal", cax=cax)
-        #plt.show()
-        #sys.exit()
-        cbar.ax.tick_params(labelsize = 8)
-        cbar.ax.set_xlabel(text, fontsize = 8)
-        plt.savefig('/Users/harry/Desktop/colorbar_temp.png', dpi=80)
-
-        colorbar_im = Image.open('/Users/harry/Desktop/colorbar_temp.png')
-        colorbar_im = colorbar_im.crop((50, 190, 480, 270))
-
-
-
-
-        for file in glob.glob(old_frame_dir + '/*'):
-            im = Image.open(file)
-            width, height = im.size
-            #im.paste(colorbar_im.resize((500, 100)))
-            im.paste(colorbar_im)
-
-            im.save(new_frame_dir + os.path.basename(file))
-
-
-
 
 
 
@@ -254,12 +195,8 @@ class Single_Cell_Methods:
         if color_by is not None:
             if color_by[:3] == 'pca':
                 self._set_pca(n_components=3)
-            elif color_by == 'morph_deriv':
-                self._set_morph_derivs()
             elif color_by[:3] == 'speed':
                 self._set_speed()
-            elif color_by[:4] == 'spin' or color_by == 'angle':
-                self._set_rotation(time_either_side = -1)
             vmin, vmax = utils_general.get_color_lims(self, color_by)
 
 
@@ -295,29 +232,6 @@ class Single_Cell_Methods:
                 #frame.plotRecon_singleDeg(plotter=plotter, max_l = 1, opacity = 0.5) # can also add e.g. the ellipsoid component
 
             plotter.show(cpos=[0, 0, 1])
-
-
-
-    def plot_voxels_series(self, idx_cell, plot_every):
-        """
-        Plot the voxels
-        """
-
-        frames_plot = self.cells[idx_cell][::plot_every]
-        num_cols=int(len(frames_plot)/3)+1
-        plotter = pv.Plotter(shape=(3, num_cols), border=False)
-
-        for idx_plot, frame in enumerate(frames_plot):
-            plotter.subplot(idx_plot//num_cols, idx_plot%num_cols)
-
-            voxels = np.array(frame.voxels)
-            voxels = np.moveaxis(np.moveaxis(voxels, 0, -1), 0, 1)
-            coordinates = np.argwhere(voxels == 1)*np.array(frame.xyz_res) + 0.5*np.array(frame.xyz_res)
-            point_cloud = pv.PolyData(coordinates)
-            plotter.add_mesh(point_cloud)
-
-        plotter.show()
-
 
 
 
@@ -375,7 +289,6 @@ class Single_Cell_Methods:
         #box = pv.Box(bounds=(0, 92.7, 0, 52.7, 0, 26.4))
         #box = pv.Box(bounds=(0, 92.7, 0, 82.4, 0, 26.4))
         #plotter.add_mesh(box, style='wireframe')
-
         #plotter.add_axes()
         plotter.show(cpos=[0, 1, 0.5])
 
@@ -430,7 +343,6 @@ class Single_Cell_Methods:
 
 
         plotter.show(cpos=[0,0, 1])
-
 
 
 

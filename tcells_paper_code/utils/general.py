@@ -1,14 +1,13 @@
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
-import pyvista as pv
-import random
-
-
-
 
 
 def split_by_consecutive_frames(video, attribute, and_nan = False):
+    """
+    Split up a cell video into lists of connected (for continuous sections of an attribute) frames. and_nan argument determines whether nan values are considered
+    """
+
     all_lists = []
     new_list = [video[0]]
     prev_frame = video[0].idx_frame
@@ -52,7 +51,7 @@ def split_by_consecutive_frames(video, attribute, and_nan = False):
 def get_frame_dict(video):
     """
     self.cells[idx_cell] is a list of frames, ordered by frame
-    this function returns a dict so frames can easily be acccessed by frame, like dict[frame] = frames
+    this function returns a dict so frames can easily be acccessed by frame, like dict[idx_frame] = frames
     """
     idxs_frames = [frame.idx_frame for frame in video]
     dict = {}
@@ -138,34 +137,3 @@ def faces_from_phisThetas(phis, thetas):
     faces = np.concatenate([np.full((faces.shape[0], 1), 3), faces], axis = 1)
     faces = np.hstack(faces)
     return faces
-
-def subsample_lists(freq, *args):
-    """
-    Subsample any list with subsample rate 'freq'
-    """
-    return [i[::freq] for i in args]
-
-
-
-
-
-def del_whereNone(cells, attribute):
-    """
-    Remove frame frames where a certain attribute is None
-    """
-    print('series PERMANENTLY EDITED')
-    new_dict = {}
-    for key, values in cells.items():
-        new_values = []
-        for frame in values:
-            if attribute == 'frame':
-                if frame is not None:
-                    new_values.append(frame)
-            if attribute == 'delta_centroid':
-                if frame.delta_centroid is not None:
-                    new_values.append(frame)
-            elif attribute == 'angle':
-                if frame.turning is not None:
-                    new_values.append(frame)
-        new_dict[key] = new_values
-    return new_dict

@@ -1,25 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pyvista as pv
-import pickle
 import sys
-from scipy.special import sph_harm
-from sklearn.decomposition import PCA
-import glob
 import os
 from scipy.linalg import eig
 import math
 
-import tcells_paper_code.utils.plotting as utils_plotting
 import tcells_paper_code.utils.general as utils_general
-import tcells_paper_code.utils.disk as utils_disk
 
 
 class Motion_Methods:
     """
     Methods involving e.g. the uropod and centroid
     """
-
 
     def _set_mean_uropod_and_centroid(self, idx_cell, time_either_side, max_time_either_side = 50):
         """
@@ -28,8 +21,6 @@ class Motion_Methods:
 
         video = self.cells[idx_cell]
         if time_either_side > max_time_either_side or np.isnan(time_either_side): # insignificant uropod motion, label so we can still include where required, e.g. graph of cumulatives
-            for frame in video:
-                frame.insignificant_uropod_motion = True
             time_either_side = max_time_either_side
 
 
@@ -124,9 +115,9 @@ class Motion_Methods:
     def unit_vector(self, vec):
         return vec/np.linalg.norm(vec)
 
-    def _set_rotation(self, time_either_side):
+    def _set_ellipsoid_vec(self):
         """
-        Set variables to do with rotation: ellipsoid_vec (ellipsoid major axis),  ellipsoid_vec_smoothed (ellipsoid major axis running mean), spin_vec ('spin' vector describing the ellipsoidal turning), turning (rotation angle)
+        Set ellipsoid_vec (ellipsoid major axis)
         """
 
         for video in self.cells.values():
@@ -184,96 +175,3 @@ class Motion_Methods:
                         dict[idx_frame].ellipsoid_length = (dict[idx_frame-1].ellipsoid_length + dict[idx_frame+1].ellipsoid_length)/2
                         dict[idx_frame].ellipsoid_vec = (dict[idx_frame-1].ellipsoid_vec + dict[idx_frame+1].ellipsoid_vec)/2
                         dict[idx_frame].ellipsoid_vec = [self.unit_vector(vec) for vec in dict[idx_frame].ellipsoid_vec]
-
-
-
-
-        if time_either_side == -1:
-            for video in self.cells.values():
-                for frame in video:
-                    frame.ellipsoid_vec_smoothed = frame.ellipsoid_vec
-
-        # if wanting to find ellipsoid_vec_smoothed
-        else:
-
-            for video in self.cells.values():
-                dict = utils_general.get_frame_dict(video)
-                idx_frames = list(dict.keys())
-
-                for frame in video:
-
-                    idx_frame = frame.idx_frame
-                    fs = [idx_frame-i for i in reversed(range(1, int(time_either_side//frame.t_res)+1))] + [idx_frame] + [idx_frame+i for i in range(1, int(time_either_side//frame.t_res)+1)]
-                    ellipsoid_vecs = []
-                    for f in fs:
-                        if f in idx_frames and dict[f].ellipsoid_vec is not None:
-                            ellipsoid_vecs.append(dict[f].ellipsoid_vec)
-
-                    if len(ellipsoid_vecs) == len(fs):
-                        vecs_stacked = np.vstack(ellipsoid_vecs)
-                        vec_mean = np.mean(vecs_stacked, axis = 0)
-                        dict[idx_frame].ellipsoid_vec_smoothed = self.unit_vector(vec_mean)
-
-                    else:
-                        dict[idx_frame].ellipsoid_vec_smoothed = None
-
-
-        # find spin_vec & turning using the smoothed ellipsoidal vectors
-        for video in self.cells.values():
-            dict = utils_general.get_frame_dict(video)
-            idx_frames = list(dict.keys())
-
-
-            for frame in video:
-                idx_frame = frame.idx_frame
-
-                if idx_frame+1 in idx_frames and dict[idx_frame].ellipsoid_vec_smoothed is not None and dict[idx_frame+1].ellipsoid_vec_smoothed is not None:
-                    vec1 = dict[idx_frame].ellipsoid_vec_smoothed
-                    vec2 = dict[idx_frame+1].ellipsoid_vec_smoothed
-
-
-                    cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
-                    if cos_angle < 0:
-                        vec1  = - vec1
-
-
-                    cross_norm = np.linalg.norm(np.cross(vec1, vec2))
-                    angle = np.arcsin(cross_norm/(np.linalg.norm(vec1)*np.linalg.norm(vec2)))
-                    angle /= dict[idx_frame].t_res
-
-                    dict[idx_frame].spin_vec = angle*np.cross(vec1, vec2) /cross_norm
-                    dict[idx_frame].turning = np.linalg.norm(dict[idx_frame].spin_vec)
-
-
-
-
-
-    def _set_morph_derivs(self, time_either_side = 12):
-        """
-        Describes how much the morphology is changing
-        """
-
-        for video in self.cells.values():
-            dict = utils_general.get_frame_dict(video)
-            idx_frames = list(dict.keys())
-            for frame in video:
-                idx_frame = frame.idx_frame
-                fs = [idx_frame-i for i in reversed(range(1, int(time_either_side//frame.t_res)+1))] + [idx_frame] + [idx_frame+i for i in range(1, int(time_either_side//frame.t_res)+1)]
-                morphs = []
-                for f in fs:
-                    if f in idx_frames:
-                        morphs.append(dict[f].RI_vector[1:])
-                morph_derivs = []
-                morph_derivs_low = []
-                morph_derivs_high = []
-                for idx in range(1, len(morphs)):
-                    morph_derivs.append(np.linalg.norm(morphs[idx]-morphs[idx-1]))
-                    morph_derivs_low.append(np.linalg.norm(morphs[idx][:2]-morphs[idx-1][:2]))
-                    morph_derivs_high.append(np.linalg.norm(morphs[idx][2:]-morphs[idx-1][2:]))
-                if len(morph_derivs) == len(fs)-1: # since derivative chops of 1 element
-                    frame.morph_deriv = np.mean(np.array(morph_derivs), axis = 0)
-                    frame.morph_deriv /= frame.t_res # DOES THIS ALSO NEED TO BE NORMALIZED BY VOLUME? No, because RI_vector already is
-                    frame.morph_deriv_low = np.mean(np.array(morph_derivs_low), axis = 0)
-                    frame.morph_deriv_low /= frame.t_res
-                    frame.morph_deriv_high = np.mean(np.array(morph_derivs_high), axis = 0)
-                    frame.morph_deriv_high /= frame.t_res

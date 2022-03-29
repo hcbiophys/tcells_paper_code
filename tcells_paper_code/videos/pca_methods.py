@@ -7,14 +7,11 @@ from sklearn.preprocessing import StandardScaler
 import copy
 import pyvista as pv
 import random
-import tcells_paper_code.utils.general as utils_general
-import pickle
-import tcells_paper_code.utils.disk as utils_disk
 import os
 from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 
-from tcells_paper_code.frames.frame_class import Frame
+import tcells_paper_code.utils.general as utils_general
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -63,24 +60,6 @@ class PCA_Methods:
         print('Explained variance ratio: ', self.pca_obj.explained_variance_ratio_)
         print('components', self.pca_obj.components_[:3, :])
 
-        """
-        fig = plt.figure()
-        ax = fig.add_subplot(311)
-        ax.bar(list(range(5)), self.pca_obj.components_[0, :5], color = 'black')
-        ax = fig.add_subplot(312)
-        ax.bar(list(range(5)), self.pca_obj.components_[1, :5], color = 'black')
-        ax = fig.add_subplot(313)
-        ax.bar(list(range(5)), self.pca_obj.components_[2, :5], color = 'black')
-        for ax in fig.axes:
-            ax.set_ylim([-1, 1])
-            ax.set_xticks([])
-        plt.show()
-        sys.exit()
-        """
-
-
-        #pickle.dump(self.pca_obj, open('/Users/harry/OneDrive - Imperial College London/lymphocytes/pca_obj.pickle', 'wb'))
-
         self.frame_pcs_set = True
 
     def expl_var_bar_plot(self):
@@ -107,58 +86,6 @@ class PCA_Methods:
             plt.barh([i+shift for i in [0, 1, 2, 3, 4]], getattr(which_pc, 'explained_variance_ratio_')[:5][::-1], height=0.4, color = color)
         plt.yticks([])
         plt.show()
-
-
-
-
-
-    def PC_arrows(self):
-        """
-        Visualise the PC arrows in representation space
-        """
-
-        class Arrow3D(FancyArrowPatch):
-            def __init__(self, xs, ys, zs, *args, **kwargs):
-                FancyArrowPatch.__init__(self, (0,0), (0,0), *args, **kwargs)
-                self._verts3d = xs, ys, zs
-
-            def draw(self, renderer):
-                xs3d, ys3d, zs3d = self._verts3d
-                xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, renderer.M)
-                self.set_positions((xs[0],ys[0]),(xs[1],ys[1]))
-                FancyArrowPatch.draw(self, renderer)
-
-        #self._set_pca(n_components=3)
-        #components = self.pca_obj.components_[:, :3]
-        components = np.array([[ 0.8072487,   0.45532269,  0.34706196,],
-        [-0.14969418, -0.45074785,  0.80496108,],
-        [-0.56602573,  0.75203689,  0.23602912]])
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        for i in self.cells['2_8']:
-            ax.scatter(*i.RI_vector[:3], c = 'red')
-        for i in self.cells['zm_3_4_0']:
-            ax.scatter(*i.RI_vector[:3], c = 'blue')
-
-        ax.set_xlabel('RI0')
-        ax.set_ylabel('RI1')
-        ax.set_zlabel('RI2')
-        ax.set_xlim([1, 3])
-        ax.set_ylim([3, 4])
-        ax.set_zlim([0, 1])
-
-        mean = np.mean([frame.RI_vector for frame in utils_general.list_all_frames(self)], axis = 0)
-
-        for row, color in zip(range(components.shape[0]), ['r', 'b', 'g']):
-            a = Arrow3D([mean[0], mean[0]+components[row, 0]*4], [mean[1], mean[1]+components[row, 1]*4],
-                    [mean[2], mean[2]+components[row, 2]*4], mutation_scale=20,
-                    lw=3, arrowstyle="-|>", color=color)
-            ax.add_artist(a)
-
-        plt.show()
-
 
 
     def PC_sampling(self, n_components = 3):

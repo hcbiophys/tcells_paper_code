@@ -4,36 +4,13 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import sys
 import h5py # Hierarchical Data Format 5
-import nibabel as nib
-from scipy.ndimage import zoom
-from scipy.special import sph_harm
-from matplotlib import cm, colors
-import matplotlib.tri as mtri
-from mayavi import mlab
 import pyvista as pv
 import os
-from sklearn.decomposition import PCA
 import scipy.stats
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-import glob
 import pickle
-import random
-from pykdtree.kdtree import KDTree
-import pandas as pd
-from scipy import signal
 from sklearn.decomposition import PCA
-from pyvista import examples
 import time
 
-from tcells_paper_code.videos.pca_methods import PCA_Methods
-from tcells_paper_code.videos.single_cell_methods import Single_Cell_Methods
-from tcells_paper_code.videos.motion_methods import Motion_Methods
-from tcells_paper_code.frames.frame_class import Frame
-from tcells_paper_code.morphodynamics.consecutive_frames_class import Consecutive_Frames
-from tcells_paper_code.videos.curvature_lists import all_lists
-
-import tcells_paper_code.utils.disk as utils_disk
-import tcells_paper_code.utils.plotting as utils_plotting
 import tcells_paper_code.utils.general as utils_general
 
 
@@ -46,7 +23,7 @@ def deg_to_rad(angle):
 
 def plane(frame, num_points, color):
     """
-    To visualise the plane perpendicular to the uropod
+    To find the plane perpendicular to the uropod
     """
 
     surf = pv.PolyData(frame.vertices, frame.faces)
@@ -92,8 +69,7 @@ def get_curvature(frame, angle_half_error, plot = False):
     surf = surf.smooth(n_iter=5000)
     surf = surf.decimate(0.98)
     curvature = surf.curvature()
-    #surf_tree = KDTree(surf.points.astype(np.double))
-    #dist, idx = surf_tree.query(np.array([[frame.uropod[0], frame.uropod[1], frame.uropod[2]]]))
+
 
     curvatures = surf.curvature('Mean')
 
@@ -221,6 +197,10 @@ def get_tau_sig(idx_cell, video):
 
 
 def save_PC_uncertainties(cells, idx_cells):
+    """
+    Save the uncertainties in the PCs
+    """
+
     D0_percentage_uncertainties = []
     angle_half_error = 6.283/16
 
@@ -270,18 +250,6 @@ def save_PC_uncertainties(cells, idx_cells):
 
                     print('pc{} uncertainty:'.format(count), pc_uncertainty)
                     count += 1
-
-
-                """
-                plotter = pv.Plotter()
-                frame.surface_plot(plotter=plotter, uropod_align=False, with_uropod = False)
-                for point in possible_points:
-                    plotter.add_mesh(pv.Sphere(radius=0.05, center=point), color = (0, 0, 1))
-                plotter.show()
-                """
-
-
-
 
         if len(video) > 0:
             PC_uncertainties_dict[video[0].idx_cell] = [np.mean(i) for i in [pc0_uncertainties, pc1_uncertainties, pc2_uncertainties]]

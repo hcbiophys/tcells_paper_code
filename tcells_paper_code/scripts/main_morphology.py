@@ -1,32 +1,11 @@
-import numpy as np
-import os
-import glob
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import sys
-import h5py # Hierarchical Data Format 5
-import nibabel as nib
-from scipy.ndimage import zoom
-from scipy.ndimage import measurements
-from scipy.special import sph_harm
-from matplotlib import cm, colors
-from mayavi import mlab
-import matplotlib.animation as animation
-from mpl_toolkits.mplot3d import Axes3D
 import pyvista as pv
 pv.set_plot_theme("document")
-from mkalgo.mk import mk_eab
 import pickle
-import random
-
 
 from tcells_paper_code.dataloader.all import stack_attributes_all
 from tcells_paper_code.dataloader.stereotypical import stack_attributes_stereotypical
-
-
-
 from tcells_paper_code.videos.videos_class import Videos
-import tcells_paper_code.utils.general as utils_general
 from tcells_paper_code.videos.uncertainties import save_PC_uncertainties, save_curvatures
 
 
@@ -79,7 +58,6 @@ SINGLE CELL METHODS that EDIT FILES
 #cells.select_uropods(idx_cell=idx_cell)
 #cells.select_uropods_add_frames(idx_cell = idx_cell)
 #cells.show_video(idx_cell=idx_cell, color_by = None, save = True)
-#cells.add_colorbar_pic(idx_cell = idx_cell, old_frame_dir = '/Users/harry/Desktop/lymph_vids/stop/no_colorbar/{}/'.format(idx_cell), new_frame_dir = '/Users/harry/Desktop/lymph_vids/stop/colorbar/{}/'.format(idx_cell), pc012 = 2)
 
 
 """
@@ -93,7 +71,7 @@ MANY CELL METHODS
 #cells.plot_component_frames(bin_size=7, pca=True, plot_original = False, max_l = 3)
 #cells.PC_sampling()
 #cells.plot_PC_space(plot_original = False, max_l = 3)
-#cells.plot_attributes(attributes = ['volume', 'pca0', 'pca1', 'pca2', 'morph_deriv'])
+#cells.plot_attributes(attributes = ['volume', 'pca0', 'pca1', 'pca2'])
 #cells.correlation(attributes = ['pca0', 'pca1', 'pca2', 'speed_uropod'])
 #cells.scatter_annotate('speed_uropod', 'speed_centroid')
 #cells.expl_var_bar_plot()

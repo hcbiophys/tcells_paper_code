@@ -29,18 +29,11 @@ def _butter_highpass_filter(data, cutoff, fs, order=5):
 
 
 
-def ACF(all_run_stop):
+def ACF():
     """
     Compute the autocorrelation functions (ACFs)
     """
-
-
-    if all_run_stop == 'run':
-        all_consecutive_frames = pickle.load(open('../data/time_series/shape_series_run.pickle',"rb"))
-    elif all_run_stop == 'stop':
-        all_consecutive_frames = pickle.load(open('../data/time_series/shape_series_stop.pickle',"rb"))
-    else:
-        all_consecutive_frames = pickle.load(open('../data/time_series/shape_series.pickle',"rb"))
+    all_consecutive_frames = pickle.load(open('../data/time_series/shape_series.pickle',"rb"))
 
     PC_uncertainties = pickle.load(open('../data/PC_uncertainties.pickle', 'rb'))
     for cfs in all_consecutive_frames:
@@ -80,7 +73,7 @@ def ACF(all_run_stop):
                         acfs[idx_attribute].append([np.nan])
                 elif idx_attribute == 3: # if it's speed_uropod
 
-                    if cfs.name[:-1] not in ['CELL11', 'CELL23', 'CELL24']: #zm_3_1_1
+                    if cfs.name[:-1] not in ['CELL11', 'CELL23', 'CELL24']:
                         acfs[idx_attribute].append(np.array(acf))
                     else:
                         print('Not adding speed_uropod')
@@ -98,7 +91,7 @@ def ACF(all_run_stop):
             ax.plot(xs, [0 for _ in xs], linewidth = 0.1, c = 'grey')
 
 
-    taus = fit_exponentials(acfs)
+    taus = _fit_exponentials(acfs)
     print('taus', taus)
 
     fig = plt.figure()
@@ -116,14 +109,9 @@ def ACF(all_run_stop):
             ax.scatter([idx_attribute + 1 + shift for _ in ys], ys, zorder = 1, c = 'black')
 
     plt.show()
-    sys.exit()
 
 
-
-
-
-
-def fit_exponentials(acfs):
+def _fit_exponentials(acfs):
     """
     Fit exponential decay models to the autocorrelation functions (ACFs) to get decay timescales
     """
@@ -175,19 +163,18 @@ def fit_exponentials(acfs):
 
 
 
-
-
-
-
-
-def run_power_spectrum(attribute_list, idx_attribute):
+def _power_spectrum(attribute_list, idx_attribute):
     """
     Compute the power spectra
+    Args:
+    - attribute_list: list of attributes, e.g. 'pca0_list' for PC 1
+    - idx_attribute: internal index for each attribute_list
     """
+
     print('attribute_list', attribute_list)
 
-    cfs_run = pickle.load(open('../data/cwt_saved/shape_series_run.pickle',"rb"))
-    cfs_stop = pickle.load(open('../data/cwt_saved/shape_series_stop.pickle',"rb"))
+    cfs_run = pickle.load(open('../data/time_series/shape_series_run.pickle',"rb"))
+    cfs_stop = pickle.load(open('../data/time_series/shape_series_stop.pickle',"rb"))
 
     PC_uncertainties = pickle.load(open('../data/PC_uncertainties.pickle', 'rb'))
     for cfs in cfs_run:
@@ -196,7 +183,7 @@ def run_power_spectrum(attribute_list, idx_attribute):
         cfs.PC_uncertainties = PC_uncertainties[cfs.name[:-1]]
 
     if attribute_list == 'speed_uropod_list':
-        cfs_stop = [cfs for cfs in cfs_stop if cfs.name[:-1] not in ['3_1_1', 'zm_3_1_1', 'zm_3_3_7', 'zm_3_4_0']]
+        cfs_stop = [cfs for cfs in cfs_stop if cfs.name[:-1] not in ['CELL11', 'CELL23', 'CELL24']]
 
 
 
@@ -256,13 +243,10 @@ def run_power_spectrum(attribute_list, idx_attribute):
     plt.show()
 
 
-
-ACF('run')
-
-
-
-"""
-for idx_attribute, attribute_list in enumerate(['pca0_list', 'pca1_list', 'pca2_list', 'speed_uropod_list']):
-    cwt.run_power_spectrum(attribute_list = attribute_list, idx_attribute = idx_attribute)
-sys.exit()
-"""
+def run_power_spectrum():
+    """
+    Run and plot the power spectrum for each attribute
+    """
+    
+    for idx_attribute, attribute_list in enumerate(['pca0_list', 'pca1_list', 'pca2_list', 'speed_uropod_list']):
+        _power_spectrum(attribute_list = attribute_list, idx_attribute = idx_attribute)

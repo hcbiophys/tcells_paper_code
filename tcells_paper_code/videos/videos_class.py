@@ -4,25 +4,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import sys
 import h5py # Hierarchical Data Format 5
-import nibabel as nib
-from scipy.ndimage import zoom
-from scipy.special import sph_harm
 from matplotlib import cm, colors
-import matplotlib.tri as mtri
-from mayavi import mlab
 import pyvista as pv
 import os
-from sklearn.decomposition import PCA
 import scipy.stats
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-import glob
 import pickle
 import random
-from pykdtree.kdtree import KDTree
-import pandas as pd
-from scipy import signal
-from sklearn.decomposition import PCA
-from pyvista import examples
 import time
 
 from tcells_paper_code.videos.pca_methods import PCA_Methods
@@ -30,11 +17,9 @@ from tcells_paper_code.videos.single_cell_methods import Single_Cell_Methods
 from tcells_paper_code.videos.motion_methods import Motion_Methods
 from tcells_paper_code.frames.frame_class import Frame
 from tcells_paper_code.morphodynamics.consecutive_frames_class import Consecutive_Frames
-from tcells_paper_code.videos.curvature_lists import all_lists
-from tcells_paper_code.videos.uncertainties import save_PC_uncertainties, get_tau_sig, save_curvatures
+from tcells_paper_code.videos.uncertainties import  get_tau_sig
 
 import tcells_paper_code.utils.disk as utils_disk
-import tcells_paper_code.utils.plotting as utils_plotting
 import tcells_paper_code.utils.general as utils_general
 
 
@@ -62,22 +47,19 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
 
         for idx_cell in cells_model:
 
-
-
             (idx_cell, mat_filename, coeffPathFormat, xyz_res, color, t_res) = stack_attributes_dict[idx_cell]
 
             print('idx_cell: {}'.format(idx_cell))
             video = []
-
 
             self.uropods = uropods_bool
             if self.uropods:
                 uropods = pickle.load(open('../data/uropods/{}.pickle'.format(idx_cell), "rb"))
 
             if int(idx_cell[4:]) > 15:
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type = 'zeiss', idx_cell = int(idx_cell[-1]), include_voxels = False)
+                frames_all,  vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type = 'zeiss', idx_cell = int(idx_cell[-1]))
             else:
-                frames_all, voxels_all, vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type = 'not_zeiss',  include_voxels = False)
+                frames_all,  vertices_all, faces_all = utils_disk.get_attribute_from_mat(mat_filename=mat_filename, zeiss_type = 'not_zeiss')
 
             for idx_frame in range(int(max(frames_all)+1)):
                 if os.path.isfile(coeffPathFormat.format(idx_frame)): # if it's within arena and SPHARM-PDM worked
@@ -89,13 +71,11 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
                             uropod = np.array(uropods[frames_all[idx]])
                         else:
                             uropod = None
-                        frame = Frame(mat_filename = mat_filename, idx_frame = frames_all[idx], coeffPathFormat = coeffPathFormat, voxels = voxels_all[idx], xyz_res = xyz_res,  idx_cell = idx_cell, uropod = uropod, vertices = vertices_all[idx], faces = faces_all[idx])
+                        frame = Frame(mat_filename = mat_filename, idx_frame = frames_all[idx], coeffPathFormat = coeffPathFormat,  xyz_res = xyz_res,  idx_cell = idx_cell, uropod = uropod, vertices = vertices_all[idx], faces = faces_all[idx])
                         frame.color = np.array(color)
                         frame.t_res = t_res
 
                         video.append(frame)
-
-
 
             self.cells[idx_cell] = video
 
@@ -118,9 +98,6 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
         self.frame_pcs_set = False
 
 
-
-
-
     def interoplate_SPHARM(self):
         """
         Interpolate if only 1 frame missing
@@ -139,7 +116,7 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
 
                 elif i not in idxs_frames and i-1 in idxs_frames and i+1 in idxs_frames:
                     uropod_interpolated = (dict[i-1].uropod + dict[i+1].uropod)/2
-                    frame = Frame(mat_filename = None, idx_frame = i, coeffPathFormat = None, voxels = None, xyz_res = None,  idx_cell = video[0].idx_cell, uropod = uropod_interpolated, vertices = None, faces = None)
+                    frame = Frame(mat_filename = None, idx_frame = i, coeffPathFormat = None,  xyz_res = None,  idx_cell = video[0].idx_cell, uropod = uropod_interpolated, vertices = None, faces = None)
                     frame.color = dict[i-1].color
                     frame.t_res = dict[i-1].t_res
                     frame.centroid = (dict[i-1].centroid + dict[i+1].centroid)/2
@@ -155,7 +132,6 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
         """
         Plot how spherical harmonic spectra change across PC 1
         """
-
 
         frames_low_PC1 = []
         frames_high_PC1 = []
@@ -194,17 +170,6 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
             if idx > 0:
                 ax.set_yticks([])
         plt.show()
-
-
-        """
-        for idx in range(5):
-            plt.scatter([idx for _ in range(num_low_PC1)], low_PC1_vecs[:, idx], color = 'red')
-            plt.scatter([idx for _ in range(num_high_PC1)], high_PC1_vecs[:, idx], color = 'blue')
-        plt.show()
-        """
-
-
-
 
 
     def plot_cumulatives(self):
@@ -250,7 +215,6 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
 
 
 
-
     def alignments(self, min_length, min_time_either_side = 50):
         """
         Find which axis cells follow when both uropod & centroid move with similar vector
@@ -261,7 +225,7 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
             self._set_mean_uropod_and_centroid(idx_cell = idx_cell, time_either_side = 100) # 100 for long timecale behavior
 
         self._set_speed()
-        self._set_rotation(time_either_side = -1)
+        self._set_ellipsoid_vec()
 
         UC_uropod_angles = []
         ellipsoid_uropod_angles = []
@@ -296,17 +260,6 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
                             cos_angle = np.dot(vec1, vec2)/(np.linalg.norm(vec1)*np.linalg.norm(vec2))
                         ellipsoid_uropod_angle = (360/6.283)*np.arccos(cos_angle)
                         ellipsoid_uropod_angles.append(ellipsoid_uropod_angle)
-
-                    """
-                    mins, maxs = np.min(utils_general.list_all_frames(self)[0].vertices, axis = 0), np.max(utils_general.list_all_frames(self)[0].vertices, axis = 0)
-                    box = pv.Box(bounds=(mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]))
-                    plotter = pv.Plotter()
-                    #frame.surface_plot(plotter = plotter, opacity = 0.5, box = box)
-                    plotter.add_lines(np.array([[0, 0, 0], frame.delta_uropod]), color = (1, 0, 0))
-                    plotter.add_lines(np.array([[0, 0, 0], frame.delta_centroid]), color = (0, 1, 0))
-                    plotter.add_mesh(pv.Sphere(radius=max_diff, center=frame.delta_uropod), color = (1, 0, 0), opacity = 0.5)
-                    plotter.show(cpos=[1, 0, 0])
-                    """
 
         plt.hist([UC_uropod_angles, ellipsoid_uropod_angles], bins=20, color = ['red', 'blue'])
         plt.show()
@@ -365,9 +318,6 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
         for idx_attribute, attribute in enumerate(attributes):
             if attribute[:3] == 'pca':
                 self._set_pca(n_components=3)
-
-            if attribute == 'morph_deriv':
-                self._set_morph_derivs()
 
         for video in self.cells.values():
             color = np.random.rand(3,)
@@ -430,17 +380,12 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
         print('speed_centroids, std:{}, var:{}'.format(np.std(speed_centroids), np.var(speed_centroids)))
 
 
-
-
-
-
     def correlation(self,  attributes):
         """
         Get pearson correlation coefficient between different attributes
         """
 
         self._set_pca(n_components=3)
-        self._set_morph_derivs()
         self._set_speed()
         self._set_speed_uropod_running_means(time_either_side = 75) # for a full time window of 150 (i.e. where the bimodality emerges)
 
@@ -539,52 +484,9 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
                     arrowprops=dict(arrowstyle="->"))
         annot.set_visible(False)
 
-
-
         fig.canvas.mpl_connect("motion_notify_event", hover)
-        #fig2 = plt.figure()
-        #i = [j for j in i if not np.isnan(j)]
-        #ax = fig2.add_subplot(1, 1, 1)
-        #ax.hist(i, bins = 10, orientation = 'horizontal')
 
         plt.show()
-
-
-
-
-    def plot_rotations(self,  time_either_side):
-        """
-        Plot ellipsoid major axes and 'spin' vectors corresponding to rotations in these
-        """
-        self._set_rotation(time_either_side = time_either_side)
-
-
-        plotter = pv.Plotter(shape=(2, 4), border=False)
-
-
-        for idx, frames_plot in enumerate(self.cells.values()):
-            plotter.subplot(0, idx)
-            for idx_plot, frame in enumerate(frames_plot):
-
-
-                vec = frame.spin_vec
-                if vec is not None:
-                    plotter.add_lines(np.array([np.array([0, 0, 0]), vec]), color = (1, idx_plot/(len(frames_plot)-1), 1))
-                    plotter.add_lines(np.array([[0, 0, 0], [0.005, 0, 0]]), color = (0.9, 0.9, 0.9))
-                    plotter.add_lines(np.array([[0, 0, 0], [0, 0.005, 0]]), color = (0.9, 0.9, 0.9))
-                    plotter.add_lines(np.array([[0, 0, 0], [0, 0, 0.005]]), color = (0.9, 0.9, 0.9))
-
-            plotter.subplot(1, idx)
-            for idx_plot, frame in enumerate(frames_plot):
-                vec = frame.ellipsoid_vec_smoothed
-                if vec is not None:
-                    plotter.add_lines(np.array([-vec, vec]), color = (1, idx_plot/(len(frames_plot)-1), 1))
-
-        plotter.show()
-
-
-
-
 
 
     def gather_time_series(self, save_name):
@@ -596,7 +498,7 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
         self._set_pca(n_components=3)
         self._set_speed()
         self._set_speed_uropod_running_means(time_either_side = 80)
-        self._set_rotation(time_either_side = 75)
+        self._set_ellipsoid_vec()
 
 
         all_consecutive_frames = []
@@ -611,14 +513,14 @@ class Videos(Single_Cell_Methods, PCA_Methods, Motion_Methods):
             prev_frame = None
             for idx, frame in enumerate(video):
                 if idx == 0 or frame.idx_frame-prev_frame == 1:
-                    consecutive_frames.add(frame.idx_frame, frame.pca[0], frame.pca[1], frame.pca[2],  frame.speed_uropod, frame.speed_uropod_running_mean, frame.turning)
+                    consecutive_frames.add(frame.idx_frame, frame.pca[0], frame.pca[1], frame.pca[2],  frame.speed_uropod, frame.speed_uropod_running_mean)
 
                 else:
                     consecutive_frames.interpolate()
                     all_consecutive_frames.append(consecutive_frames)
                     count += 1
                     consecutive_frames = Consecutive_Frames(name = str(idx_cell)+alphabet[count], t_res_initial = video[0].t_res)
-                    consecutive_frames.add(frame.idx_frame, frame.pca[0], frame.pca[1], frame.pca[2], frame.speed_uropod, frame.speed_uropod_running_mean, frame.turning)
+                    consecutive_frames.add(frame.idx_frame, frame.pca[0], frame.pca[1], frame.pca[2], frame.speed_uropod, frame.speed_uropod_running_mean)
                 prev_frame = frame.idx_frame
 
             consecutive_frames.interpolate()

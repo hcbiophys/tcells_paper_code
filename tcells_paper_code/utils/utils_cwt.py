@@ -66,10 +66,6 @@ def get_idx_contours(contours, all_xs, all_ys, xs, ys):
 
 
 
-
-
-
-
 def get_tm(contours, sequences):
     """
     Comput the transition matrix (tm) given the contours and trajectories as contour indices (i.e. sequences)

@@ -1,15 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import nibabel as nib
 from scipy.special import sph_harm
-import matplotlib.tri as mtri
 import pyvista as pv
-import pickle
 from scipy.spatial.transform import Rotation
 import math
 
-import tcells_paper_code.utils.voxels as utils_voxels
-import tcells_paper_code.utils.plotting as utils_plotting
 import tcells_paper_code.utils.general as utils_general
 
 class SH_Methods:
@@ -160,6 +155,10 @@ class SH_Methods:
 
 
     def _get_vertices_faces_plotRecon_singleDeg(self, max_l = None, uropod_align = False, horizontal_align = False):
+        """
+        Get vertices, faces, uropod of the surface reconstruction with a truncated representation (to maximum degree, l, of max_l). Gives a smoothed surface.
+        uropod_align & horizontal_align simply align the meshes for better visualisation
+        """
 
         xs, ys, zs, phis, thetas = self.reconstruct_xyz_from_spharm_coeffs(l_start = 0, max_l = max_l)
         [xs, ys, zs, phis, thetas] = [np.array(i) for i in [xs, ys, zs, phis, thetas]]
@@ -210,8 +209,3 @@ class SH_Methods:
 
         surf = pv.PolyData(vertices, faces)
         plotter.add_mesh(surf, color = color, opacity = opacity)
-
-
-        #plotter.add_lines(np.array([[-10, 0, 0], [10, 0, 0]]), color = (0, 0, 0))
-        #plotter.add_lines(np.array([[0, -10, 0], [0, 10, 0]]), color = (0, 0, 0))
-        #plotter.add_lines(np.array([[0, 0, -10], [0, 0, 10]]), color = (0, 0, 0))
