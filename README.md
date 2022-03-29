@@ -19,6 +19,8 @@ scipy==1.7.2\
 * To set up as a package so imports of internal modules work:\
 *python3 setup.py develop*
 
+* The surface segmentation files are large and need to be downloaded into */data/surface_segmentations/*. These can be downloaded from [URL to be added upon publication].
+
 ## Section 1: Morphology analysis (shape descriptor, PCA etc.)
 
 In all cases, run the following command while in the *scripts* folder within *tcells_paper_code*, and uncomment the required function (details below):\
