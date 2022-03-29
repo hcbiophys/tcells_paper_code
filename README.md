@@ -1,11 +1,11 @@
 # Code for the paper: T Cell Morphodynamics Reveal Periodic Shape Oscillations in 3D Migration
 
 
-# Setup
+## Setup
 
 * Tested on Mac OS Catalina 10.15.3
 
-* Requirements (can be installed via e.g. python -m pip install torch==1.6.0 once the desired python environment has been loaded):\
+* Requirements (can be installed via e.g. python -m pip install numpy==1.18.4 once the desired python environment has been loaded):\
 Python 3.7.3\
 numpy==1.18.4\
 opencv-python==4.1.2.30\
@@ -16,17 +16,17 @@ pyvista==0.32.1\
 scipy==1.7.2\
 
 
-* To run the setup so imports of internal modules work:\
+* To set up as a package so imports of internal modules work:\
 *python3 setup.py develop*
 
-# Section 1: Morphology analysis (shape descriptor, PCA etc.)
+## Section 1: Morphology analysis (shape descriptor, PCA etc.)
 
 In all cases, run the following command while in the *scripts* folder within *tcells_paper_code*, and uncomment the required function (details below):\
 *python3 main_morphology.py all_run_stop*\
 Note: *all_run_stop* can be *all*, *run*, or *stop* and these correspond to including all cells, the long videos from the run mode, and the long videos from the stop mode, respectively.
 
 
-## Section 1a: Single-cell functions
+### Section 1a: Single-cell functions
 Running functions with a single cell video (for example, plotting its time series). Note: for these functions, change *idx_cell = None* in *main_morphology.py* from *None* to the required cell code (the possible codes are shown in *main_morphology.py*).
 
 * (Fig. 1d) To plot how increasing the number of spherical harmonics (by including more degrees, l) decreases the smoothing, uncomment the function:\
@@ -52,7 +52,7 @@ Here, opacity determines the translucency, and every 40 frames are plotted.
 
 
 
-## Section 1b: Many-cell functions
+### Section 1b: Many-cell functions
 Running functions using many cell videos (for example, plotting attributes across all cells).
 
 * To plot the histogram comparing uropod-centroid (UC) axis and ellipsoid axis (Supplementary Fig. 4b), uncomment the function:\
@@ -96,9 +96,9 @@ Note: pairwise correlations between the PCs will show up blank.
 *cells.low_high_PC1_vecs()*
 
 
-# Section 2: Morphodynamics analysis (autocorrelation functions (ACFs), morphodynamic spaces etc.)
+## Section 2: Morphodynamics analysis (autocorrelation functions (ACFs), morphodynamic spaces etc.)
 
-## Section 2a: Global morphodynamic parameters (ACFs, power spectra)
+### Section 2a: Global morphodynamic parameters (ACFs, power spectra)
 
 In all cases, run the following command while in the *scripts* folder within *tcells_paper_code*, and uncomment the required function (details below):\
 *python3 main_morphodynamics_global.py*\
@@ -109,12 +109,14 @@ In all cases, run the following command while in the *scripts* folder within *tc
 * (Supplementary Fig. 5c) To plot the power spetrum for each variable, uncomment the function:\
 *run_power_spectrum()*  
 
-## Section 2b: Continuous wavelet analysis for analysing local behaviours
+### Section 2b: Continuous wavelet analysis for analysing local behaviours
 
 In all cases, run the following command while in the *scripts* folder within *tcells_paper_code*, and uncomment the required function (details below):\
 *python3 main_morphodynamics_cwt.py filename load_or_save_or_run*\
-Here, *filename* is the name to load or save. Options for loading are (as stored in */data/cwt_saved*): *150* (all PCs), *150_PC1_run* (marginal PC1 dynamics for run mode), *150_PC2_run* (marginal PC2 dynamics for run mode), *150_PC3_run* (marginal PC3 dynamics for run mode). *load_or_save_or_run* is whether to load pre-saved data, save new ones, or simply run without saving.
-Note: as described in the main text (Methods 4.7), the maximum Gaussian wavelet with was reduced for the final representation of marginal PC 2 dynamics. This can be changed by selecting which *self.gaus1_scales* to use in */morphodynamics/cwt.py* 
+Here,\
+* *filename* is the name to load or save. Options for loading are (as stored in */data/cwt_saved*): *150* (all PCs), *150_PC1_run* (marginal PC1 dynamics for run mode), *150_PC2_run* (marginal PC2 dynamics for run mode), *150_PC3_run* (marginal PC3 dynamics for run mode).\
+* *load_or_save_or_run* is whether to load pre-saved data, save new ones, or simply run without saving.\
+* Note: as described in the main text (Methods 4.7), the maximum Gaussian wavelet with was reduced for the final representation of marginal PC 2 dynamics. This can be changed by selecting which *self.gaus1_scales* to use in */morphodynamics/cwt.py*
 
 * To plot some of the longer time series (PCs 1-3 and retraction speed), uncomment the function:\
 *cwt.plot_series()*
@@ -139,7 +141,6 @@ For example if cell 'CELL1' has two continuous sections with a gap, these have i
 * (Fig. 4b) To visualise the cell frame series, PC series, and spectrogram surrounding a certain frame (i.e. in the window where the wavelets are picking up information), uncomment the function:\
 *show_cell_series_clustered(['CELL21a-72'])*\
 Here, the input is a list of cell section indices. Note, the function that plots the t-SNE embeddings is interactive, so hovering the mouse over a point will show its index, and these can then be inputted here for the visualisation.
-
 
 
 * (Fig. 4d) To plot the transition probability matrix, uncomment the function:\
