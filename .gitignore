@@ -10,7 +10,7 @@ daryan_videos/
 
 
 
-**/surface_segmentations
+*.mat
 
 
 **/*backup*/
