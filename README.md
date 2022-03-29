@@ -17,7 +17,7 @@ scipy==1.7.2
 
 
 * To set up as a package so imports of internal modules work:\
-'python3 setup.py develop'
+`python3 setup.py develop`
 
 * The surface segmentation files are large and need to be downloaded into */data/surface_segmentations/*. These can be downloaded from [URL to be added upon publication].
 
