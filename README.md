@@ -114,9 +114,9 @@ In all cases, run the following command while in the *scripts* folder within *tc
 In all cases, run the following command while in the *scripts* folder within *tcells_paper_code*, and uncomment the required function (details below):\
 *python3 main_morphodynamics_cwt.py filename load_or_save_or_run*\
 Here,\
-- *filename* is the name to load or save. Options for loading are (as stored in */data/cwt_saved*): *150* (all PCs), *150_PC1_run* (marginal PC1 dynamics for run mode), *150_PC2_run* (marginal PC2 dynamics for run mode), *150_PC3_run* (marginal PC3 dynamics for run mode).\
-- *load_or_save_or_run* is whether to load pre-saved data, save new ones, or simply run without saving.\
-- Note: as described in the main text (Methods 4.7), the maximum Gaussian wavelet with was reduced for the final representation of marginal PC 2 dynamics. This can be changed by selecting which *self.gaus1_scales* to use in */morphodynamics/cwt.py*
+*filename* is the name to load or save. Options for loading are (as stored in */data/cwt_saved*): *150* (all PCs), *150_PC1_run* (marginal PC1 dynamics for run mode), *150_PC2_run* (marginal PC2 dynamics for run mode), *150_PC3_run* (marginal PC3 dynamics for run mode).\
+*load_or_save_or_run* is whether to load pre-saved data, save new ones, or simply run without saving.\
+Note: as described in the main text (Methods 4.7), the maximum Gaussian wavelet with was reduced for the final representation of marginal PC 2 dynamics. This can be changed by selecting which *self.gaus1_scales* to use in */morphodynamics/cwt.py*
 
 * To plot some of the longer time series (PCs 1-3 and retraction speed), uncomment the function:\
 *cwt.plot_series()*
